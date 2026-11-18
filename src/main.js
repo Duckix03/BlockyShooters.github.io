@@ -4,6 +4,7 @@ import { Game } from './core/game.js';
 
 const $ = (id) => document.getElementById(id);
 const status = $('menu-status'), play = $('menu-play'), presetSel = $('menu-preset'), stats = $('menu-stats');
+const fpsSel = $('menu-fps');
 const canvas = $('game');
 const game = new Game(canvas);
 
@@ -13,6 +14,7 @@ const showStats = (s) => {
 
 game.init((msg) => { status.textContent = msg; }).then(() => {
   presetSel.value = game.save.preset || DEFAULT_PRESET;
+  fpsSel.value = String(game.save.fpsLimit ?? 60);
   showStats(game.save);
   play.disabled = false;
 }).catch((err) => {
@@ -23,6 +25,7 @@ game.init((msg) => { status.textContent = msg; }).then(() => {
 play.addEventListener('click', () => {
   game.enableAudio();
   game.setPreset(presetSel.value);
+  game.setFpsLimit(Number(fpsSel.value));
   $('menu').classList.add('hidden');
   game.startMatch();
 });

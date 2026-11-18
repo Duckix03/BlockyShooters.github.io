@@ -13,6 +13,8 @@ export class GameLoop {
     this.last = 0;
     this.running = false;
     this.frameMs = 0;
+    this.maxFps = 60;      // 0 = sem limite (segue o monitor)
+    this.lastFrame = 0;
     this._tick = this._tick.bind(this);
   }
   start() {
@@ -25,6 +27,13 @@ export class GameLoop {
   _tick(now) {
     if (!this.running) return;
     requestAnimationFrame(this._tick);
+    // Limitador de FPS: pula o frame se ainda não passou o intervalo mínimo
+    // (tolerância de 1 ms porque o rAF não chega exatamente no mesmo instante).
+    if (this.maxFps > 0) {
+      const min = 1000 / this.maxFps;
+      if (now - this.lastFrame < min - 1) return;
+      this.lastFrame = now - Math.min(min, (now - this.lastFrame) % min);
+    }
     const t0 = performance.now();
     let frameDt = (now - this.last) / 1000;
     this.last = now;

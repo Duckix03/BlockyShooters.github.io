@@ -93,7 +93,7 @@ export class Renderer {
    * Cada mudança recria os framebuffers (custa um soluço), por isso mudanças são raras.
    */
   updateDynamicResolution(frameDt) {
-    const budget = 1 / this.preset.targetFps;
+    const budget = 1 / (this.fpsTarget || 60);
     // Frame "lento" = estourou o tempo OU a GPU sozinha já usa mais de 75% do orçamento
     const gpuHeavy = this.gpuMs > budget * 1000 * 0.75;
     const slow = frameDt > budget * 1.5 || gpuHeavy ? 1 : 0;

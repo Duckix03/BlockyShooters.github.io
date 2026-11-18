@@ -91,6 +91,13 @@ export class Game {
     this.characters.setQuality(p);
   }
 
+  /** Limite de FPS (0 = sem limite). A resolução dinâmica passa a mirar esse FPS. */
+  setFpsLimit(fps) {
+    this.loop.maxFps = fps;
+    this.renderer.fpsTarget = fps || 60;
+    this.save.fpsLimit = fps;
+  }
+
   /** Começa (ou recomeça) uma partida: reseta combate/zona e respawna todos. */
   startMatch() {
     this.combat.reset();
@@ -230,6 +237,7 @@ export class Game {
     s.matches++; s.kills += kills; if (won) s.wins++;
     s.bestKills = Math.max(s.bestKills, kills);
     s.preset = this.presetKey;
+    s.fpsLimit = this.loop.maxFps;
     await writeSave(s);
     document.exitPointerLock?.();
     this.onMatchEnd?.(won, kills, s);
