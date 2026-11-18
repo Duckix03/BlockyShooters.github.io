@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Blocky Shooters</title>
+  <script>
+    // Registra o service worker de COOP/COEP (necessário no GitHub Pages).
+    // Na primeira visita a página recarrega uma vez para ficar isolada.
+    if (!window.crossOriginIsolated && 'serviceWorker' in navigator && window.isSecureContext) {
+      navigator.serviceWorker.register('./coi-sw.js').then((reg) => {
+        if (reg.active && !navigator.serviceWorker.controller) location.reload();
+        else if (!reg.active) {
+          const sw = reg.installing || reg.waiting;
+          sw && sw.addEventListener('statechange', () => sw.state === 'activated' && location.reload());
+        }
+      }).catch((e) => console.warn('SW de isolamento indisponível:', e));
+    }
+  </script>
+  <link rel="stylesheet" href="./src/ui/style.css" />
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- HUD em HTML/CSS por cima do canvas -->
+  <div id="hud" class="hidden">
+    <div id="crosshair"></div>
+    <div id="top-bar">
+      <span id="hud-alive">Vivos: 0</span>
+      <span id="hud-kills">Abates: 0</span>
+      <span id="hud-zone">Zona</span>
+    </div>
+    <div id="bottom-left">
+      <div class="bar"><div id="hud-hp" class="fill hp"></div></div>
+      <span id="hud-hp-text">100</span>
+    </div>
+    <div id="bottom-right"><span id="hud-ammo">30 / 90</span></div>
+    <div id="hud-hint"></div>
+    <div id="damage-layer"></div>
+    <div id="feed"></div>
+  </div>
+
+  <!-- Controles de toque (aparecem só no celular) -->
+  <div id="touch" class="hidden">
+    <div id="stick"><div id="stick-knob"></div></div>
+    <button id="btn-fire">●</button>
+    <button id="btn-jump">▲</button>
+    <button id="btn-use">E</button>
+  </div>
+
+  <div id="menu">
+    <h1>BLOCKY SHOOTERS</h1>
+    <p id="menu-status">Carregando…</p>
+    <label>Gráfico
+      <select id="menu-preset">
+        <option value="low">Baixo</option>
+        <option value="medium">Médio</option>
+        <option value="high">Alto</option>
+        <option value="ultra">Ultra</option>
+      </select>
+    </label>
+    <button id="menu-play" disabled>JOGAR</button>
+    <p id="menu-stats"></p>
+    <p class="help">WASD mover · Mouse mirar · Clique atirar · Shift correr · Espaço pular · R recarregar · E veículo · F1 debug · F2 balanceamento</p>
+  </div>
+
+  <div id="debug" class="hidden"></div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
