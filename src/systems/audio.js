@@ -32,10 +32,15 @@ export class Audio {
       reload: make(synth(0.25, (t, k) => (k < 0.2 || (k > 0.6 && k < 0.75) ? noise() * 0.4 : 0))),
     };
     Howler.volume(0.6);
+    this.lx = 0; this.ly = 0; this.lz = 0;
+    this.budget = 0; // limite de sons posicionais simultâneos por janela
+    this.panner = { panningModel: 'equalpower', distanceModel: 'inverse', refDistance: 4, rolloffFactor: 1.2, maxDistance: 120 };
   }
 
   /** Atualiza a posição/orientação do ouvinte (câmera). */
   listener(x, y, z, fx, fy, fz) {
+    this.lx = x; this.ly = y; this.lz = z;
+    this.budget = 6; // recarrega a cada frame: no máximo 6 sons 3D novos por frame
     Howler.pos(x, y, z);
     Howler.orientation(fx, fy, fz, 0, 1, 0);
   }
@@ -43,11 +48,17 @@ export class Audio {
   /** Toca um som; com posição, vira som 3D (atenuação por distância). */
   play(name, x, y, z, volume = 1) {
     const s = this.sounds[name];
+    if (x !== undefined) {
+      // Longe demais ou muitos sons no mesmo frame: não toca (economiza a thread de áudio)
+      const d2 = (x - this.lx) ** 2 + (y - this.ly) ** 2 + (z - this.lz) ** 2;
+      if (d2 > 110 * 110 || this.budget <= 0) return -1;
+      this.budget--;
+    }
     const id = s.play();
     s.volume(volume, id);
     if (x !== undefined) {
       s.pos(x, y, z, id);
-      s.pannerAttr({ panningModel: 'HRTF', distanceModel: 'inverse', refDistance: 4, rolloffFactor: 1.2, maxDistance: 150 }, id);
+      s.pannerAttr(this.panner, id); // 'equalpower' é bem mais barato que HRTF
     }
     return id;
   }

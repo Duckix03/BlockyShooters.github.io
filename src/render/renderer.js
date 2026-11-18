@@ -11,7 +11,9 @@ export class Renderer {
     this.camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 600);
     this.preset = PRESETS.high;
     this.pixelRatio = 1;
-    this.frameTimes = new Float32Array(30); // janela móvel para a escala dinâmica
+    this.frameWindow = new Uint8Array(90); // 1 = frame perdido (janela móvel)
+    this.longFrames = 0;
+    this.cleanTime = 0;
     this.ftIdx = 0;
     this.adjustCooldown = 0;
     this.backend = '';
@@ -79,27 +81,31 @@ export class Renderer {
   }
 
   /**
-   * Escala de resolução dinâmica: mede o tempo médio de frame e ajusta o pixelRatio
-   * entre o mínimo e o máximo do preset. Ajustes espaçados para não oscilar.
+   * Escala de resolução dinâmica, baseada em frames PERDIDOS (não na média):
+   * com vsync o tempo de frame fica preso em 16,7 ms, então a média engana.
+   * - Desce se mais de 15% dos últimos 90 frames estouraram 1,5x o orçamento.
+   * - Sobe só depois de 6 s seguidos sem nenhum frame perdido.
+   * Cada mudança recria os framebuffers (custa um soluço), por isso mudanças são raras.
    */
   updateDynamicResolution(frameDt) {
-    this.frameTimes[this.ftIdx] = frameDt * 1000;
-    this.ftIdx = (this.ftIdx + 1) % this.frameTimes.length;
+    const budget = 1 / this.preset.targetFps;
+    const slow = frameDt > budget * 1.5 ? 1 : 0;
+    this.longFrames += slow - this.frameWindow[this.ftIdx];
+    this.frameWindow[this.ftIdx] = slow;
+    this.ftIdx = (this.ftIdx + 1) % this.frameWindow.length;
+    this.cleanTime = slow ? 0 : this.cleanTime + frameDt;
     if ((this.adjustCooldown -= frameDt) > 0) return;
-    let sum = 0; for (let i = 0; i < this.frameTimes.length; i++) sum += this.frameTimes[i];
-    const avg = sum / this.frameTimes.length;
-    const budget = 1000 / this.preset.targetFps;
+
     const max = Math.min(devicePixelRatio, this.preset.maxPixelRatio);
     let pr = this.pixelRatio;
-    if (avg > budget * 1.12) pr = Math.max(this.preset.minPixelRatio, pr - 0.1);
-    // Com vsync o frame nunca fica muito abaixo do orçamento: se está batendo a meta, sobe devagar.
-    else if (avg < budget * 1.04) pr = Math.min(max, pr + 0.05);
-    if (Math.abs(pr - this.pixelRatio) > 0.001) {
-      const up = pr > this.pixelRatio;
-      this.pixelRatio = pr;
-      this.renderer.setPixelRatio(pr);
-      this.adjustCooldown = up ? 3 : 1; // desce rápido, sobe devagar (evita oscilar)
-    } else this.adjustCooldown = 0.5;
+    if (this.longFrames > this.frameWindow.length * 0.15) pr = Math.max(this.preset.minPixelRatio, pr - 0.15);
+    else if (this.cleanTime > 6) pr = Math.min(max, pr + 0.1);
+    if (Math.abs(pr - this.pixelRatio) < 0.001) return;
+    this.pixelRatio = pr;
+    this.renderer.setPixelRatio(pr);
+    this.adjustCooldown = 2;
+    this.cleanTime = 0;
+    this.frameWindow.fill(0); this.longFrames = 0;
   }
 
   render() { this.renderer.render(this.scene, this.camera); }

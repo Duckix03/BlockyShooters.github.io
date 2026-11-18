@@ -24,7 +24,7 @@ passa a funcionar. Sem isso o jogo cai para Transferable sozinho (o F1 mostra o 
 
 ## Controles
 
-WASD mover · Mouse mirar · Clique atirar · Shift correr · Espaço pular/freio · R recarregar ·
+WASD mover · Mouse mirar · Clique atirar · Shift correr · Espaço pular/freio · C agachar · R recarregar ·
 E entrar/sair do veículo · **F1** overlay de debug · **F2** balanceamento ao vivo (lil-gui).
 
 ## Estrutura

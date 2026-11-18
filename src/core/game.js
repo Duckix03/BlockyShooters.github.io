@@ -2,7 +2,7 @@
 import * as THREE from 'three/webgpu';
 import { BALANCE, IS_MOBILE, PRESETS } from '../config/settings.js';
 import {
-  CHARACTER_COUNT, ENTITY_COUNT, F, FIRST_VEHICLE, FLAG_IN_VEHICLE, PLAYER_SLOT, slotOffset,
+  CHARACTER_COUNT, ENTITY_COUNT, F, FIRST_VEHICLE, FLAG_CROUCH, FLAG_IN_VEHICLE, PLAYER_SLOT, slotOffset,
 } from './layout.js';
 import { GameLoop } from './loop.js';
 import { Input } from './input.js';
@@ -16,6 +16,7 @@ import { Audio } from '../systems/audio.js';
 import { Renderer } from '../render/renderer.js';
 import { WorldView } from '../render/world.js';
 import { EntitiesView } from '../render/entities.js';
+import { CharactersView } from '../render/characters.js';
 import { Effects } from '../render/effects.js';
 import { setupLoaders } from '../render/assets.js';
 import { Hud } from '../ui/hud.js';
@@ -46,13 +47,16 @@ export class Game {
 
     // Objetos reaproveitados (zero alocação no loop)
     this.axes = { x: 0, z: 0 };
-    this.stepInput = { mx: 0, mz: 0, yaw: 0, jump: false, sprint: false, throttle: 0, steer: 0, brake: false };
+    this.stepInput = { mx: 0, mz: 0, yaw: 0, jump: false, sprint: false, crouch: false, throttle: 0, steer: 0, brake: false };
     this.shot = { ox: 0, oy: 0, oz: 0, dx: 0, dy: 0, dz: 0 };
     this.playerPos = new THREE.Vector3();
     this.camTarget = new THREE.Vector3();
     this.camForward = new THREE.Vector3();
     this.tmp = new THREE.Vector3();
     this.camDist = 4.2;
+    this.eyeH = 1.6; // altura da câmera (desce ao agachar)
+    this.crosshair = document.getElementById('crosshair');
+    this.lastCrouch = false;
   }
 
   async init(progress) {
@@ -62,6 +66,7 @@ export class Game {
     const scene = this.renderer.scene;
     this.worldView = new WorldView(scene);
     this.entities = new EntitiesView(scene);
+    this.characters = new CharactersView(scene);
     this.effects = new Effects(scene);
     progress('Iniciando física e IA…');
     await this.sim.init();
@@ -82,7 +87,7 @@ export class Game {
     this.presetKey = key;
     this.renderer.applyPreset(p);
     this.worldView.setQuality(p);
-    this.entities.setQuality(p);
+    this.characters.setQuality(p);
   }
 
   /** Começa (ou recomeça) uma partida: reseta combate/zona e respawna todos. */
@@ -92,6 +97,7 @@ export class Game {
     for (let i = 0; i < CHARACTER_COUNT; i++) {
       const sp = i === PLAYER_SLOT ? { x: 0, z: 0 } : this.gen.spawns[(i * 7 + this.save.matches) % this.gen.spawns.length];
       this.sim.send({ type: 'alive', slot: i, alive: true, x: sp.x, z: sp.z });
+      this.characters.onRespawn(i);
     }
     this.playing = true;
     this.hud.show(true);
@@ -120,7 +126,11 @@ export class Game {
     s.mx = alive ? cos * this.axes.x - sin * this.axes.z : 0;
     s.mz = alive ? -sin * this.axes.x - cos * this.axes.z : 0;
     s.yaw = yaw;
-    s.jump = alive && inp.keys.has('Space');
+    // Correr ou pular cancela o agachar
+    if (inp.crouch && (inp.consume('Space') || inp.keys.has('ShiftLeft'))) inp.crouch = false;
+    if (inCar || !alive) inp.crouch = false;
+    s.crouch = inp.crouch;
+    s.jump = alive && !inp.crouch && inp.keys.has('Space');
     s.sprint = inp.keys.has('ShiftLeft');
     s.throttle = this.axes.z; s.steer = -this.axes.x; s.brake = inp.keys.has('Space');
     this.session.sendInput(s);
@@ -202,6 +212,7 @@ export class Game {
         a?.play('hit', undefined, undefined, undefined, 0.6);
       }
     } else if (ev.type === 'kill') {
+      this.characters.onDeath(ev.slot);
       this.sim.send({ type: 'alive', slot: ev.slot, alive: false });
       this.hud.pushFeed(`${name(ev.attacker)} ⟶ ${name(ev.slot)}`);
       if (ev.attacker === PLAYER_SLOT) a?.play('kill');
@@ -246,13 +257,17 @@ export class Game {
     const cp = Math.cos(pitch);
     this.camForward.set(-Math.sin(yaw) * cp, Math.sin(pitch), -Math.cos(yaw) * cp);
     const shoulder = inCar ? 0 : 0.6;
-    this.camTarget.set(fx + Math.cos(yaw) * shoulder, fy + (inCar ? 2 : 1.6), fz - Math.sin(yaw) * shoulder);
+    const crouched = ((curr[o + F.FLAGS] | 0) & FLAG_CROUCH) !== 0;
+    this.eyeH += ((inCar ? 2 : crouched ? 1.1 : 1.6) - this.eyeH) * Math.min(1, frameDt * 12);
+    if (crouched !== this.lastCrouch) { this.lastCrouch = crouched; this.crosshair.classList.toggle('tight', crouched); }
+    this.camTarget.set(fx + Math.cos(yaw) * shoulder, fy + this.eyeH, fz - Math.sin(yaw) * shoulder);
     cam.position.copy(this.camTarget).addScaledVector(this.camForward, -this.camDist);
     if (cam.position.y < 0.3) cam.position.y = 0.3;
     this.tmp.copy(cam.position).add(this.camForward);
     cam.lookAt(this.tmp);
 
-    this.entities.update(prev, curr, alpha, cam, false);
+    this.entities.update(prev, curr, alpha);
+    this.characters.update(prev, curr, alpha, frameDt, cam, this.input.pitch);
     this.worldView.update(this.playerPos);
     this.worldView.setZone(this.zone.x, this.zone.z, this.zone.r);
     this.renderer.followShadow(this.playerPos);

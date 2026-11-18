@@ -20,7 +20,10 @@ export class Simulation {
     this.physicsMs = 0;
     this.aiMs = 0;
     this.stepsDone = 0;
-    this.pendingInput = null;
+    this.pendingSteps = 0;
+    this.lastDt = 0;
+    this.lastInput = null;
+    this._msg = { type: 'step', dt: 0, steps: 0, input: null, intents: null, state: undefined };
 
     this.physics = new Worker(new URL('../workers/physics.worker.js', import.meta.url), { type: 'module' });
     this.ai = new Worker(new URL('../workers/ai.worker.js', import.meta.url), { type: 'module' });
@@ -46,17 +49,32 @@ export class Simulation {
     return p;
   }
 
-  /** Chamado pelo passo fixo do Game. Se a física ainda está ocupada, o passo é pulado (não acumula fila). */
+  /**
+   * Chamado a cada passo fixo do Game. Se a física ainda está ocupada, o passo fica pendente
+   * e vai junto no próximo envio (lote). Nenhum passo é perdido -> movimento sem travadinhas.
+   */
   step(dt, input) {
-    if (this.physicsBusy) return false;
+    this.pendingSteps++;
+    this.lastDt = dt;
+    this.lastInput = input;
+    if (!this.physicsBusy) this._flush();
+  }
+
+  _flush() {
+    const steps = Math.min(this.pendingSteps, 4); // limite: aba voltou do background
+    this.pendingSteps = 0;
+    if (steps === 0) return;
     this.physicsBusy = true;
+    const msg = this._msg;
+    msg.dt = this.lastDt; msg.steps = steps; msg.input = this.lastInput;
     if (this.shared) {
-      this.physics.postMessage({ type: 'step', dt, input, intents: this.intents });
+      msg.intents = this.intents;
+      this.physics.postMessage(msg);
     } else {
       // Transfere o buffer (zero cópia); ele volta na resposta 'stepped'.
-      this.physics.postMessage({ type: 'step', dt, input, intents: this.intentsView, state: this.state }, [this.state.buffer]);
+      msg.intents = this.intentsView; msg.state = this.state;
+      this.physics.postMessage(msg, [this.state.buffer]);
     }
-    return true;
   }
 
   /** IA roda em frequência menor (ex.: 20 Hz). */
@@ -82,8 +100,9 @@ export class Simulation {
     // Gira os snapshots: atual vira anterior, estado novo vira atual.
     const t = this.prev; this.prev = this.curr; this.curr = t;
     this.curr.set(this.state);
-    this.stepsDone++;
+    this.stepsDone += m.steps;
     this.physicsBusy = false;
+    if (this.pendingSteps > 0) this._flush(); // envia já o que acumulou
   }
 
   _onAi(m) {

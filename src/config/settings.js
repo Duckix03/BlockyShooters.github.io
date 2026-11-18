@@ -28,6 +28,8 @@ export const BOT_COUNT = 24;
 export const BALANCE = {
   walkSpeed: 5.5,
   sprintSpeed: 8.5,
+  crouchSpeed: 2.8,
+  crouchSpreadMult: 0.45, // agachado = mira mais precisa
   jumpSpeed: 7,
   gravity: -20,
   maxHealth: 100,
@@ -63,11 +65,11 @@ export const PRESETS = {
     shadowDistance: 30, viewChunks: 2, lodBias: 1, fog: 190, targetFps: 60,
   },
   high: {
-    label: 'Alto', maxPixelRatio: 1.5, minPixelRatio: 0.75, shadows: true, shadowMapSize: 2048,
+    label: 'Alto', maxPixelRatio: 1.25, minPixelRatio: 0.75, shadows: true, shadowMapSize: 2048,
     shadowDistance: 45, viewChunks: 3, lodBias: 1.4, fog: 260, targetFps: 60,
   },
   ultra: {
-    label: 'Ultra', maxPixelRatio: 2, minPixelRatio: 1, shadows: true, shadowMapSize: 4096,
+    label: 'Ultra', maxPixelRatio: 1.75, minPixelRatio: 1, shadows: true, shadowMapSize: 4096,
     shadowDistance: 60, viewChunks: 4, lodBias: 2, fog: 360, targetFps: 60,
   },
 };

@@ -49,4 +49,5 @@ export function setupTouch(input) {
   hold('btn-fire', () => { input.fire = true; }, () => { input.fire = false; });
   hold('btn-jump', () => { input.keys.add('Space'); input.pressed.add('Space'); }, () => input.keys.delete('Space'));
   hold('btn-use', () => input.pressed.add('KeyE'));
+  hold('btn-crouch', () => { input.crouch = !input.crouch; });
 }

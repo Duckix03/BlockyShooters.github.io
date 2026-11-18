@@ -77,15 +77,16 @@ export function generateWorld() {
  */
 export function rayObstacles(world, ox, oy, oz, dx, dy, dz, maxDist) {
   let best = maxDist;
-  for (const b of world.buildings) {
+  for (let i = 0; i < world.buildings.length; i++) {
+    const b = world.buildings[i];
     const t = rayAabb(ox, oy, oz, dx, dy, dz,
       b.x - b.w / 2, 0, b.z - b.d / 2, b.x + b.w / 2, b.h, b.z + b.d / 2);
     if (t < best) best = t;
   }
-  // Árvores: só testa chunks atravessados pelo raio (grade grosseira).
+  // Árvores: só testa chunks atravessados pelo raio. "Carimbo" por chamada evita alocar um Set.
   const cs = WORLD.chunkSize;
+  const stamp = ++rayStamp;
   const steps = Math.ceil(best / (cs * 0.5));
-  const seen = new Set();
   for (let i = 0; i <= steps; i++) {
     const d = Math.min(best, i * cs * 0.5);
     const cx = Math.floor((ox + dx * d + world.half) / cs), cz = Math.floor((oz + dz * d + world.half) / cs);
@@ -93,11 +94,13 @@ export function rayObstacles(world, ox, oy, oz, dx, dy, dz, maxDist) {
       const x = cx + jx, z = cz + jz;
       if (x < 0 || z < 0 || x >= world.chunksPerSide || z >= world.chunksPerSide) continue;
       const k = z * world.chunksPerSide + x;
-      if (seen.has(k)) continue;
-      seen.add(k);
-      for (const t of world.chunks[k].trees) {
-        const hit = rayCircle(ox, oz, dx, dz, t.x, t.z, 0.35 * t.s);
-        if (hit < best && oy + dy * hit < 8 * t.s) best = hit;
+      if (chunkStamp[k] === stamp) continue;
+      chunkStamp[k] = stamp;
+      const trees = world.chunks[k].trees;
+      for (let t = 0; t < trees.length; t++) {
+        const tr = trees[t];
+        const hit = rayCircle(ox, oz, dx, dz, tr.x, tr.z, 0.35 * tr.s);
+        if (hit < best && oy + dy * hit < 8 * tr.s) best = hit;
       }
     }
   }
@@ -105,15 +108,23 @@ export function rayObstacles(world, ox, oy, oz, dx, dy, dz, maxDist) {
   return best;
 }
 
+let rayStamp = 0;
+const chunkStamp = new Uint32Array(1024);
+
+/** Raio x caixa alinhada (slab test) sem alocar nada. */
 function rayAabb(ox, oy, oz, dx, dy, dz, x0, y0, z0, x1, y1, z1) {
   let tmin = 0, tmax = Infinity;
-  const axes = [[ox, dx, x0, x1], [oy, dy, y0, y1], [oz, dz, z0, z1]];
-  for (const [o, d, a, b] of axes) {
-    if (Math.abs(d) < 1e-8) { if (o < a || o > b) return Infinity; continue; }
-    let t1 = (a - o) / d, t2 = (b - o) / d;
-    if (t1 > t2) { const s = t1; t1 = t2; t2 = s; }
-    tmin = Math.max(tmin, t1); tmax = Math.min(tmax, t2);
-    if (tmin > tmax) return Infinity;
+  if (Math.abs(dx) < 1e-8) { if (ox < x0 || ox > x1) return Infinity; } else {
+    let t1 = (x0 - ox) / dx, t2 = (x1 - ox) / dx; if (t1 > t2) { const q = t1; t1 = t2; t2 = q; }
+    if (t1 > tmin) tmin = t1; if (t2 < tmax) tmax = t2; if (tmin > tmax) return Infinity;
+  }
+  if (Math.abs(dy) < 1e-8) { if (oy < y0 || oy > y1) return Infinity; } else {
+    let t1 = (y0 - oy) / dy, t2 = (y1 - oy) / dy; if (t1 > t2) { const q = t1; t1 = t2; t2 = q; }
+    if (t1 > tmin) tmin = t1; if (t2 < tmax) tmax = t2; if (tmin > tmax) return Infinity;
+  }
+  if (Math.abs(dz) < 1e-8) { if (oz < z0 || oz > z1) return Infinity; } else {
+    let t1 = (z0 - oz) / dz, t2 = (z1 - oz) / dz; if (t1 > t2) { const q = t1; t1 = t2; t2 = q; }
+    if (t1 > tmin) tmin = t1; if (t2 < tmax) tmax = t2; if (tmin > tmax) return Infinity;
   }
   return tmin;
 }

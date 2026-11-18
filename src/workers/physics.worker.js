@@ -14,7 +14,7 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { generateWorld } from '../core/worldgen.js';
 import {
   CHARACTER_COUNT, ENTITY_COUNT, FIRST_BOT, FIRST_VEHICLE, F, FLAG_ALIVE, FLAG_GROUNDED,
-  FLAG_IN_VEHICLE, INTENT_STRIDE, PLAYER_SLOT, slotOffset,
+  FLAG_CROUCH, FLAG_IN_VEHICLE, INTENT_STRIDE, PLAYER_SLOT, slotOffset,
 } from '../core/layout.js';
 
 const CAPSULE_HALF = 0.5, CAPSULE_R = 0.4; // altura total ≈ 1.8 m
@@ -71,7 +71,7 @@ async function init(m) {
     const sp = i === PLAYER_SLOT ? { x: 0, z: 0 } : gen.spawns[i % gen.spawns.length];
     const body = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(sp.x, EYE + 0.1, sp.z));
     const collider = world.createCollider(RAPIER.ColliderDesc.capsule(CAPSULE_HALF, CAPSULE_R), body);
-    chars.push({ body, collider, vy: 0, alive: true, yaw: 0 });
+    chars.push({ body, collider, vy: 0, alive: true, yaw: 0, crouch: false, center: STAND_CENTER, grounded: false });
   }
 
   // Veículos
@@ -100,12 +100,49 @@ async function init(m) {
 
 const desired = { x: 0, y: 0, z: 0 };
 const target = { x: 0, y: 0, z: 0 };
+const IDENT_ROT = { x: 0, y: 0, z: 0, w: 1 };
+// Altura do centro da cápsula acima dos pés: em pé 0.9 (1.8 m), agachado 0.6 (1.2 m)
+const STAND_HALF = CAPSULE_HALF, CROUCH_HALF = 0.2;
+const STAND_CENTER = STAND_HALF + CAPSULE_R, CROUCH_CENTER = CROUCH_HALF + CAPSULE_R;
+let standShape = null;
+
+/**
+ * Agachar/levantar: troca a altura da cápsula mantendo os pés no lugar.
+ * Para levantar, testa se cabe (não levanta embaixo de obstáculo).
+ */
+function setCrouch(c, want) {
+  if (want === c.crouch || !c.alive) return false;
+  const p = c.body.translation();
+  if (want) {
+    c.collider.setHalfHeight(CROUCH_HALF);
+    target.x = p.x; target.y = p.y - (STAND_CENTER - CROUCH_CENTER); target.z = p.z;
+  } else {
+    target.x = p.x; target.y = p.y + (STAND_CENTER - CROUCH_CENTER); target.z = p.z;
+    standShape ??= new RAPIER.Capsule(STAND_HALF, CAPSULE_R - 0.02);
+    if (world.intersectionWithShape(target, IDENT_ROT, standShape, undefined, undefined, c.collider)) return false;
+    c.collider.setHalfHeight(STAND_HALF);
+  }
+  // Usa o alvo kinematic (não setTranslation): o colisor só é sincronizado no world.step,
+  // então mover o corpo "na mão" e calcular movimento no mesmo passo fazia afundar no chão.
+  c.body.setNextKinematicTranslation(target);
+  c.crouch = want;
+  c.center = want ? CROUCH_CENTER : STAND_CENTER;
+  return true;
+}
+
+/** Levanta sem testar espaço (respawn / entrar no veículo). */
+function forceStand(c) {
+  if (!c.crouch) return;
+  c.collider.setHalfHeight(STAND_HALF);
+  c.crouch = false;
+  c.center = STAND_CENTER;
+}
 
 function moveCharacter(c, mx, mz, speed, jump, dt) {
   if (!c.alive) return;
   const grounded = c.grounded;
   if (grounded && c.vy < 0) c.vy = -1;
-  if (jump && grounded) c.vy = balance.jumpSpeed;
+  if (jump && grounded && !c.crouch) c.vy = balance.jumpSpeed;
   c.vy += balance.gravity * dt;
   desired.x = mx * speed * dt; desired.y = c.vy * dt; desired.z = mz * speed * dt;
   controller.computeColliderMovement(c.collider, desired);
@@ -116,17 +153,31 @@ function moveCharacter(c, mx, mz, speed, jump, dt) {
   c.body.setNextKinematicTranslation(target);
 }
 
+/**
+ * Recebe 1 ou mais passos de uma vez (m.steps). Se a main acumulou passos enquanto
+ * o Worker estava ocupado, eles chegam em lote e NENHUM é descartado (antes isso causava travadinhas).
+ */
 function step(m) {
   const t0 = performance.now();
   if (!shared && m.state) state = m.state; // recebe o buffer de volta (ping-pong de Transferable)
-  const dt = m.dt;
-  const inp = m.input;
+  const n = m.steps || 1;
+  for (let k = 0; k < n; k++) simulate(m.dt, m.input, m.intents);
+  writeState();
 
+  const ms = performance.now() - t0;
+  state[1] = ms;
+  if (shared) self.postMessage({ type: 'stepped', ms, steps: n });
+  else self.postMessage({ type: 'stepped', ms, steps: n, state }, [state.buffer]);
+}
+
+function simulate(dt, inp, it) {
   // Jogador
   const player = chars[PLAYER_SLOT];
   player.yaw = inp.yaw;
   if (playerVehicle < 0) {
-    moveCharacter(player, inp.mx, inp.mz, inp.sprint ? balance.sprintSpeed : balance.walkSpeed, inp.jump, dt);
+    const changed = setCrouch(player, inp.crouch);
+    const speed = player.crouch ? balance.crouchSpeed : inp.sprint ? balance.sprintSpeed : balance.walkSpeed;
+    if (!changed) moveCharacter(player, inp.mx, inp.mz, speed, inp.jump, dt); // passo da troca: só ajusta altura
   } else {
     const v = vehicles[playerVehicle];
     const engine = inp.throttle * balance.vehicleEngine * 25;
@@ -142,24 +193,18 @@ function step(m) {
   }
 
   // Bots: intenções vindas da IA (via main)
-  const it = m.intents;
   for (let i = FIRST_BOT; i < CHARACTER_COUNT; i++) {
     const o = (i - FIRST_BOT) * INTENT_STRIDE;
     const c = chars[i];
     c.yaw = it[o + 2];
-    moveCharacter(c, it[o], it[o + 1], balance.walkSpeed * 0.9, it[o + 4] > 0.5, dt);
+    if (setCrouch(c, it[o + 6] > 0.5)) continue;
+    moveCharacter(c, it[o], it[o + 1], c.crouch ? balance.crouchSpeed : balance.walkSpeed * 0.9, it[o + 4] > 0.5, dt);
   }
 
   for (const v of vehicles) v.ctrl.updateVehicle(dt);
   world.timestep = dt;
   world.step();
   stepCount++;
-  writeState();
-
-  const ms = performance.now() - t0;
-  state[1] = ms;
-  if (shared) self.postMessage({ type: 'stepped', ms });
-  else self.postMessage({ type: 'stepped', ms, state }, [state.buffer]);
 }
 
 function writeState() {
@@ -169,12 +214,13 @@ function writeState() {
     if (i < CHARACTER_COUNT) {
       const c = chars[i];
       const p = c.body.translation();
-      state[o + F.X] = p.x; state[o + F.Y] = p.y - EYE; state[o + F.Z] = p.z; // y = pés
+      state[o + F.X] = p.x; state[o + F.Y] = p.y - c.center; state[o + F.Z] = p.z; // y = pés
       // Personagens só giram no eixo Y (sem alocar quaternion)
       state[o + F.QX] = 0; state[o + F.QY] = Math.sin(c.yaw / 2); state[o + F.QZ] = 0; state[o + F.QW] = Math.cos(c.yaw / 2);
       let flags = c.alive ? FLAG_ALIVE : 0;
       if (c.grounded) flags |= FLAG_GROUNDED;
       if (i === PLAYER_SLOT && playerVehicle >= 0) flags |= FLAG_IN_VEHICLE;
+      if (c.crouch) flags |= FLAG_CROUCH;
       state[o + F.FLAGS] = flags;
       state[o + F.A] = playerVehicle;
     } else {
@@ -193,6 +239,7 @@ function writeState() {
 function vehicleAction(m) {
   const player = chars[PLAYER_SLOT];
   if (m.action === 'enter' && playerVehicle < 0) {
+    forceStand(player);
     playerVehicle = m.vehicle;
     player.collider.setEnabled(false);
   } else if (m.action === 'exit' && playerVehicle >= 0) {
@@ -211,10 +258,11 @@ function vehicleAction(m) {
 
 function setAlive(m) {
   const c = chars[m.slot];
+  if (m.alive) forceStand(c);
   c.alive = m.alive;
   c.collider.setEnabled(m.alive);
   if (m.alive && m.x !== undefined) {
-    c.body.setTranslation({ x: m.x, y: EYE + 0.5, z: m.z }, true);
+    c.body.setTranslation({ x: m.x, y: STAND_CENTER + 0.5, z: m.z }, true);
     c.vy = 0;
   }
   if (!m.alive && m.slot === PLAYER_SLOT && playerVehicle >= 0) vehicleAction({ action: 'exit' });

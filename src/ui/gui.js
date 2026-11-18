@@ -7,6 +7,7 @@ export function createBalanceGui(balance, onChange) {
   const mov = gui.addFolder('Movimento');
   add(mov, 'walkSpeed', 1, 15, 0.1); add(mov, 'sprintSpeed', 1, 20, 0.1);
   add(mov, 'jumpSpeed', 1, 15, 0.1); add(mov, 'gravity', -40, -5, 0.5);
+  add(mov, 'crouchSpeed', 0.5, 8, 0.1); add(mov, 'crouchSpreadMult', 0.1, 1, 0.05);
   const arma = gui.addFolder('Arma');
   add(arma, 'weaponDamage', 1, 100, 1); add(arma, 'headshotMult', 1, 4, 0.1);
   add(arma, 'fireRate', 1, 20, 0.5); add(arma, 'magSize', 1, 100, 1);

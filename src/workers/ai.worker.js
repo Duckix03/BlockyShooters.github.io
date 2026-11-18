@@ -8,7 +8,7 @@ import { Pathfinding } from 'three-pathfinding';
 import { WORLD } from '../config/settings.js';
 import { generateWorld, rayObstacles } from '../core/worldgen.js';
 import {
-  CHARACTER_COUNT, F, FIRST_BOT, FLAG_ALIVE, INTENT_STRIDE, PLAYER_SLOT, slotOffset,
+  CHARACTER_COUNT, F, FIRST_BOT, FLAG_ALIVE, FLAG_CROUCH, INTENT_STRIDE, PLAYER_SLOT, slotOffset,
 } from '../core/layout.js';
 
 const ZONE = 'map';
@@ -36,7 +36,7 @@ function init(m) {
     bots.push({
       slot: i, path: null, pathIdx: 0, repath: Math.random() * 2, mode: 'wander',
       target: -1, seenTime: 0, strafe: Math.random() < 0.5 ? 1 : -1, strafeT: 0,
-      lastX: 0, lastZ: 0, stuck: 0, jump: 0,
+      lastX: 0, lastZ: 0, stuck: 0, jump: 0, crouch: false,
     });
   }
   self.postMessage({ type: 'ready' });
@@ -137,7 +137,9 @@ function think(m) {
       const so = slotOffset(s);
       if (!((state[so + F.FLAGS] | 0) & FLAG_ALIVE)) continue;
       const d = Math.hypot(state[so + F.X] - x, state[so + F.Z] - z);
-      if (d < bestD && d < balance.botViewDist) { best = s; bestD = d; }
+      // Agachado = mais difícil de ser notado (alcance de visão 60%)
+      const view = ((state[so + F.FLAGS] | 0) & FLAG_CROUCH) ? balance.botViewDist * 0.6 : balance.botViewDist;
+      if (d < bestD && d < view) { best = s; bestD = d; }
     }
     let visible = false;
     if (best >= 0) {
@@ -163,12 +165,18 @@ function think(m) {
       yaw = Math.atan2(-ddx, -ddz);
       // Mantém distância média e faz strafe
       b.strafeT -= dt;
-      if (b.strafeT <= 0) { b.strafe = -b.strafe; b.strafeT = 0.8 + Math.random() * 1.5; }
-      const fwd = d > 25 ? 1 : d < 10 ? -0.6 : 0;
-      mx = (ddx / d) * fwd + (-ddz / d) * b.strafe * 0.7;
-      mz = (ddz / d) * fwd + (ddx / d) * b.strafe * 0.7;
+      if (b.strafeT <= 0) {
+        b.strafe = -b.strafe; b.strafeT = 0.8 + Math.random() * 1.5;
+        // De longe, às vezes agacha para atirar com mais precisão
+        b.crouch = d > 18 && Math.random() < 0.45;
+      }
+      const fwd = b.crouch ? 0 : d > 25 ? 1 : d < 10 ? -0.6 : 0;
+      const side = b.crouch ? 0.25 : 0.7;
+      mx = (ddx / d) * fwd + (-ddz / d) * b.strafe * side;
+      mz = (ddz / d) * fwd + (ddx / d) * b.strafe * side;
       shoot = b.seenTime > balance.botReaction ? 1 : 0;
     } else {
+      b.crouch = false;
       // Patrulha: segue caminho da navmesh até um ponto aleatório dentro da zona
       b.repath -= dt;
       if ((!b.path || b.pathIdx >= b.path.length || b.repath <= 0) && pathsThisThink < MAX_PATHS_PER_THINK) {
@@ -189,10 +197,12 @@ function think(m) {
     b.lastX = x; b.lastZ = z;
     b.stuck = (mx || mz) && moved < 0.02 ? b.stuck + dt : 0;
     let jump = 0;
-    if (b.stuck > 0.6) { jump = 1; b.repath = 0; b.stuck = 0; }
+    if (b.stuck > 0.6) { jump = 1; b.repath = 0; b.stuck = 0; b.crouch = false; }
+    if (outside) b.crouch = false;
 
     intents[io] = mx; intents[io + 1] = mz; intents[io + 2] = yaw;
     intents[io + 3] = shoot; intents[io + 4] = jump; intents[io + 5] = shoot ? b.target : -1;
+    intents[io + 6] = b.crouch ? 1 : 0;
   }
 
   const ms = performance.now() - t0;

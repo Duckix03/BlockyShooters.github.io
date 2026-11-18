@@ -10,10 +10,12 @@ export class Input {
     this.pressed = new Set(); // teclas apertadas neste passo (consumidas pelo Game)
     this.touchMove = { x: 0, y: 0 };
     this.locked = false;
+    this.crouch = false; // alternado com C (Ctrl+W fecharia a aba, por isso não usamos Ctrl)
 
     addEventListener('keydown', (e) => {
       if (e.code === 'F1' || e.code === 'F2') e.preventDefault();
       if (!e.repeat) this.pressed.add(e.code);
+      if (e.code === 'KeyC' && !e.repeat) this.crouch = !this.crouch;
       this.keys.add(e.code);
     });
     addEventListener('keyup', (e) => this.keys.delete(e.code));

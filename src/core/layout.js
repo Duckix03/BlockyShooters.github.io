@@ -8,6 +8,7 @@ export const F = { X: 0, Y: 1, Z: 2, QX: 3, QY: 4, QZ: 5, QW: 6, FLAGS: 7, A: 8,
 export const FLAG_ALIVE = 1;
 export const FLAG_GROUNDED = 2;
 export const FLAG_IN_VEHICLE = 4;
+export const FLAG_CROUCH = 8;
 
 export const PLAYER_SLOT = 0;
 export const FIRST_BOT = 1;
@@ -19,8 +20,8 @@ export const ENTITY_COUNT = CHARACTER_COUNT + WORLD.vehicles;
 export const HEADER = 4;
 export const STATE_FLOATS = HEADER + ENTITY_COUNT * STRIDE;
 
-/** Intenções dos bots escritas pela IA: moveX, moveZ, yaw, wantShoot, wantJump, targetSlot */
-export const INTENT_STRIDE = 6;
+/** Intenções dos bots escritas pela IA: moveX, moveZ, yaw, wantShoot, wantJump, targetSlot, wantCrouch */
+export const INTENT_STRIDE = 7;
 export const INTENT_FLOATS = BOT_COUNT * INTENT_STRIDE;
 
 export const slotOffset = (slot) => HEADER + slot * STRIDE;
