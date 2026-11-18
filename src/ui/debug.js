@@ -36,6 +36,7 @@ export class DebugOverlay {
     this.el.textContent =
       `FPS        ${fps.toFixed(0)}\n` +
       `Frame      ${d.frameMs.toFixed(2)} ms (CPU main)\n` +
+      `GPU        ${d.gpuMs ? d.gpuMs.toFixed(2) + ' ms' : 'n/d'}\n` +
       `Draw calls ${d.calls}\n` +
       `Triângulos ${d.triangles.toLocaleString('pt-BR')}\n` +
       `Física     ${d.physicsMs.toFixed(2)} ms\n` +

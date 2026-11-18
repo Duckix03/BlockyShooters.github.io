@@ -29,7 +29,8 @@ const hanging = (w, h, d) => new THREE.BoxGeometry(w, h, d).translate(0, -h / 2,
 
 export class CharactersView {
   constructor(scene) {
-    const mat = (opts = {}) => new THREE.MeshStandardNodeMaterial({ roughness: 0.8, ...opts });
+    // Lambert: bem mais barato por pixel que o PBR (Standard) e combina com o visual blocky
+    const mat = (opts = {}) => new THREE.MeshLambertNodeMaterial(opts);
     const part = (geo, material, shadow, colored = true) => {
       const m = new THREE.InstancedMesh(geo, material, CHARACTER_COUNT);
       m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -45,7 +46,7 @@ export class CharactersView {
       belt: part(new THREE.BoxGeometry(0.64, 0.08, 0.36).translate(0, 0.04, 0), mat({ color: 0x222222 }), false, false),
       head: part(new THREE.BoxGeometry(HEAD, HEAD, HEAD).translate(0, HEAD / 2, 0), base, true),
       visor: part(new THREE.BoxGeometry(HEAD * 0.82, 0.11, 0.04).translate(0, HEAD * 0.58, -HEAD / 2 - 0.01),
-        mat({ color: 0x111820, roughness: 0.2, metalness: 0.6 }), false, false),
+        mat({ color: 0x111820 }), false, false),
       helmet: part(new THREE.BoxGeometry(HEAD + 0.06, 0.14, HEAD + 0.06).translate(0, HEAD - 0.02, 0), base, false),
       pack: part(new THREE.BoxGeometry(0.44, 0.42, 0.18).translate(0, TORSO_H * 0.55, 0.25), mat({ color: 0x4b5320 }), false, false),
       armL: part(hanging(0.2, ARM, 0.2), base, true),
@@ -54,7 +55,7 @@ export class CharactersView {
       thighR: part(hanging(0.25, THIGH, 0.25), base, true),
       shinL: part(hanging(0.24, SHIN, 0.24), base, true),
       shinR: part(hanging(0.24, SHIN, 0.24), base, true),
-      gun: part(new THREE.BoxGeometry(0.1, 0.16, 0.75).translate(0, 0, -0.2), mat({ color: 0x1e1e1e, metalness: 0.4 }), false, false),
+      gun: part(new THREE.BoxGeometry(0.1, 0.16, 0.75).translate(0, 0, -0.2), mat({ color: 0x1e1e1e }), false, false),
     };
 
     // Estado de animação por personagem
@@ -62,6 +63,8 @@ export class CharactersView {
       phase: 0, speed: 0, crouch: 0, lastX: 0, lastZ: 0, init: false, deathT: -1, frame: 0, air: 0,
     }));
     this._applyColors();
+    // Começa tudo invisível (o padrão do InstancedMesh é identidade = todos empilhados na origem)
+    for (let i = 0; i < CHARACTER_COUNT; i++) this._hide(i);
   }
 
   /** Cores por instância: jogador azul, bots com camisetas/calças/pele variadas. */
@@ -98,14 +101,18 @@ export class CharactersView {
       const flags = curr[o + F.FLAGS] | 0;
       const alive = (flags & FLAG_ALIVE) !== 0;
       if (!alive && a.deathT < 0) a.deathT = 1.5; // morreu sem evento (ex.: começo) -> já some
+      if (alive && a.deathT >= 0) a.deathT = -1;
       if (!alive) a.deathT += dt;
       const hidden = (i === PLAYER_SLOT && (flags & FLAG_IN_VEHICLE)) || (!alive && a.deathT > 2.5);
       if (hidden) { this._hide(i); continue; }
 
       // Posição/rotação interpoladas entre os snapshots da física
-      const x = prev[o] + (curr[o] - prev[o]) * alpha;
-      const y = prev[o + 1] + (curr[o + 1] - prev[o + 1]) * alpha;
-      const z = prev[o + 2] + (curr[o + 2] - prev[o + 2]) * alpha;
+      // Teleporte (respawn): mais de 4 m entre snapshots não é movimento, não interpola
+      const k = Math.abs(curr[o] - prev[o]) + Math.abs(curr[o + 2] - prev[o + 2]) > 4 ? 1 : alpha;
+      const x = prev[o] + (curr[o] - prev[o]) * k;
+      const y = prev[o + 1] + (curr[o + 1] - prev[o + 1]) * k;
+      const z = prev[o + 2] + (curr[o + 2] - prev[o + 2]) * k;
+      if (k === 1) a.init = false; // não conta o salto como velocidade
       _qa.set(0, prev[o + 4], 0, prev[o + 6]);
       _qb.set(0, curr[o + 4], 0, curr[o + 6]);
       if (_qa.lengthSq() < 0.5) _qa.copy(_qb);

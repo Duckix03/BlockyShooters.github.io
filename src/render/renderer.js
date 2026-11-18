@@ -6,7 +6,12 @@ import { PRESETS } from '../config/settings.js';
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
-    this.renderer = new THREE.WebGPURenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+    this.renderer = new THREE.WebGPURenderer({
+      canvas, antialias: false, powerPreference: 'high-performance',
+      trackTimestamp: true, // tempo real de GPU (timestamp queries) para o overlay F1
+    });
+    this.gpuMs = 0;
+    this._gpuPending = false;
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 600);
     this.preset = PRESETS.high;
@@ -89,7 +94,9 @@ export class Renderer {
    */
   updateDynamicResolution(frameDt) {
     const budget = 1 / this.preset.targetFps;
-    const slow = frameDt > budget * 1.5 ? 1 : 0;
+    // Frame "lento" = estourou o tempo OU a GPU sozinha já usa mais de 75% do orçamento
+    const gpuHeavy = this.gpuMs > budget * 1000 * 0.75;
+    const slow = frameDt > budget * 1.5 || gpuHeavy ? 1 : 0;
     this.longFrames += slow - this.frameWindow[this.ftIdx];
     this.frameWindow[this.ftIdx] = slow;
     this.ftIdx = (this.ftIdx + 1) % this.frameWindow.length;
@@ -99,7 +106,8 @@ export class Renderer {
     const max = Math.min(devicePixelRatio, this.preset.maxPixelRatio);
     let pr = this.pixelRatio;
     if (this.longFrames > this.frameWindow.length * 0.15) pr = Math.max(this.preset.minPixelRatio, pr - 0.15);
-    else if (this.cleanTime > 6) pr = Math.min(max, pr + 0.1);
+    // Só sobe se a GPU tiver folga de verdade (menos de 45% do orçamento)
+    else if (this.cleanTime > 6 && (this.gpuMs === 0 || this.gpuMs < budget * 1000 * 0.45)) pr = Math.min(max, pr + 0.1);
     if (Math.abs(pr - this.pixelRatio) < 0.001) return;
     this.pixelRatio = pr;
     this.renderer.setPixelRatio(pr);
@@ -108,7 +116,20 @@ export class Renderer {
     this.frameWindow.fill(0); this.longFrames = 0;
   }
 
-  render() { this.renderer.render(this.scene, this.camera); }
+  render() {
+    this.renderer.info.reset(); // contadores por frame (sem isso acumulavam)
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  /** Lê o tempo de GPU do último frame (assíncrono; chamado só com o F1 aberto). */
+  sampleGpuTime() {
+    if (this._gpuPending || !this.renderer.hasFeature?.('timestamp-query')) return;
+    this._gpuPending = true;
+    this.renderer.resolveTimestampsAsync('render').then((t) => {
+      const v = t ?? this.renderer.info.render.timestamp;
+      if (v) this.gpuMs = v;
+    }).catch(() => {}).finally(() => { this._gpuPending = false; });
+  }
 
   /** Números para o overlay de debug. */
   info() {

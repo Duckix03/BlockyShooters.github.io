@@ -54,6 +54,7 @@ export class Game {
     this.camForward = new THREE.Vector3();
     this.tmp = new THREE.Vector3();
     this.camDist = 4.2;
+    this.frameNo = 0;
     this.eyeH = 1.6; // altura da câmera (desce ao agachar)
     this.crosshair = document.getElementById('crosshair');
     this.lastCrouch = false;
@@ -276,12 +277,13 @@ export class Game {
     this.audio?.listener(cam.position.x, cam.position.y, cam.position.z, this.camForward.x, this.camForward.y, this.camForward.z);
     this.renderer.updateDynamicResolution(frameDt);
     this.renderer.render();
+    if ((++this.frameNo & 7) === 0) this.renderer.sampleGpuTime(); // tempo de GPU a cada 8 frames
     this.debug.end();
     this.debug.update(frameDt, () => {
       const info = this.renderer.info();
       return {
         frameMs: this.loop.frameMs, calls: info.calls, triangles: info.triangles,
-        physicsMs: sim.physicsMs, aiMs: sim.aiMs, entities: ENTITY_COUNT, effects: this.effects.activeCount,
+        gpuMs: this.renderer.gpuMs, physicsMs: sim.physicsMs, aiMs: sim.aiMs, entities: ENTITY_COUNT, effects: this.effects.activeCount,
         backend: this.renderer.backend, shared: sim.shared, pixelRatio: this.renderer.pixelRatio,
         preset: PRESETS[this.presetKey].label, chunks: this.worldView.loaded.size,
       };

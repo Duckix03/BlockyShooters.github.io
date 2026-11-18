@@ -2,7 +2,7 @@
 // prédios com LOD e a parede da zona.
 import * as THREE from 'three/webgpu';
 import {
-  color, mix, mx_noise_float, positionWorld, smoothstep, time, sin, float,
+  color, positionWorld, time, sin, float, texture, uv,
 } from 'three/tsl';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { WORLD } from '../config/settings.js';
@@ -29,7 +29,7 @@ export class WorldView {
     this.centerChunk = -1;
     this.viewChunks = 2;
     this.lodBias = 1;
-    this.vertexMat = new THREE.MeshStandardNodeMaterial({ vertexColors: true, roughness: 0.9 });
+    this.vertexMat = new THREE.MeshLambertNodeMaterial({ vertexColors: true });
     this._buildTerrain();
     this._buildProps();
     this._buildBuildings();
@@ -39,12 +39,10 @@ export class WorldView {
   _buildTerrain() {
     const size = WORLD.size;
     const geo = new THREE.PlaneGeometry(size, size, 1, 1).rotateX(-Math.PI / 2);
-    const mat = new THREE.MeshStandardNodeMaterial({ roughness: 1 });
-    // Shader TSL: mistura grama/terra por ruído em coordenadas de mundo (sem textura = zero download).
-    const big = mx_noise_float(positionWorld.xz.mul(0.035)).mul(0.5).add(0.5);
-    const detail = mx_noise_float(positionWorld.xz.mul(0.6)).mul(0.07).add(1);
-    const grass = mix(color(0x3f6f24), color(0x5c8a2e), mx_noise_float(positionWorld.xz.mul(0.12)).mul(0.5).add(0.5));
-    mat.colorNode = mix(grass, color(0x7d6b46), smoothstep(0.62, 0.8, big)).mul(detail);
+    // Cor do terreno "assada" numa textura na inicialização (antes eram 3 ruídos por pixel, todo frame).
+    // O shader TSL só lê 2 texturas: a cor grande do mapa + um detalhe repetido.
+    const mat = new THREE.MeshLambertNodeMaterial();
+    mat.colorNode = texture(bakeTerrain(), uv()).mul(texture(detailTexture(), uv().mul(96)).r.mul(0.16).add(0.9));
     const ground = new THREE.Mesh(geo, mat);
     ground.receiveShadow = true;
     this.scene.add(ground);
@@ -65,10 +63,10 @@ export class WorldView {
     const rockGeo = new THREE.DodecahedronGeometry(0.8, 0);
     const crateGeo = new THREE.BoxGeometry(1.2, 1.2, 1.2).translate(0, 0.6, 0);
 
-    const mk = (geo, hex, count, shadow) => {
-      const m = new THREE.InstancedMesh(geo, new THREE.MeshStandardNodeMaterial({ color: hex, roughness: 0.9 }), count);
+    const mk = (geo, hex, count, shadow, receive = true) => {
+      const m = new THREE.InstancedMesh(geo, new THREE.MeshLambertNodeMaterial({ color: hex }), count);
       m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-      m.castShadow = shadow; m.receiveShadow = true;
+      m.castShadow = shadow; m.receiveShadow = receive;
       m.frustumCulled = false; // o conjunto carregado cerca a câmera; culling por chunk é feito na carga
       m.count = 0;
       this.scene.add(m);
@@ -76,7 +74,7 @@ export class WorldView {
     };
     this.props = {
       trunk: mk(trunkGeo, 0x6b4a2b, total('trees'), true),
-      leaf: mk(leafGeo, 0x2f5d22, total('trees'), true),
+      leaf: mk(leafGeo, 0x2f5d22, total('trees'), true, false), // folhas: não amostram sombra (muita sobreposição)
       rock: mk(rockGeo, 0x8a8a84, total('rocks'), true),
       crate: mk(crateGeo, 0xb5832f, total('crates'), true),
     };
@@ -161,8 +159,13 @@ export class WorldView {
     this.centerChunk = key;
     this.loaded.clear();
     const r = this.viewChunks;
-    for (let z = cz - r; z <= cz + r; z++) for (let x = cx - r; x <= cx + r; x++) {
-      if (x >= 0 && z >= 0 && x < g.chunksPerSide && z < g.chunksPerSide) this.loaded.add(z * g.chunksPerSide + x);
+    // Do mais perto para o mais longe: as instâncias próximas são desenhadas primeiro e o
+    // teste de profundidade descarta os pixels escondidos atrás delas (menos sobreposição).
+    for (let ring = 0; ring <= r; ring++) {
+      for (let z = cz - ring; z <= cz + ring; z++) for (let x = cx - ring; x <= cx + ring; x++) {
+        if (Math.max(Math.abs(x - cx), Math.abs(z - cz)) !== ring) continue;
+        if (x >= 0 && z >= 0 && x < g.chunksPerSide && z < g.chunksPerSide) this.loaded.add(z * g.chunksPerSide + x);
+      }
     }
     const { trunk, leaf, rock, crate } = this.props;
     let nt = 0, nr = 0, nc = 0;
@@ -177,4 +180,60 @@ export class WorldView {
     trunk.count = leaf.count = nt; rock.count = nr; crate.count = nc;
     for (const p of [trunk, leaf, rock, crate]) p.instanceMatrix.needsUpdate = true;
   }
+}
+
+// ---------- Texturas do terreno geradas na CPU (uma vez) ----------
+
+function hash2(x, y) {
+  let h = (x * 374761393 + y * 668265263) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+}
+function valueNoise(x, y) {
+  const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const a = hash2(xi, yi), b = hash2(xi + 1, yi), c = hash2(xi, yi + 1), d = hash2(xi + 1, yi + 1);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+function fbm(x, y) { return valueNoise(x, y) * 0.55 + valueNoise(x * 2.1, y * 2.1) * 0.3 + valueNoise(x * 4.3, y * 4.3) * 0.15; }
+
+/** Cor do mapa inteiro: grama variada + manchas de terra. 1 texel ≈ 1 m. */
+function bakeTerrain() {
+  const N = 512, data = new Uint8Array(N * N * 4);
+  const g1 = new THREE.Color(0x3f6f24), g2 = new THREE.Color(0x5c8a2e), dirt = new THREE.Color(0x7d6b46), c = new THREE.Color();
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const big = fbm(x / 28, y / 28);
+    const grass = fbm(x / 9 + 50, y / 9 + 50);
+    c.copy(g1).lerp(g2, grass);
+    const t = Math.min(1, Math.max(0, (big - 0.58) / 0.16));
+    c.lerp(dirt, t * t * (3 - 2 * t));
+    c.convertLinearToSRGB(); // as cores do Three ficam em espaço linear; a textura é sRGB
+    const i = (y * N + x) * 4;
+    data[i] = c.r * 255; data[i + 1] = c.g * 255; data[i + 2] = c.b * 255; data[i + 3] = 255;
+  }
+  const tex = new THREE.DataTexture(data, N, N);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.generateMipmaps = true;
+  tex.anisotropy = 4;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+/** Detalhe em escala de cinza que se repete (granulado da grama). */
+function detailTexture() {
+  const N = 64, data = new Uint8Array(N * N * 4);
+  for (let i = 0; i < N * N; i++) {
+    const x = i % N, y = (i / N) | 0;
+    const v = (hash2(x + 999, y + 77) * 0.6 + valueNoise(x / 4, y / 4) * 0.4) * 255;
+    data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = v; data[i * 4 + 3] = 255;
+  }
+  const tex = new THREE.DataTexture(data, N, N);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.generateMipmaps = true;
+  tex.needsUpdate = true;
+  return tex;
 }

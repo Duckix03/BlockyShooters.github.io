@@ -17,7 +17,7 @@ function tinted(geo, hex) {
 export class EntitiesView {
   constructor(scene) {
     this.scene = scene;
-    this.mat = new THREE.MeshStandardNodeMaterial({ vertexColors: true, roughness: 0.7 });
+    this.mat = new THREE.MeshLambertNodeMaterial({ vertexColors: true });
     this.objects = [];
     // Veículos: carroceria + cabine + rodas numa única geometria
     const wheels = [];
