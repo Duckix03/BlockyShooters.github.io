@@ -20,7 +20,7 @@ const SKINS = [0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0xffdbac];
 // Temporários (zero alocação no update)
 const _root = new THREE.Matrix4(), _m = new THREE.Matrix4(), _t = new THREE.Matrix4(), _r = new THREE.Matrix4();
 const _q = new THREE.Quaternion(), _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion();
-const _p = new THREE.Vector3(), _one = new THREE.Vector3(1, 1, 1);
+const _p = new THREE.Vector3(), _one = new THREE.Vector3(1, 1, 1), _up = new THREE.Vector3(0, 1, 0);
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 const _c = new THREE.Color();
 
@@ -93,7 +93,7 @@ export class CharactersView {
   /**
    * @param aimPitch  pitch da mira do jogador (os bots miram reto)
    */
-  update(prev, curr, alpha, dt, camera, aimPitch) {
+  update(prev, curr, alpha, dt, camera, aimPitch, playerView = null) {
     const P = this.parts, lod2 = (this.lodDist ?? LOD_DIST) ** 2;
     const cx = camera.position.x, cz = camera.position.z;
     for (let i = 0; i < CHARACTER_COUNT; i++) {
@@ -103,20 +103,26 @@ export class CharactersView {
       if (!alive && a.deathT < 0) a.deathT = 1.5; // morreu sem evento (ex.: começo) -> já some
       if (alive && a.deathT >= 0) a.deathT = -1;
       if (!alive) a.deathT += dt;
-      const hidden = (i === PLAYER_SLOT && (flags & FLAG_IN_VEHICLE)) || (!alive && a.deathT > 2.5);
+      const hidden = (i === PLAYER_SLOT && ((flags & FLAG_IN_VEHICLE) || playerView?.hide)) || (!alive && a.deathT > 2.5);
       if (hidden) { this._hide(i); continue; }
 
       // Posição/rotação interpoladas entre os snapshots da física
       // Teleporte (respawn): mais de 4 m entre snapshots não é movimento, não interpola
       const k = Math.abs(curr[o] - prev[o]) + Math.abs(curr[o + 2] - prev[o + 2]) > 4 ? 1 : alpha;
-      const x = prev[o] + (curr[o] - prev[o]) * k;
-      const y = prev[o + 1] + (curr[o + 1] - prev[o + 1]) * k;
-      const z = prev[o + 2] + (curr[o + 2] - prev[o + 2]) * k;
+      let x = prev[o] + (curr[o] - prev[o]) * k;
+      let y = prev[o + 1] + (curr[o + 1] - prev[o + 1]) * k;
+      let z = prev[o + 2] + (curr[o + 2] - prev[o + 2]) * k;
       if (k === 1) a.init = false; // não conta o salto como velocidade
-      _qa.set(0, prev[o + 4], 0, prev[o + 6]);
-      _qb.set(0, curr[o + 4], 0, curr[o + 6]);
-      if (_qa.lengthSq() < 0.5) _qa.copy(_qb);
-      _q.slerpQuaternions(_qa, _qb, alpha);
+      if (i === PLAYER_SLOT && playerView) {
+        // Jogador local: posição prevista e rotação direto da mira (sem atraso)
+        x = playerView.x; y = playerView.y; z = playerView.z;
+        _q.setFromAxisAngle(_up, playerView.yaw);
+      } else {
+        _qa.set(0, prev[o + 4], 0, prev[o + 6]);
+        _qb.set(0, curr[o + 4], 0, curr[o + 6]);
+        if (_qa.lengthSq() < 0.5) _qa.copy(_qb);
+        _q.slerpQuaternions(_qa, _qb, alpha);
+      }
 
       // Velocidade horizontal medida pelo deslocamento renderizado (suavizada)
       if (!a.init) { a.lastX = x; a.lastZ = z; a.init = true; }

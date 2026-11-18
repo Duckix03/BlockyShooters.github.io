@@ -8,7 +8,7 @@ import { GameLoop } from './loop.js';
 import { Input } from './input.js';
 import { LocalSession } from './net.js';
 import { loadSave, writeSave } from './save.js';
-import { generateWorld } from './worldgen.js';
+import { generateWorld, rayObstacles } from './worldgen.js';
 import { Simulation } from '../systems/simulation.js';
 import { Combat } from '../systems/combat.js';
 import { Zone } from '../systems/zone.js';
@@ -54,6 +54,13 @@ export class Game {
     this.camForward = new THREE.Vector3();
     this.tmp = new THREE.Vector3();
     this.camDist = 4.2;
+    // Predição local do jogador: histórico circular [seq, vx, vz] dos inputs enviados
+    this.hist = new Float32Array(64 * 3);
+    this.histHead = 0;
+    this.predPrev = new THREE.Vector3();
+    this.predCurr = new THREE.Vector3();
+    this.predOk = false;
+    this.playerView = { x: 0, y: 0, z: 0, yaw: 0, hide: false };
     this.frameNo = 0;
     this.eyeH = 1.6; // altura da câmera (desce ao agachar)
     this.crosshair = document.getElementById('crosshair');
@@ -92,6 +99,13 @@ export class Game {
   }
 
   /** Limite de FPS (0 = sem limite). A resolução dinâmica passa a mirar esse FPS. */
+  /** Liga/desliga a resolução automática; ao desligar, volta para a resolução cheia do preset. */
+  setAutoResolution(on) {
+    this.renderer.autoResolution = on;
+    this.save.autoResolution = on;
+    if (!on && this.presetKey) this.renderer.applyPreset(PRESETS[this.presetKey]);
+  }
+
   setFpsLimit(fps) {
     this.loop.maxFps = fps;
     this.renderer.fpsTarget = fps || 60;
@@ -143,6 +157,7 @@ export class Game {
     s.throttle = this.axes.z; s.steer = -this.axes.x; s.brake = inp.keys.has('Space');
     this.session.sendInput(s);
     this.sim.step(dt, s);
+    this.predict(dt, s, alive && !inCar);
 
     if (++this.tick % AI_EVERY === 0) this.sim.think(dt * AI_EVERY, this.zone.view);
 
@@ -151,7 +166,7 @@ export class Game {
     if (inp.fire && alive && !inCar) {
       const cam = this.renderer.camera;
       const f = this.camForward;
-      const skip = this.camDist; // começa na altura do jogador para não acertar o que está atrás dele
+      const skip = this.camUsedDist ?? this.camDist; // distância real da câmera (pode ter encurtado por obstáculo) // começa na altura do jogador para não acertar o que está atrás dele
       this.shot.ox = cam.position.x + f.x * skip; this.shot.oy = cam.position.y + f.y * skip; this.shot.oz = cam.position.z + f.z * skip;
       this.shot.dx = f.x; this.shot.dy = f.y; this.shot.dz = f.z;
       shot = this.shot;
@@ -167,6 +182,34 @@ export class Game {
     }
 
     this.updateHud(alive, inCar);
+  }
+
+  /**
+   * Predição local (client-side prediction): o boneco e a câmera andam NA HORA com o seu input.
+   * Posição prevista = última posição confirmada pela física + soma dos inputs que a física
+   * ainda não aplicou. Quando a física discorda (parede, árvore), a próxima confirmação corrige.
+   */
+  predict(dt, s, active) {
+    const speed = this.input.crouch ? this.balance.crouchSpeed : s.sprint ? this.balance.sprintSpeed : this.balance.walkSpeed;
+    const h = this.hist, i = this.histHead * 3;
+    h[i] = this.sim.sentSeq; h[i + 1] = s.mx * speed; h[i + 2] = s.mz * speed;
+    this.histHead = (this.histHead + 1) % 64;
+
+    const st = this.sim.curr, o = slotOffset(PLAYER_SLOT);
+    const ack = st[3];
+    let x = st[o], z = st[o + 2];
+    // Soma só os inputs ainda não confirmados (no máximo 8 passos ≈ 133 ms)
+    let n = 0;
+    for (let k = 1; k <= 64 && n < 8; k++) {
+      const j = ((this.histHead - k + 64) % 64) * 3;
+      if (h[j] <= ack) break;
+      x += h[j + 1] * dt; z += h[j + 2] * dt; n++;
+    }
+    this.predPrev.copy(this.predCurr);
+    this.predCurr.set(x, 0, z);
+    // Saltos grandes (respawn/teleporte) ou fora de uso: sem interpolar
+    if (!active || !this.predOk || this.predPrev.distanceToSquared(this.predCurr) > 16) this.predPrev.copy(this.predCurr);
+    this.predOk = active;
   }
 
   toggleVehicle(inCar) {
@@ -238,6 +281,7 @@ export class Game {
     s.bestKills = Math.max(s.bestKills, kills);
     s.preset = this.presetKey;
     s.fpsLimit = this.loop.maxFps;
+    s.autoResolution = this.renderer.autoResolution;
     await writeSave(s);
     document.exitPointerLock?.();
     this.onMatchEnd?.(won, kills, s);
@@ -253,6 +297,11 @@ export class Game {
       const v = slotOffset(curr[o + F.A] + FIRST_VEHICLE);
       fx = prev[v] + (curr[v] - prev[v]) * alpha; fy = prev[v + 1] + (curr[v + 1] - prev[v + 1]) * alpha;
       fz = prev[v + 2] + (curr[v + 2] - prev[v + 2]) * alpha;
+    } else if (this.predOk) {
+      // Posição prevista (sem esperar a física) — altura vem da física (pulo/queda)
+      fx = this.predPrev.x + (this.predCurr.x - this.predPrev.x) * alpha;
+      fz = this.predPrev.z + (this.predCurr.z - this.predPrev.z) * alpha;
+      fy = prev[o + 1] + (curr[o + 1] - prev[o + 1]) * alpha;
     } else {
       fx = prev[o] + (curr[o] - prev[o]) * alpha; fy = prev[o + 1] + (curr[o + 1] - prev[o + 1]) * alpha;
       fz = prev[o + 2] + (curr[o + 2] - prev[o + 2]) * alpha;
@@ -270,13 +319,25 @@ export class Game {
     this.eyeH += ((inCar ? 2 : crouched ? 1.1 : 1.6) - this.eyeH) * Math.min(1, frameDt * 12);
     if (crouched !== this.lastCrouch) { this.lastCrouch = crouched; this.crosshair.classList.toggle('tight', crouched); }
     this.camTarget.set(fx + Math.cos(yaw) * shoulder, fy + this.eyeH, fz - Math.sin(yaw) * shoulder);
-    cam.position.copy(this.camTarget).addScaledVector(this.camForward, -this.camDist);
+    // Colisão da câmera: se um prédio/árvore fica entre o jogador e a câmera, ela se aproxima
+    // (raio sai da cabeça do jogador até a posição desejada da câmera, que fica atrás do ombro)
+    const f = this.camForward, t = this.camTarget;
+    const hx = fx, hy = fy + this.eyeH, hz = fz;
+    const dx = t.x - f.x * this.camDist - hx, dy = t.y - f.y * this.camDist - hy, dz = t.z - f.z * this.camDist - hz;
+    const len = Math.hypot(dx, dy, dz) || 1;
+    const hit = rayObstacles(this.gen, hx, hy, hz, dx / len, dy / len, dz / len, len);
+    const dist = hit < len ? Math.max(0.6, this.camDist * (hit - 0.35) / len) : this.camDist;
+    cam.position.copy(t).addScaledVector(f, -dist);
+    this.camUsedDist = dist;
     if (cam.position.y < 0.3) cam.position.y = 0.3;
     this.tmp.copy(cam.position).add(this.camForward);
     cam.lookAt(this.tmp);
 
     this.entities.update(prev, curr, alpha);
-    this.characters.update(prev, curr, alpha, frameDt, cam, this.input.pitch);
+    const pv = this.playerView;
+    pv.x = fx; pv.y = fy; pv.z = fz; pv.yaw = yaw;
+    pv.hide = (this.camUsedDist ?? 9) < 1.1; // câmera colada (obstáculo atrás): esconde o próprio boneco // boneco do jogador: posição prevista + mira imediata
+    this.characters.update(prev, curr, alpha, frameDt, cam, this.input.pitch, inCar ? null : pv);
     this.worldView.update(this.playerPos);
     this.worldView.setZone(this.zone.x, this.zone.z, this.zone.r);
     this.worldView.tick(frameDt);

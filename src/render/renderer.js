@@ -2,13 +2,14 @@
 // inclusive no Brave), cena, luzes, sombra de curta distância que segue a câmera
 // e escala de resolução dinâmica.
 import * as THREE from 'three';
-import { PRESETS } from '../config/settings.js';
+import { IS_MOBILE, PRESETS } from '../config/settings.js';
 
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
     this.renderer = new THREE.WebGLRenderer({
-      canvas, antialias: false, powerPreference: 'high-performance', stencil: false,
+      // Antialias (MSAA) no PC: tira o serrilhado; a GPU tem folga de sobra com o WebGL clássico
+      canvas, antialias: !IS_MOBILE, powerPreference: 'high-performance', stencil: false,
     });
     this.gpuMs = 0; // tempo de GPU via EXT_disjoint_timer_query (quando o navegador permite)
     this._timer = null;
@@ -96,6 +97,9 @@ export class Renderer {
    * Cada mudança recria os framebuffers (custa um soluço), por isso mudanças são raras.
    */
   updateDynamicResolution(frameDt) {
+    // Desligada por padrão: com FPS limitado pelo navegador (ex.: economia de energia do Brave)
+    // ela confundia "frame lento" com GPU pesada e derrubava a resolução à toa.
+    if (!this.autoResolution) return;
     const budget = 1 / (this.fpsTarget || 60);
     // Frame "lento" = estourou o tempo OU a GPU sozinha já usa mais de 75% do orçamento
     const gpuHeavy = this.gpuMs > budget * 1000 * 0.75;

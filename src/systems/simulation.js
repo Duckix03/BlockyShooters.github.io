@@ -23,7 +23,8 @@ export class Simulation {
     this.pendingSteps = 0;
     this.lastDt = 0;
     this.lastInput = null;
-    this._msg = { type: 'step', dt: 0, steps: 0, input: null, intents: null, state: undefined };
+    this._msg = { type: 'step', dt: 0, steps: 0, seq: 0, input: null, intents: null, state: undefined };
+    this.sentSeq = 0;
 
     this.physics = new Worker(new URL('../workers/physics.worker.js', import.meta.url), { type: 'module' });
     this.ai = new Worker(new URL('../workers/ai.worker.js', import.meta.url), { type: 'module' });
@@ -57,6 +58,7 @@ export class Simulation {
     this.pendingSteps++;
     this.lastDt = dt;
     this.lastInput = input;
+    this.sentSeq++; // número deste input (a física devolve o último aplicado em state[3])
     if (!this.physicsBusy) this._flush();
   }
 
@@ -66,7 +68,7 @@ export class Simulation {
     if (steps === 0) return;
     this.physicsBusy = true;
     const msg = this._msg;
-    msg.dt = this.lastDt; msg.steps = steps; msg.input = this.lastInput;
+    msg.dt = this.lastDt; msg.steps = steps; msg.input = this.lastInput; msg.seq = this.sentSeq;
     if (this.shared) {
       msg.intents = this.intents;
       this.physics.postMessage(msg);

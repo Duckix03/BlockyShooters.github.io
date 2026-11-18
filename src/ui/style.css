@@ -25,6 +25,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #000; font-f
 #menu button { font-size: 22px; font-weight: 800; padding: 12px 48px; border: 0; border-radius: 10px; background: #f59e0b; color: #111; cursor: pointer; }
 #menu button:disabled { opacity: .5; cursor: wait; }
 #menu select { font-size: 16px; margin-left: 8px; padding: 4px; }
+#menu .check { font-size: 14px; display: flex; gap: 6px; align-items: center; }
 #menu .help { opacity: .7; font-size: 13px; max-width: 640px; text-align: center; }
 
 #debug { position: fixed; left: 0; top: 50px; z-index: 50; background: #000c; color: #9effa0; font: 12px/1.45 ui-monospace, monospace; padding: 8px 10px; white-space: pre; pointer-events: none; }

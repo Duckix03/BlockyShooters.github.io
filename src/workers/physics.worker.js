@@ -21,7 +21,7 @@ const CAPSULE_HALF = 0.5, CAPSULE_R = 0.4; // altura total ≈ 1.8 m
 const EYE = CAPSULE_HALF + CAPSULE_R;
 
 let world, controller, botController, state, shared = false, balance;
-let stepCostEma = 0, lodScale = 1;
+let stepCostEma = 0, lodScale = 1, lastSeq = 0;
 const chars = [];    // { body, collider, vy, alive }
 const vehicles = []; // { body, ctrl }
 let playerVehicle = -1;
@@ -172,6 +172,7 @@ function step(m) {
   if (!shared && m.state) state = m.state; // recebe o buffer de volta (ping-pong de Transferable)
   const n = m.steps || 1;
   for (let k = 0; k < n; k++) simulate(m.dt, m.input, m.intents);
+  lastSeq = m.seq || 0;
   writeState();
 
   const ms = performance.now() - t0;
@@ -231,6 +232,7 @@ function simulate(dt, inp, it) {
 
 function writeState() {
   state[0] = stepCount;
+  state[3] = lastSeq; // último input do jogador já aplicado (usado na predição da main)
   for (let i = 0; i < ENTITY_COUNT; i++) {
     const o = slotOffset(i);
     if (i < CHARACTER_COUNT) {

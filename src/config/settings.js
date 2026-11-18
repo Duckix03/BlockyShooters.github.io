@@ -52,24 +52,25 @@ export const BALANCE = {
 };
 
 /**
- * Presets gráficos. `maxPixelRatio` é o teto; a escala dinâmica baixa a partir dele.
+ * Presets gráficos. `maxPixelRatio` é a resolução usada (limitada ao devicePixelRatio da tela:
+ * em monitor 1080p comum, 1 = 1080p nativo). A resolução automática (opcional) pode baixar até o mínimo.
  * `viewChunks` = raio (em chunks) carregados ao redor da câmera.
  */
 export const PRESETS = {
   low: {
-    label: 'Baixo', maxPixelRatio: 0.7, minPixelRatio: 0.5, shadows: false, shadowMapSize: 512,
+    label: 'Baixo', maxPixelRatio: 0.75, minPixelRatio: 0.5, shadows: false, shadowMapSize: 512,
     shadowDistance: 0, viewChunks: 1, lodBias: 0.6, fog: 140, targetFps: 30,
   },
   medium: {
-    label: 'Médio', maxPixelRatio: 0.85, minPixelRatio: 0.6, shadows: true, shadowMapSize: 1024,
+    label: 'Médio', maxPixelRatio: 1, minPixelRatio: 0.7, shadows: true, shadowMapSize: 1024,
     shadowDistance: 30, viewChunks: 2, lodBias: 1, fog: 190, targetFps: 60,
   },
   high: {
-    label: 'Alto', maxPixelRatio: 1, minPixelRatio: 0.7, shadows: true, shadowMapSize: 2048,
+    label: 'Alto', maxPixelRatio: 1.5, minPixelRatio: 0.8, shadows: true, shadowMapSize: 2048,
     shadowDistance: 45, viewChunks: 3, lodBias: 1.4, fog: 260, targetFps: 60,
   },
   ultra: {
-    label: 'Ultra', maxPixelRatio: 1.25, minPixelRatio: 0.85, shadows: true, shadowMapSize: 2048,
+    label: 'Ultra', maxPixelRatio: 2, minPixelRatio: 1, shadows: true, shadowMapSize: 2048,
     shadowDistance: 60, viewChunks: 4, lodBias: 2, fog: 360, targetFps: 60,
   },
 };

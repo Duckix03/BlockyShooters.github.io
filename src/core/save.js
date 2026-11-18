@@ -2,7 +2,7 @@
 import { get, set } from 'idb-keyval';
 
 const KEY = 'arena-bots:save:v1';
-const DEFAULT = { matches: 0, wins: 0, kills: 0, bestKills: 0, preset: null, fpsLimit: 60 };
+const DEFAULT = { matches: 0, wins: 0, kills: 0, bestKills: 0, preset: null, fpsLimit: 60, autoResolution: false };
 
 export async function loadSave() {
   try { return { ...DEFAULT, ...(await get(KEY)) }; } catch { return { ...DEFAULT }; }

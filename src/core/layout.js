@@ -16,7 +16,7 @@ export const FIRST_VEHICLE = FIRST_BOT + BOT_COUNT;
 export const CHARACTER_COUNT = 1 + BOT_COUNT;
 export const ENTITY_COUNT = CHARACTER_COUNT + WORLD.vehicles;
 
-/** Cabeçalho: [0] = número do passo da física, [1] = ms da física, [2] = ms da IA */
+/** Cabeçalho: [0] = número do passo da física, [1] = ms da física, [2] = ms da IA, [3] = último input aplicado */
 export const HEADER = 4;
 export const STATE_FLOATS = HEADER + ENTITY_COUNT * STRIDE;
 
