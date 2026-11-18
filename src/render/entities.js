@@ -1,5 +1,5 @@
 // Visual dos veículos (personagens ficam em characters.js) com interpolação entre snapshots da física.
-import * as THREE from 'three/webgpu';
+import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
   CHARACTER_COUNT, ENTITY_COUNT, F, FLAG_ALIVE, slotOffset,
@@ -17,7 +17,7 @@ function tinted(geo, hex) {
 export class EntitiesView {
   constructor(scene) {
     this.scene = scene;
-    this.mat = new THREE.MeshLambertNodeMaterial({ vertexColors: true });
+    this.mat = new THREE.MeshLambertMaterial({ vertexColors: true });
     this.objects = [];
     // Veículos: carroceria + cabine + rodas numa única geometria
     const wheels = [];

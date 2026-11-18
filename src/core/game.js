@@ -1,5 +1,5 @@
 // Orquestrador: liga input, sessão, simulação (workers), combate, zona, render, áudio e UI.
-import * as THREE from 'three/webgpu';
+import * as THREE from 'three';
 import { BALANCE, IS_MOBILE, PRESETS } from '../config/settings.js';
 import {
   CHARACTER_COUNT, ENTITY_COUNT, F, FIRST_VEHICLE, FLAG_CROUCH, FLAG_IN_VEHICLE, PLAYER_SLOT, slotOffset,
@@ -279,6 +279,7 @@ export class Game {
     this.characters.update(prev, curr, alpha, frameDt, cam, this.input.pitch);
     this.worldView.update(this.playerPos);
     this.worldView.setZone(this.zone.x, this.zone.z, this.zone.r);
+    this.worldView.tick(frameDt);
     this.renderer.followShadow(this.playerPos);
     this.effects.update(frameDt);
     this.hud.updateDamage(frameDt, cam, this.tmp);

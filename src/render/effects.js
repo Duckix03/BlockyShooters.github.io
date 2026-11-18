@@ -1,6 +1,6 @@
 // Efeitos com object pooling + InstancedMesh: traçantes de bala e partículas de impacto.
 // Tudo pré-alocado; spawn/update não criam objetos.
-import * as THREE from 'three/webgpu';
+import * as THREE from 'three';
 import { Pool } from '../core/pool.js';
 
 const MAX_TRACERS = 256;
@@ -14,7 +14,7 @@ export class Effects {
     // Traçantes: caixa fina esticada ao longo da direção do tiro
     const tracerGeo = new THREE.BoxGeometry(0.04, 0.04, 1);
     this.tracerMesh = new THREE.InstancedMesh(tracerGeo,
-      new THREE.MeshBasicNodeMaterial({ color: 0xffe08a }), MAX_TRACERS);
+      new THREE.MeshBasicMaterial({ color: 0xffe08a }), MAX_TRACERS);
     this.tracerMesh.frustumCulled = false;
     this.tracerMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.tracers = new Pool(() => ({ x: 0, y: 0, z: 0, dx: 0, dy: 0, dz: 0, len: 0, traveled: 0, max: 0 }), MAX_TRACERS);
@@ -22,7 +22,7 @@ export class Effects {
     // Partículas: cubinhos com gravidade
     const pGeo = new THREE.BoxGeometry(0.08, 0.08, 0.08);
     this.particleMesh = new THREE.InstancedMesh(pGeo,
-      new THREE.MeshBasicNodeMaterial({ color: 0xffffff }), MAX_PARTICLES);
+      new THREE.MeshBasicMaterial({ color: 0xffffff }), MAX_PARTICLES);
     this.particleMesh.frustumCulled = false;
     this.particleMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.particleMesh.setColorAt(0, new THREE.Color());

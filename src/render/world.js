@@ -1,9 +1,6 @@
-// Visual do mapa: terreno com shader TSL, props instanciados com carga por chunk,
+// Visual do mapa: terreno com textura assada, props instanciados com carga por chunk,
 // prédios com LOD e a parede da zona.
-import * as THREE from 'three/webgpu';
-import {
-  color, positionWorld, time, sin, float, texture, uv,
-} from 'three/tsl';
+import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { WORLD } from '../config/settings.js';
 import { generateWorld } from '../core/worldgen.js';
@@ -29,7 +26,7 @@ export class WorldView {
     this.centerChunk = -1;
     this.viewChunks = 2;
     this.lodBias = 1;
-    this.vertexMat = new THREE.MeshLambertNodeMaterial({ vertexColors: true });
+    this.vertexMat = new THREE.MeshLambertMaterial({ vertexColors: true });
     this._buildTerrain();
     this._buildProps();
     this._buildBuildings();
@@ -39,10 +36,9 @@ export class WorldView {
   _buildTerrain() {
     const size = WORLD.size;
     const geo = new THREE.PlaneGeometry(size, size, 1, 1).rotateX(-Math.PI / 2);
-    // Cor do terreno "assada" numa textura na inicialização (antes eram 3 ruídos por pixel, todo frame).
-    // O shader TSL só lê 2 texturas: a cor grande do mapa + um detalhe repetido.
-    const mat = new THREE.MeshLambertNodeMaterial();
-    mat.colorNode = texture(bakeTerrain(), uv()).mul(texture(detailTexture(), uv().mul(96)).r.mul(0.16).add(0.9));
+    // Cor do terreno "assada" numa textura na inicialização (grama, terra e granulado).
+    // No render é só 1 leitura de textura por pixel.
+    const mat = new THREE.MeshLambertMaterial({ map: bakeTerrain() });
     const ground = new THREE.Mesh(geo, mat);
     ground.receiveShadow = true;
     this.scene.add(ground);
@@ -64,7 +60,7 @@ export class WorldView {
     const crateGeo = new THREE.BoxGeometry(1.2, 1.2, 1.2).translate(0, 0.6, 0);
 
     const mk = (geo, hex, count, shadow, receive = true) => {
-      const m = new THREE.InstancedMesh(geo, new THREE.MeshLambertNodeMaterial({ color: hex }), count);
+      const m = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ color: hex }), count);
       m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       m.castShadow = shadow; m.receiveShadow = receive;
       m.frustumCulled = false; // o conjunto carregado cerca a câmera; culling por chunk é feito na carga
@@ -126,17 +122,34 @@ export class WorldView {
     });
   }
 
-  /** Parede da zona segura: cilindro transparente animado por TSL. */
+  /** Parede da zona segura: cilindro transparente com faixas animadas (shader GLSL simples). */
   _buildZone() {
     const geo = new THREE.CylinderGeometry(1, 1, 60, 96, 1, true).translate(0, 30, 0);
-    const mat = new THREE.MeshBasicNodeMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false });
-    mat.colorNode = color(0x3aa0ff);
-    mat.opacityNode = sin(positionWorld.y.mul(1.5).sub(time.mul(3))).mul(0.12).add(0.25)
-      .mul(float(1).sub(positionWorld.y.div(60)));
+    this.zoneTime = { value: 0 };
+    const mat = new THREE.ShaderMaterial({
+      transparent: true, side: THREE.DoubleSide, depthWrite: false,
+      uniforms: { uTime: this.zoneTime, uColor: { value: new THREE.Color(0x3aa0ff) } },
+      vertexShader: /* glsl */`
+        varying float vY;
+        void main() {
+          vY = position.y;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }`,
+      fragmentShader: /* glsl */`
+        uniform float uTime;
+        uniform vec3 uColor;
+        varying float vY;
+        void main() {
+          float a = (sin(vY * 1.5 - uTime * 3.0) * 0.12 + 0.25) * (1.0 - vY / 60.0);
+          gl_FragColor = vec4(uColor, a);
+        }`,
+    });
     this.zoneMesh = new THREE.Mesh(geo, mat);
     this.zoneMesh.frustumCulled = false;
     this.scene.add(this.zoneMesh);
   }
+
+  tick(dt) { this.zoneTime.value += dt; }
 
   setZone(x, z, r) {
     this.zoneMesh.position.set(x, 0, z);
@@ -197,16 +210,17 @@ function valueNoise(x, y) {
 }
 function fbm(x, y) { return valueNoise(x, y) * 0.55 + valueNoise(x * 2.1, y * 2.1) * 0.3 + valueNoise(x * 4.3, y * 4.3) * 0.15; }
 
-/** Cor do mapa inteiro: grama variada + manchas de terra. 1 texel ≈ 1 m. */
+/** Cor do mapa inteiro: grama variada + manchas de terra + granulado. 1 texel = 0,5 m. */
 function bakeTerrain() {
-  const N = 512, data = new Uint8Array(N * N * 4);
+  const N = 1024, data = new Uint8Array(N * N * 4);
   const g1 = new THREE.Color(0x3f6f24), g2 = new THREE.Color(0x5c8a2e), dirt = new THREE.Color(0x7d6b46), c = new THREE.Color();
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-    const big = fbm(x / 28, y / 28);
-    const grass = fbm(x / 9 + 50, y / 9 + 50);
+    const big = fbm(x / 56, y / 56);
+    const grass = fbm(x / 18 + 50, y / 18 + 50);
     c.copy(g1).lerp(g2, grass);
     const t = Math.min(1, Math.max(0, (big - 0.58) / 0.16));
     c.lerp(dirt, t * t * (3 - 2 * t));
+    c.multiplyScalar(0.9 + hash2(x + 999, y + 77) * 0.16); // granulado
     c.convertLinearToSRGB(); // as cores do Three ficam em espaço linear; a textura é sRGB
     const i = (y * N + x) * 4;
     data[i] = c.r * 255; data[i + 1] = c.g * 255; data[i + 2] = c.b * 255; data[i + 3] = 255;
@@ -217,23 +231,6 @@ function bakeTerrain() {
   tex.minFilter = THREE.LinearMipmapLinearFilter;
   tex.generateMipmaps = true;
   tex.anisotropy = 4;
-  tex.needsUpdate = true;
-  return tex;
-}
-
-/** Detalhe em escala de cinza que se repete (granulado da grama). */
-function detailTexture() {
-  const N = 64, data = new Uint8Array(N * N * 4);
-  for (let i = 0; i < N * N; i++) {
-    const x = i % N, y = (i / N) | 0;
-    const v = (hash2(x + 999, y + 77) * 0.6 + valueNoise(x / 4, y / 4) * 0.4) * 255;
-    data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = v; data[i * 4 + 3] = 255;
-  }
-  const tex = new THREE.DataTexture(data, N, N);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.magFilter = THREE.LinearFilter;
-  tex.minFilter = THREE.LinearMipmapLinearFilter;
-  tex.generateMipmaps = true;
   tex.needsUpdate = true;
   return tex;
 }

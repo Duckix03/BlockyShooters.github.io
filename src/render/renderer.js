@@ -1,17 +1,17 @@
-// Renderer: WebGPURenderer (cai sozinho para WebGL2 quando não há WebGPU),
-// cena, luzes, sombra de curta distância que segue a câmera e escala de resolução dinâmica.
-import * as THREE from 'three/webgpu';
+// Renderer: WebGLRenderer clássico do Three.js (o caminho mais rápido e compatível,
+// inclusive no Brave), cena, luzes, sombra de curta distância que segue a câmera
+// e escala de resolução dinâmica.
+import * as THREE from 'three';
 import { PRESETS } from '../config/settings.js';
 
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
-    this.renderer = new THREE.WebGPURenderer({
-      canvas, antialias: false, powerPreference: 'high-performance',
-      trackTimestamp: true, // tempo real de GPU (timestamp queries) para o overlay F1
+    this.renderer = new THREE.WebGLRenderer({
+      canvas, antialias: false, powerPreference: 'high-performance', stencil: false,
     });
-    this.gpuMs = 0;
-    this._gpuPending = false;
+    this.gpuMs = 0; // tempo de GPU via EXT_disjoint_timer_query (quando o navegador permite)
+    this._timer = null;
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 600);
     this.preset = PRESETS.high;
@@ -25,9 +25,12 @@ export class Renderer {
   }
 
   async init() {
-    await this.renderer.init();
-    this.backend = this.renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2';
     const r = this.renderer;
+    this.backend = 'WebGL2';
+    // Timer de GPU (opcional; Brave/Firefox costumam bloquear por privacidade)
+    const gl = r.getContext();
+    this._ext = gl.getExtension('EXT_disjoint_timer_query_webgl2');
+    this._gl = gl;
     r.toneMapping = THREE.ACESFilmicToneMapping;
     r.shadowMap.enabled = true;
     r.shadowMap.type = THREE.PCFShadowMap;
@@ -116,24 +119,36 @@ export class Renderer {
     this.frameWindow.fill(0); this.longFrames = 0;
   }
 
-  render() {
-    this.renderer.info.reset(); // contadores por frame (sem isso acumulavam)
-    this.renderer.render(this.scene, this.camera);
+  /**
+   * Mede o tempo de GPU de um frame (chamado a cada 8 frames).
+   * Abre uma query antes do render e lê o resultado em frames seguintes, sem travar.
+   */
+  sampleGpuTime() {
+    const gl = this._gl, ext = this._ext;
+    if (!ext) return;
+    if (this._timer) {
+      const ready = gl.getQueryParameter(this._timer, gl.QUERY_RESULT_AVAILABLE);
+      const disjoint = gl.getParameter(ext.GPU_DISJOINT_EXT);
+      if (!ready && !disjoint) return;
+      if (ready && !disjoint) this.gpuMs = gl.getQueryParameter(this._timer, gl.QUERY_RESULT) / 1e6;
+      gl.deleteQuery(this._timer);
+      this._timer = null;
+      return;
+    }
+    this._wantTimer = true; // a próxima chamada de render() é medida
   }
 
-  /** Lê o tempo de GPU do último frame (assíncrono; chamado só com o F1 aberto). */
-  sampleGpuTime() {
-    if (this._gpuPending || !this.renderer.hasFeature?.('timestamp-query')) return;
-    this._gpuPending = true;
-    this.renderer.resolveTimestampsAsync('render').then((t) => {
-      const v = t ?? this.renderer.info.render.timestamp;
-      if (v) this.gpuMs = v;
-    }).catch(() => {}).finally(() => { this._gpuPending = false; });
+  render() {
+    const gl = this._gl, ext = this._ext;
+    const measure = this._wantTimer && ext;
+    if (measure) { this._timer = gl.createQuery(); gl.beginQuery(ext.TIME_ELAPSED_EXT, this._timer); this._wantTimer = false; }
+    this.renderer.render(this.scene, this.camera);
+    if (measure) gl.endQuery(ext.TIME_ELAPSED_EXT);
   }
 
   /** Números para o overlay de debug. */
   info() {
     const i = this.renderer.info;
-    return { calls: i.render.drawCalls ?? i.render.calls, triangles: i.render.triangles };
+    return { calls: i.render.calls, triangles: i.render.triangles };
   }
 }

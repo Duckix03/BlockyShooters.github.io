@@ -3,7 +3,7 @@
 // os personagens => ~11 draw calls no total, não importa quantos bots.
 // Animação procedural na CPU (andar, mirar, agachar, morrer). LOD: longe da câmera a animação
 // roda a cada 4 frames e peças pequenas (visor, arma, mochila) somem.
-import * as THREE from 'three/webgpu';
+import * as THREE from 'three';
 import {
   CHARACTER_COUNT, F, FLAG_ALIVE, FLAG_CROUCH, FLAG_GROUNDED, FLAG_IN_VEHICLE, PLAYER_SLOT, slotOffset,
 } from '../core/layout.js';
@@ -30,7 +30,7 @@ const hanging = (w, h, d) => new THREE.BoxGeometry(w, h, d).translate(0, -h / 2,
 export class CharactersView {
   constructor(scene) {
     // Lambert: bem mais barato por pixel que o PBR (Standard) e combina com o visual blocky
-    const mat = (opts = {}) => new THREE.MeshLambertNodeMaterial(opts);
+    const mat = (opts = {}) => new THREE.MeshLambertMaterial(opts);
     const part = (geo, material, shadow, colored = true) => {
       const m = new THREE.InstancedMesh(geo, material, CHARACTER_COUNT);
       m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
