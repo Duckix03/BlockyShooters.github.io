@@ -12,12 +12,39 @@ LS.Zone = class {
       { wait: 20, shrink: 22, r: 0, dps: 14 }
     ];
     const geo = new THREE.CylinderGeometry(1, 1, 400, 64, 1, true);
-    this.wall = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x3f7cff, transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false, fog: false }));
+    // parede de gás com shader próprio: animada (faixas e ondas subindo) e NUNCA cortada pelo limite de distância da câmera
+    // (antes a parte de trás do cilindro passava do "far" e aparecia cortada numa linha reta)
+    this.wallU = { time: { value: 0 }, radius: { value: 430 }, color: { value: new THREE.Color(0x5a5cff) } }; // azul-arroxeado: contrasta com o céu
+    this.wall = new THREE.Mesh(geo, new THREE.ShaderMaterial({
+      uniforms: this.wallU, transparent: true, side: THREE.DoubleSide, depthWrite: false, fog: false,
+      vertexShader: `varying vec2 vUv; varying float vY; varying float vDist;
+        void main() {
+          vUv = uv; vY = (modelMatrix * vec4(position, 1.0)).y; vDist = length((modelViewMatrix * vec4(position, 1.0)).xyz);
+          vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          if (p.w > 0.0) p.z = min(p.z, p.w * 0.99999); // prende no fundo em vez de cortar
+          gl_Position = p;
+        }`,
+      fragmentShader: `uniform float time; uniform float radius; uniform vec3 color; varying vec2 vUv; varying float vY; varying float vDist;
+        void main() {
+          float u = vUv.x * 6.2832 * radius / 12.0;                      // uma faixa a cada ~12 m
+          float near = 1.0 - smoothstep(40.0, 350.0, vDist);              // detalhe só de perto; de longe fica um véu liso
+          float stripes = smoothstep(0.7, 1.0, sin(u - time * 0.6) * 0.5 + 0.5) * near;
+          float waves = (sin(vY * 0.1 - time * 1.8 + sin(u * 0.3) * 1.2) * 0.5 + 0.5) * near;
+          float ground = exp(-max(vY, 0.0) * 0.04);                       // mais forte perto do chão
+          float top = 1.0 - smoothstep(140.0, 290.0, vY);                 // some lá em cima
+          float a = (0.36 + stripes * 0.2 + waves * 0.08 + ground * 0.25) * top;  // pelo menos tão visível quanto a antiga (0,28)
+          vec3 c = mix(color * 0.85, vec3(0.7, 0.88, 1.0), stripes * 0.5 + ground * 0.2);
+          gl_FragColor = vec4(c, a);
+        }`
+    }));
+    this.wall.frustumCulled = false;
     this.wall.position.y = 100;
     this.wall.renderOrder = 5;
     scene.add(this.wall);
     const rg = new THREE.RingGeometry(0.995, 1, 96); rg.rotateX(-Math.PI / 2);
     this.nextRing = new THREE.Mesh(rg, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, side: THREE.DoubleSide, fog: false }));
+    this.nextRing.material.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n if (gl_Position.w > 0.0) gl_Position.z = min(gl_Position.z, gl_Position.w * 0.99999);'); };
+    this.nextRing.frustumCulled = false;
     this.nextRing.position.y = 60;
     scene.add(this.nextRing);
     this.reset();
@@ -75,7 +102,7 @@ LS.Zone = class {
     }
     const r = Math.max(this.radius, 0.5);
     this.wall.position.x = this.center.x; this.wall.position.z = this.center.y;
-    this.wall.scale.set(r, 1, r);
+    this.wall.scale.set(r, 1, r); this.wallU.radius.value = Math.max(r, 1); this.wallU.time.value += dt;
     this.nextRing.visible = !this.finished && !this.shrinking;
     this.nextRing.position.x = this.next.x; this.nextRing.position.z = this.next.y;
     this.nextRing.scale.set(Math.max(this.nextR, 0.5), 1, Math.max(this.nextR, 0.5));
