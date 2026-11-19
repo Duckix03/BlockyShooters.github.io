@@ -32,8 +32,8 @@ LS.Fighter = class {
 
   switchWeapon(i) {
     if (i === this.slot || !this.weapons[i]) return false;
-    this.slot = i; this.reloadT = 0; this.fireCd = Math.max(this.fireCd, 0.35);
-    this.model.setGun(this.weapons[i].id);
+    this.slot = i; this.reloadT = 0; this.fireCd = Math.max(this.fireCd, 0.45);
+    this.model.switchGun(this.weapons[i].id); // guarda a atual e saca a nova
     return true;
   }
   // devolve texto da coleta ou null
@@ -48,7 +48,7 @@ LS.Fighter = class {
         this.dropWeapon(s);
       }
       this.weapons[s] = { id: it.id, mag: it.ammoInMag };
-      if (!this.weapon() || s === this.slot || !this.weapons[this.slot]) { this.slot = s; this.model.setGun(it.id); this.reloadT = 0; }
+      if (!this.weapon() || s === this.slot || !this.weapons[this.slot]) { this.slot = s; this.model.switchGun(it.id); this.reloadT = 0; }
       LS.Loot.remove(it, this); return label;
     }
     if (it.type === 'ammo') {
@@ -79,7 +79,7 @@ LS.Fighter = class {
     const it = LS.Loot.spawn('weapon', w.id, 0, 1, this.pos.x + Math.sin(this.yaw) * 1.2, this.pos.y + 0.1, this.pos.z + Math.cos(this.yaw) * 1.2);
     it.ammoInMag = w.mag;
     this.weapons[s] = null;
-    if (s === this.slot) { this.reloadT = 0; const o = 1 - s; if (this.weapons[o]) { this.slot = o; this.model.setGun(this.weapons[o].id); } else this.model.setGun(null); }
+    if (s === this.slot) { this.reloadT = 0; const o = 1 - s; if (this.weapons[o]) { this.slot = o; this.model.switchGun(this.weapons[o].id); } else this.model.switchGun(null); }
   }
   startReload() {
     const w = this.weapon(), d = this.wdef();
@@ -116,6 +116,22 @@ LS.Fighter = class {
       }
     }
   }
+  // soco quando está sem arma: curto alcance, cone de 60° na frente
+  tryPunch() {
+    if (this.weapon() || this.fireCd > 0 || this.healType || this.state !== 'ground' || !this.alive) return false;
+    this.fireCd = 0.45; this.model.punch();
+    const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw);
+    for (const f of LS.Game.fighters) {
+      if (f === this || !f.alive) continue;
+      const dx = f.pos.x - this.pos.x, dz = f.pos.z - this.pos.z, d = Math.hypot(dx, dz) || 1e-3;
+      if (d < 1.7 && Math.abs(f.pos.y - this.pos.y) < 1.2 && (dx * fx + dz * fz) / d > 0.5) {
+        f.takeDamage(12, this, false, 'Soco');
+        if (this.isPlayer) { LS.Audio.hitmarker(false); if (LS.HUD.hitmarker) LS.HUD.hitmarker(false); }
+        break;
+      }
+    }
+    return true;
+  }
   // tenta atirar na direção dada; devolve true se disparou
   tryFire(origin, dir, accuracyMul) {
     const w = this.weapon(), d = this.wdef();
@@ -128,7 +144,7 @@ LS.Fighter = class {
     if (this.vel.lengthSq() > 4) spread *= 1.6;
     if (!this.onGround) spread *= 2.5;
     LS.Combat.fire(this, origin, dir, d, spread);
-    this.model.shoot();
+    this.model.shoot(d);
     this.recoilKick = Math.min(this.recoilKick + d.recoil, 12);
     this.lastShotT = LS.Game.time;
     if (w.mag <= 0) this.startReload();
@@ -150,6 +166,7 @@ LS.Fighter = class {
     if (attacker) attacker.damageDealt += dmg;
     LS.Game.onDamage(this, attacker, dmg, head);
     if (this.hp <= 0) { this.hp = 0; this.die(attacker, weaponName, head); }
+    else if (dmg > 0.5) this.model.hit(); // reação ao dano
     return dmg;
   }
   die(killer, weaponName, head) {

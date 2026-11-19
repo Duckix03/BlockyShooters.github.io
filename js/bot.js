@@ -133,7 +133,7 @@ LS.Bot = class extends LS.Fighter {
   }
 
   update(dt) {
-    if (!this.alive) { this.model.animate({ dt, dead: true }); this.model.root.position.copy(this.pos); return; }
+    if (!this.alive) { this.model.root.position.copy(this.pos); this.model.animate({ dt, dead: true }); return; }
     const G = LS.Game;
     this.updateTimers(dt);
     this.alertT -= dt;
@@ -193,7 +193,8 @@ LS.Bot = class extends LS.Fighter {
       }
       case 'flee': {
         const t = this.target;
-        if (t) { const dx = this.pos.x - t.pos.x, dz = this.pos.z - t.pos.z, d = Math.hypot(dx, dz) || 1; wish = this.goTo(this.pos.x + dx / d * 20, this.pos.z + dz / d * 20, dt); }
+        if (t) { const dx = this.pos.x - t.pos.x, dz = this.pos.z - t.pos.z, d = Math.hypot(dx, dz) || 1; wish = this.goTo(this.pos.x + dx / d * 20, this.pos.z + dz / d * 20, dt);
+          if (d < 1.6 && !this.weapon()) { this.yaw = Math.atan2(-dx, -dz); this.tryPunch(); } } // encurralado: soco
         const it = LS.Loot.nearest(this.pos, 40, i => i.type === 'weapon');
         if (it) wish = this.goTo(it.pos.x, it.pos.z, dt);
         this.running = true; speed = 7.4; this.crouch = false;
@@ -257,7 +258,8 @@ LS.Bot = class extends LS.Fighter {
     this.model.root.rotation.y = this.yaw;
     const animR = LS.settings.perfMode ? 70 : 160;
     if (!far && d2 < animR * animR) this.model.animate({ dt, vy: this.vel.y, fall: this.state === 'fall', dive: this.state === 'fall' && this.diving, steer: 0, speed: hs, running: this.running, crouch: this.crouch, air: this.state === 'ground' && !this.onGround,
-      chute: this.state === 'chute', aimPitch: this.pitch, armed: !!this.weapon(), armedAim: this.ai === 'fight', dead: false });
+      chute: this.state === 'chute', aimPitch: this.pitch, armed: !!this.weapon(), armedAim: this.ai === 'fight', dead: false,
+      reload: this.reloadT > 0 && this.wdef() ? 1 - this.reloadT / this.wdef().reload : -1, heal: this.healType });
     else this.model.chute.visible = this.state === 'chute';
   }
 };
