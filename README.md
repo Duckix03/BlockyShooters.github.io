@@ -1,49 +1,164 @@
-# LAST SURVIVOR
+<div align="center">
 
-Battle Royale 3D em HTML5 + CSS3 + JavaScript com Three.js (r128 via CDN).
-Você e 30 bots saltam de um avião sobre uma ilha. Vence quem for o último sobrevivente.
+# 🪂 LAST SURVIVOR 🏆
 
-## Como jogar
-- Abra `index.html` no Google Chrome (funciona direto do arquivo ou no GitHub Pages).
-  Precisa de internet para baixar o Three.js do CDN.
-- Ou rode um servidor local: `python -m http.server 8123` e acesse http://localhost:8123
+### *30 jogadores. Uma ilha. Apenas um sobrevive.*
 
-## Controles
+![Gênero](https://img.shields.io/badge/G%C3%AAnero-Battle%20Royale-ff8a1f?style=for-the-badge)
+![Estilo](https://img.shields.io/badge/Estilo-Blocos%203D-4f8a34?style=for-the-badge)
+![Plataforma](https://img.shields.io/badge/Joga%20no-Navegador-3a6ea5?style=for-the-badge)
+
+### 🎮 [**JOGAR AGORA**](https://duckix03.github.io/BlockyShooters.github.io/) 🎮
+
+</div>
+
+---
+
+## 🏝️ A Partida
+
+> Você e mais **30 jogadores** saltam de um avião sobre uma ilha. Pegue armas, se equipe, fique dentro da zona segura e seja **o último em pé**.
+
+- ✈️ **Salto do avião**: escolha a hora de pular e desça em queda livre
+- 🪂 **Paraquedas**: abre sozinho perto do chão, ou quando você quiser
+- 🔵 **Zona segura**: encolhe em **6 fases**, e o dano fora dela aumenta a cada fase
+- 💀 **Eliminações**: lista de abates ao vivo e contador de jogadores vivos
+- 🏆 **Vitória ou derrota**: tela final com colocação, abates, dano causado e tempo
+- 🌅 **Ciclo do dia**: a partida começa de manhã e termina ao anoitecer
+
+---
+
+## 🔫 Arsenal
+
+| Categoria | Armas | Estilo |
+|:---:|:---:|:---|
+| 🔫 **Pistolas** | M1911 · Desert Eagle | Leves e rápidas de sacar |
+| 💨 **SMGs** | MP5 · UMP | Muitos tiros por segundo, para curta distância |
+| 🎯 **Rifles** | AK-47 · M4A1 | Versáteis, servem em qualquer situação |
+| 🔭 **Snipers** | AWM · Kar98k | Luneta com zoom e tiro na cabeça devastador |
+| 💥 **Escopetas** | M1887 · SPAS-12 | Dano enorme de perto |
+
+Cada arma tem **dano**, **cadência**, **pente**, **tempo de recarga**, **recuo** e **som** próprios.
+Tiro na cabeça causa dano extra, e o dano cai com a distância.
+
+---
+
+## 🎒 Loot
+
+Espalhado pelas casas, cidades e pela natureza:
+
+- 🔫 **Armas** com raridades diferentes
+- 🟡 **Munição**: leve, de rifle, de sniper e cartuchos
+- 💊 **Kit médico** (+75 de vida) e 🩹 **Bandagem** (+20 de vida)
+- 🦺 **Coletes** e ⛑️ **Capacetes** de nível 1 a 3, que absorvem parte do dano
+- 🎒 **Mochilas** de nível 1 a 3, que aumentam o quanto você carrega
+
+> Os itens são coletados ao chegar perto. Quando os dois espaços de arma estão cheios, aperte **E** para trocar.
+
+---
+
+## 🤖 Inimigos com IA
+
+Os 30 bots jogam de verdade:
+
+- 🪂 Saltam do avião e escolhem onde pousar
+- 🔍 Procuram armas, munição, cura e equipamentos
+- 👀 Enxergam e **ouvem tiros** para encontrar você
+- 🎯 Escolhem a melhor arma pela distância, andam de lado, se agacham e pulam
+- 💊 Se curam quando estão feridos e fogem quando estão sem arma
+- 🏃 Correm para a zona segura antes que ela feche
+
+---
+
+## 🧱 Personagens e Lobby
+
+O menu inicial **é o lobby**, com o seu personagem em 3D.
+
+- ✏️ **Nome** personalizado, que aparece na partida e nos abates
+- 🎨 **Pele, cabelo, olhos, camisa, estampa e calça**
+- 🧔 **Barbas**: curta, cheia ou bigode
+- 🕶️ **Óculos**: escuros, redondos ou viseira brilhante
+- 😷 **Máscaras**: bandana ou máscara
+- 🎩 **Chapéus**: gorro, chapéu de abas ou faixa
+- 🧥 **Roupas**: camiseta, jaqueta, moletom, regata ou colete tático
+- ⭐ **Trajes prontos**: Sobrevivente · Militar · Explorador · Neon · Caçador · Urbano
+- 🎲 **Aleatório** para sortear um visual
+
+Seu visual fica salvo para as próximas partidas.
+
+---
+
+## 🗺️ A Ilha
+
+- 🏘️ **7 cidades**: Vila Porto · Centro · Fazenda · Base Militar · Mirante · Vila Sul · Usina
+- 🏠 **Casas** com janelas de vidro, telhados, chaminés e móveis para se proteger
+- 🏡 **Sobrados** com escada e loot no andar de cima
+- 🏢 **Prédios** no Centro e **contêineres** na Base Militar
+- 🏔️ **Montanhas com neve**, 🌲 **florestas**, 🪨 **rochas**, 🏖️ **praias** e 🌊 **mar**
+
+---
+
+## ✨ Efeitos e Som
+
+- 💥 Clarão do disparo com fumaça
+- 🟨 Cápsulas que saem da arma e quicam no chão
+- ⚡ Traçantes, faíscas e marcas de bala nas paredes
+- 🔢 Números de dano flutuantes (em vermelho no tiro na cabeça)
+- 🔊 Tiros com eco nas montanhas, mais abafados e atrasados quanto mais longe
+- 🔩 Ferrolho da sniper, pump da escopeta e recarga própria de cada arma
+- 🐝 Zunido de bala passando perto e som metálico ao acertar colete ou capacete
+
+---
+
+## 📊 Interface
+
+- ❤️ Barra de **vida** e 🛡️ barra de **colete**
+- 🔫 **Arma equipada** e munição no pente e na reserva
+- 🗺️ **Minimapa** e mapa grande com a zona atual e a próxima
+- ⏱️ **Cronômetro**, 👤 **jogadores vivos** e 💀 **abates**
+- 🔴 Indicador de direção de dano e aviso de **fora da zona**
+- 🎒 **Inventário** com botões para equipar, recarregar, curar e largar itens
+
+---
+
+## ⌨️ Controles
+
 | Tecla | Ação |
-|---|---|
-| W A S D | Mover |
-| Mouse | Câmera |
-| Botão esquerdo / direito | Atirar / Mirar |
-| Espaço | Pular · saltar do avião · abrir paraquedas |
-| Shift | Correr |
-| C | Agachar |
-| R | Recarregar |
-| E | Trocar arma do chão |
-| 1 / 2 / roda do mouse | Trocar arma |
-| H / G | Kit médico / Bandagem |
-| Tab | Inventário |
-| M | Mapa grande |
-| Esc | Pausar |
+|:---:|:---|
+| `W` `A` `S` `D` | Mover |
+| `Mouse` | Câmera |
+| `Botão esquerdo` | Atirar |
+| `Botão direito` | Mirar |
+| `Espaço` | Pular · Saltar do avião · Abrir paraquedas |
+| `Shift` | Correr |
+| `C` | Agachar |
+| `R` | Recarregar |
+| `E` | Trocar arma do chão |
+| `1` `2` / `Roda do mouse` | Trocar arma |
+| `H` | Kit médico |
+| `G` | Bandagem |
+| `Tab` | Inventário |
+| `M` | Mapa grande |
+| `Esc` | Pausar |
 
-## Estrutura
-- `index.html`: menus, HUD e telas
-- `css/style.css`: visual da interface
-- `js/config.js`: configurações, armas, itens e utilitários
-- `js/audio.js`, `js/gunsound.js`: sons sintetizados (Web Audio), tiros com reverb e mecânica das armas
-- `js/input.js`: teclado, mouse e pointer lock
-- `js/houses.js`: casas com janelas, telhados, sobrados e móveis
-- `js/world.js`, `js/worldbuild.js`: terreno, céu/ciclo de luz, construções, colisões e raycast
-- `js/skin.js`: texturas pixeladas dos personagens e perfil do jogador
-- `js/character.js`: personagem em blocos e animações
-- `js/lobby.js`: lobby com personalização e busca de partida
-- `js/effects.js`: traçantes, clarões e impactos
-- `js/loot.js`: itens no chão
-- `js/combat.js`: inventário, dano, colete/capacete e disparos
-- `js/player.js`: física de movimento e jogador em terceira pessoa
-- `js/bot.js`: IA dos bots
-- `js/zone.js`: zona segura e avião
-- `js/hud.js`: HUD, minimapa e inventário
-- `js/game.js`: loop principal e regras da partida
-- `js/main.js`: menus e configurações
+---
 
-Todos os modelos, texturas e sons são gerados por código. O jogo não usa nenhum arquivo externo além do Three.js.
+## ⚙️ Configurações
+
+- 🖱️ Sensibilidade do mouse
+- 🖼️ Qualidade gráfica (baixa, média ou alta)
+- 📐 Escala de resolução
+- 🚀 Modo desempenho, para computadores mais fracos
+- 🔊 Volume
+- 👁️ Distância de renderização
+- 🖥️ Tela cheia
+- 📈 Mostrar FPS
+
+---
+
+<div align="center">
+
+### 🏆 Boa sorte, sobrevivente! 🏆
+
+*Feito por **Duckix03***
+
+</div>
