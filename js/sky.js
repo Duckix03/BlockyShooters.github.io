@@ -7,7 +7,7 @@ Object.assign(LS.World, {
     this.ambient = new THREE.AmbientLight(0xfff2e0, 0.3); scene.add(this.ambient);
     this.sun = new THREE.DirectionalLight(0xffffff, 0.9);
     Object.assign(this.sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 1, far: 400 });
-    this.sun.shadow.bias = -0.0008;
+    this.sun.shadow.bias = -0.0008; this.sun.shadow.normalBias = 0.03; // sem "acne" de sombra tremendo nas paredes
     scene.add(this.sun); scene.add(this.sun.target);
     scene.background = new THREE.Color(0x9fd0f0);
     scene.fog = new THREE.Fog(0x9fd0f0, LS.effDist() * 0.3, LS.effDist());

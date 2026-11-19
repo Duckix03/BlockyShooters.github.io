@@ -27,7 +27,7 @@ Object.assign(LS.World, {
     if (!this.unitBox) { this.unitBox = new THREE.BoxGeometry(1, 1, 1); this.unitBox.translate(0, 0.5, 0); }
     for (const k in this.boxBatches) {
       const bt = this.boxBatches[k];
-      const mat = bt.color === LS.GLASS ? new THREE.MeshPhongMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.32, shininess: 120, depthWrite: false }) : this.mat(bt.color);
+      const mat = bt.color === LS.GLASS ? new THREE.MeshPhongMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.32, shininess: 120, depthWrite: false, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }) : this.mat(bt.color);
       const im = new THREE.InstancedMesh(this.unitBox, mat, bt.mats.length);
       bt.mats.forEach((mm, i) => im.setMatrixAt(i, mm));
       im.castShadow = bt.shadow; im.receiveShadow = true; im.frustumCulled = false;
@@ -72,7 +72,7 @@ Object.assign(LS.World, {
     const col = LS.util.pick([0x9aa3ad, 0xc4b8a8, 0x7d8a96, 0xb0a090]);
     this.box(scene, cx, y0, cz, w, h, d, col);
     for (let y = 2; y < h - 1; y += 3) { // faixas de janelas
-      this.box(scene, cx, y0 + y, cz, w + 0.06, 1.1, d + 0.06, 0x2b3a4a, false, false);
+      this.box(scene, cx, y0 + y, cz, w + 0.16, 1.1, d + 0.16, 0x2b3a4a, false, false);
     }
     this.box(scene, cx, y0 + h, cz, w - 1, 1.2, d - 1, 0x666666);
     this.buildings.push({ x: cx, z: cz, w, d, color: col });
@@ -98,9 +98,12 @@ Object.assign(LS.World, {
         const cx = t.x + gx * 18 + 11, cz = t.z + gz * 18 + 11;
         if (Math.hypot(cx - t.x, cz - t.z) > t.r - 6) continue;
         const r = Math.random();
-        if (t.name === 'Base Militar') { if (r < 0.55) this.container(scene, cx + LS.util.rand(-3, 3), cz, Math.random() < 0.5); else if (r < 0.85) this.house(scene, cx, cz, 12, 9); continue; }
+        if (t.name === 'Base Militar') { if (r < 0.55) this.container(scene, cx + LS.util.rand(-3, 3), cz, Math.random() < 0.5); else if (r < 0.85) this.house(scene, cx, cz, 12, 9, 'galpao'); continue; }
         if (t.name === 'Centro' && r < 0.3) { this.tower(scene, cx, cz, LS.util.rand(9, 12), LS.util.rand(9, 12)); continue; }
-        if (r < 0.72) this.house(scene, cx, cz, LS.util.rand(8, 12), LS.util.rand(8, 11));
+        if (r < 0.72) {
+          const k = Math.random(), kind = k < 0.62 ? 'casa' : k < 0.84 ? 'loja' : 'galpao';
+          this.house(scene, cx, cz, LS.util.rand(8, 12), LS.util.rand(8, 11), kind);
+        }
         else if (r < 0.88) this.container(scene, cx, cz, Math.random() < 0.5);
       }
     });
@@ -109,10 +112,10 @@ Object.assign(LS.World, {
     while (placed < 18 && tries++ < 500) {
       const a = Math.random() * Math.PI * 2, rr = LS.util.rand(40, 300);
       const x = Math.cos(a) * rr, z = Math.sin(a) * rr, h = this.exactHeight(x, z);
-      if (h < 2 || h > 25 || this.insideTown(x, z, 25)) continue;
+      if (h < 2 || h > 25 || this.insideTown(x, z, 25) || this.nearBuilding(x, z, 16)) continue; // a fazenda tem quintal cercado
       // terreno precisa ser razoavelmente plano
       if (Math.abs(this.heightAt(x + 6, z) - this.heightAt(x - 6, z)) > 1.5 || Math.abs(this.heightAt(x, z + 6) - this.heightAt(x, z - 6)) > 1.5) continue;
-      this.house(scene, x, z, 9, 8); placed++;
+      this.house(scene, x, z, LS.util.rand(9, 10.5), LS.util.rand(8, 9), 'fazenda'); placed++;
     }
     this.finalizeBoxes(scene);
     this.finalizeRoofs(scene);

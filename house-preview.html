@@ -16,11 +16,17 @@
   <button id="b-new">Nova casa</button>
   <button id="b-one">Térrea</button>
   <button id="b-two">Sobrado</button>
+  <button class="k on" data-k="casa">Casa</button>
+  <button class="k" data-k="loja">Loja</button>
+  <button class="k" data-k="galpao">Galpão</button>
+  <button class="k" data-k="fazenda">Fazenda</button>
   <button id="b-roof">Ocultar telhado</button>
   <button id="b-wall">Ocultar parede da frente</button>
   <button id="b-col">Mostrar colisores</button>
   <button id="b-in">Vista de dentro</button>
   <button id="b-out">Vista de fora</button>
+  <button id="b-far">De longe (50–200 m)</button>
+  <button id="b-spin">Girar</button>
 </div>
 <div id="info"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -31,26 +37,27 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(innerWidth, innerHeight); renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene(); scene.background = new THREE.Color(0x87ceeb);
-const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.05, 500);
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.25, 1000); // mesmo near do jogo
 scene.add(new THREE.HemisphereLight(0xbfd9ff, 0x4a5a3a, 0.6)); scene.add(new THREE.AmbientLight(0xfff2e0, 0.3));
 const sun = new THREE.DirectionalLight(0xffffff, 0.9); sun.position.set(15, 25, 10); sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -20, right: 20, top: 20, bottom: -20 });
 scene.add(sun);
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshLambertMaterial({ color: 0x5d9c3a }));
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshLambertMaterial({ color: 0x5d9c3a }));
 ground.rotation.x = -Math.PI / 2; ground.position.y = -0.1; ground.receiveShadow = true; scene.add(ground);
 
-let group = null, opts = { twoStory: false }, view = 'out', yaw = 0.7, pitch = 0.35, dist = 22, inPos = new THREE.Vector3();
+let group = null, opts = { twoStory: false, kind: 'casa' }, view = 'out', yaw = 0.7, pitch = 0.35, dist = 22, inPos = new THREE.Vector3();
 const unit = new THREE.BoxGeometry(1, 1, 1); unit.translate(0, 0.5, 0);
 const mats = {};
-const mat = c => mats[c] || (mats[c] = c === LS.GLASS ? new THREE.MeshPhongMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.32, depthWrite: false }) : new THREE.MeshLambertMaterial({ color: c }));
+const mat = c => mats[c] || (mats[c] = c === LS.GLASS ? new THREE.MeshPhongMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.32, depthWrite: false, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }) : new THREE.MeshLambertMaterial({ color: c }));
 let roofMesh, colGroup, frontWall = [];
 
 function build() {
   if (group) scene.remove(group);
   group = new THREE.Group(); frontWall = [];
   const w = opts.twoStory ? 10 + Math.random() * 2 : 8 + Math.random() * 4, d = 8 + Math.random() * 3;
-  const m = LS.HouseKit.build({ w, d, twoStory: opts.twoStory });
-  for (const b of m.boxes) {
+  const m = LS.HouseKit.build({ w, d, twoStory: opts.twoStory, kind: opts.kind });
+  const extra = opts.kind === 'fazenda' ? LS.HouseKit.fence(m, () => -0.1) : [];
+  for (const b of m.boxes.concat(extra)) {
     const mesh = new THREE.Mesh(unit, mat(b.color));
     mesh.position.set(b.x, b.y, b.z); mesh.scale.set(b.w, b.h, b.d);
     mesh.castShadow = b.shadow; mesh.receiveShadow = true;
@@ -64,7 +71,7 @@ function build() {
   roofMesh = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
   roofMesh.castShadow = true; roofMesh.receiveShadow = true; group.add(roofMesh);
   colGroup = new THREE.Group(); colGroup.visible = document.getElementById('b-col').classList.contains('on');
-  const all = m.boxes.filter(b => b.collide).map(b => ({ minX: b.x - b.w / 2, maxX: b.x + b.w / 2, minY: b.y, maxY: b.y + b.h, minZ: b.z - b.d / 2, maxZ: b.z + b.d / 2 })).concat(m.colliders);
+  const all = m.boxes.concat(extra).filter(b => b.collide).map(b => ({ minX: b.x - b.w / 2, maxX: b.x + b.w / 2, minY: b.y, maxY: b.y + b.h, minZ: b.z - b.d / 2, maxZ: b.z + b.d / 2 })).concat(m.colliders);
   for (const c of all) {
     const e = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(c.maxX - c.minX, c.maxY - c.minY, c.maxZ - c.minZ)), new THREE.LineBasicMaterial({ color: 0xff2020 }));
     e.position.set((c.minX + c.maxX) / 2, (c.minY + c.maxY) / 2, (c.minZ + c.maxZ) / 2); colGroup.add(e);
@@ -74,7 +81,7 @@ function build() {
   scene.add(group);
   inPos.set(0, 1.6, m.d / 2 - 1.5);
   applyToggles();
-  document.getElementById('info').textContent = (m.twoStory ? 'Sobrado' : 'Casa térrea') + ' · ' + m.w.toFixed(1) + ' x ' + m.d.toFixed(1) + ' m · porta: ' + ['norte', 'sul', 'oeste', 'leste'][m.doorSide] +
+  document.getElementById('info').textContent = ({ casa: 'Casa', loja: 'Loja', galpao: 'Galpão', fazenda: 'Casa de fazenda' })[m.kind] + (m.twoStory ? ' (sobrado)' : '') + ' · ' + m.w.toFixed(1) + ' x ' + m.d.toFixed(1) + ' m · porta: ' + ['norte', 'sul', 'oeste', 'leste'][m.doorSide] +
     ' · ' + m.boxes.length + ' blocos · ' + all.length + ' colisores · arraste para girar, roda para zoom';
 }
 function applyToggles() {
@@ -91,16 +98,22 @@ document.getElementById('b-roof').onclick = () => toggle('b-roof');
 document.getElementById('b-wall').onclick = () => toggle('b-wall');
 document.getElementById('b-col').onclick = () => toggle('b-col');
 document.getElementById('b-in').onclick = () => { view = 'in'; };
-document.getElementById('b-out').onclick = () => { view = 'out'; };
+document.getElementById('b-out').onclick = () => { view = 'out'; dist = 22; };
+document.getElementById('b-far').onclick = () => { view = 'out'; dist = dist < 100 ? 120 : dist < 190 ? 200 : 50; pitch = 0.12; };
+document.getElementById('b-spin').onclick = () => document.getElementById('b-spin').classList.toggle('on');
+document.querySelectorAll('button.k').forEach(b => b.onclick = () => {
+  document.querySelectorAll('button.k').forEach(x => x.classList.toggle('on', x === b)); opts.kind = b.dataset.k; build();
+});
 let drag = null;
 renderer.domElement.addEventListener('mousedown', e => drag = [e.clientX, e.clientY]);
 addEventListener('mouseup', () => drag = null);
 addEventListener('mousemove', e => { if (!drag) return; yaw -= (e.clientX - drag[0]) * 0.006; pitch = Math.max(-1.2, Math.min(1.4, pitch + (e.clientY - drag[1]) * 0.006)); drag = [e.clientX, e.clientY]; });
-addEventListener('wheel', e => { dist = Math.max(4, Math.min(60, dist * (e.deltaY > 0 ? 1.1 : 0.9))); });
+addEventListener('wheel', e => { dist = Math.max(4, Math.min(220, dist * (e.deltaY > 0 ? 1.1 : 0.9))); });
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 window.setView = (v, y, p, dd) => { view = v; if (y !== undefined) yaw = y; if (p !== undefined) pitch = p; if (dd !== undefined) dist = dd; };
 function loop() {
   requestAnimationFrame(loop);
+  if (document.getElementById('b-spin').classList.contains('on')) yaw += 0.004;
   if (view === 'out') { camera.position.set(Math.sin(yaw) * Math.cos(pitch) * dist, 2 + Math.sin(pitch) * dist, Math.cos(yaw) * Math.cos(pitch) * dist); camera.lookAt(0, 2.5, 0); }
   else { camera.position.copy(inPos); camera.lookAt(inPos.x + Math.sin(yaw + Math.PI) * Math.cos(pitch), inPos.y + Math.sin(pitch), inPos.z + Math.cos(yaw + Math.PI) * Math.cos(pitch)); }
   renderer.render(scene, camera);

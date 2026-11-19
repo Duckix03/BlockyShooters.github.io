@@ -211,7 +211,7 @@ LS.Player = class extends LS.Fighter {
     // colisão da câmera
     const back = this._v.copy(fwd).negate();
     let d = this.camDist;
-    if (this.state !== 'plane') { const hit = LS.World.raycast(target, back, this.camDist + 0.3); d = Math.min(d, hit - 0.3); }
+    if (this.state !== 'plane') { const hit = LS.World.raycast(target, back, this.camDist + 0.45); d = Math.min(d, hit - 0.45); } // folga > near (0,25) da câmera
     d = Math.max(scopeUp ? 0 : 0.3, d);
     this.camPos.copy(target).addScaledVector(back, d);
     camera.position.copy(this.camPos);

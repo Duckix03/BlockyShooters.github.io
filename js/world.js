@@ -207,7 +207,7 @@ LS.World = {
     this.sun.shadow.camera.left = -70; this.sun.shadow.camera.right = 70;
     this.sun.shadow.camera.top = 70; this.sun.shadow.camera.bottom = -70;
     this.sun.shadow.camera.near = 1; this.sun.shadow.camera.far = 400;
-    this.sun.shadow.bias = -0.0008;
+    this.sun.shadow.bias = -0.0008; this.sun.shadow.normalBias = 0.03; // sem "acne" de sombra tremendo nas paredes
     scene.add(this.sun); scene.add(this.sun.target);
     this.sunMesh = new THREE.Mesh(new THREE.SphereGeometry(18, 16, 12), new THREE.MeshBasicMaterial({ color: 0xfff3c4, fog: false }));
     scene.add(this.sunMesh);
