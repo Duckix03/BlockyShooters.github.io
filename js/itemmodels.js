@@ -63,11 +63,11 @@ LS.Items = {
       [0, -0.09, 0.15, 0.035, 0.12, 0.055, 0x1a1a1a, -0.25], [0, -0.19, 0.18, 0.035, 0.1, 0.055, 0x1a1a1a, -0.5], ...G.grip(0x1e1e1e), ...G.guard(0.05),
       [0.025, 0.03, -0.17, 0.012, 0.012, 0.18, 0x333333], [-0.025, 0.03, -0.17, 0.012, 0.012, 0.18, 0x333333], [0, 0.0, -0.265, 0.06, 0.1, 0.02, 0x222222]] },
     // UMP: caixa de polímero preta, trilho longo com dentes, carregador reto comprido e coronha esqueletada aberta
-    ump: { muzzle: [0.05, 0.45], parts: () => {
+    ump: { scale: 1.2, muzzle: [0.074, 0.45], parts: () => {
       const B = 0x26272a, D = 0x1c1c1e, K = 0x141414, p = [
         [0, 0.035, 0.12, 0.062, 0.095, 0.34, B], [0, 0.09, 0.12, 0.05, 0.018, 0.34, 0x1d1e20], [0, 0.108, 0.12, 0.03, 0.016, 0.36, K],
         [0, 0.132, -0.03, 0.032, 0.032, 0.03, K], [0, 0.132, 0.275, 0.02, 0.036, 0.022, K],
-        [0, 0.01, 0.335, 0.07, 0.06, 0.1, 0x222326], [0, 0.05, 0.335, 0.05, 0.05, 0.09, 0x1f2022], [0, 0.05, 0.41, 0.026, 0.026, 0.07, 0x0f0f0f], [0, 0.05, 0.44, 0.034, 0.034, 0.02, 0x0f0f0f],
+        [0, 0.03, 0.335, 0.066, 0.05, 0.1, 0x222326], [0, 0.074, 0.335, 0.052, 0.046, 0.09, 0x1f2022], [0, 0.074, 0.41, 0.026, 0.026, 0.07, 0x0f0f0f], [0, 0.074, 0.44, 0.034, 0.034, 0.02, 0x0f0f0f],
         [-0.032, 0.075, 0.22, 0.02, 0.016, 0.032, K], [0, -0.03, 0.17, 0.05, 0.04, 0.07, B],
         [0, -0.14, 0.18, 0.036, 0.2, 0.06, D, -0.08], [0, -0.245, 0.19, 0.042, 0.018, 0.068, K, -0.08],
         [0, -0.065, -0.02, 0.045, 0.12, 0.06, D, 0.28], [0, -0.045, 0.06, 0.012, 0.01, 0.09, D], [0, -0.02, 0.105, 0.012, 0.05, 0.01, D], [0, -0.02, 0.05, 0.008, 0.03, 0.01, 0x0f0f0f],
@@ -119,7 +119,7 @@ LS.Items = {
       [0, y, z + L / 2 + 0.066, 0.05, 0.05, 0.004, 0x3a7ac0], [0, y + 0.034, z, 0.03, 0.026, 0.03, 0x222222], [0.034, y, z, 0.026, 0.03, 0.03, 0x222222],
       [0, y - 0.04, z - L / 3, 0.02, 0.034, 0.025, 0x222222], [0, y - 0.04, z + L / 3, 0.02, 0.034, 0.025, 0x222222]]
   },
-  gunGeometry(id, center) { return this.geometry('gun:' + id, () => this.GUNS[id].parts(this.G), 1, center); },
+  gunGeometry(id, center) { return this.geometry('gun:' + id, () => this.GUNS[id].parts(this.G), this.GUNS[id].scale || 1, center); },
 
   // ---------------- munição e cura ----------------
   AMMO: {
@@ -202,6 +202,6 @@ LS.Items = {
 LS.buildGunMesh = function (id) {
   const g = new THREE.Group(), def = LS.Items.GUNS[id];
   g.add(LS.Items.mesh(LS.Items.gunGeometry(id)));
-  g.userData.muzzle = new THREE.Object3D(); g.userData.muzzle.position.set(0, def.muzzle[0], def.muzzle[1]); g.add(g.userData.muzzle);
+  g.userData.muzzle = new THREE.Object3D(); const k = def.scale || 1; g.userData.muzzle.position.set(0, def.muzzle[0] * k, def.muzzle[1] * k); g.add(g.userData.muzzle);
   return g;
 };
