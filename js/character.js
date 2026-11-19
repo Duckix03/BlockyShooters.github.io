@@ -43,6 +43,7 @@ LS.CharacterModel = class {
     this.headG.add(new THREE.Mesh(K.geometry('head', 'bottom'), this.mat));
     this.helmetMesh = new THREE.Mesh(LS.boxGeo(9 * S, 4 * S, 9 * S, 2 * S), M(0x3a4a2a)); this.helmetMesh.position.y = 5.5 * S; this.helmetMesh.visible = false; this.headG.add(this.helmetMesh);
     this.brim = new THREE.Mesh(LS.boxGeo(8 * S, 0.8 * S, 3 * S), M(0x333333)); this.brim.position.set(0, 6.4 * S, 5.4 * S); this.headG.add(this.brim);
+    this.accG = new THREE.Group(); this.headG.add(this.accG);
     const mkArm = side => { const g = new THREE.Group(); g.position.set(side * 6 * S, 12 * S, 0); g.add(new THREE.Mesh(K.geometry('arm', 'top'), this.mat)); this.torso.add(g); return g; };
     this.armR = mkArm(-1); this.armL = mkArm(1);
     const mkLeg = side => { const g = new THREE.Group(); g.position.set(side * 2 * S, 0, 0); g.add(new THREE.Mesh(K.geometry('leg', 'top'), this.mat)); this.hips.add(g); return g; };
@@ -65,8 +66,23 @@ LS.CharacterModel = class {
     this.look = Object.assign({}, look);
     LS.Skin.paint(this.tex.userData.canvas, this.look, this.seed);
     this.tex.needsUpdate = true;
-    this.brim.visible = look.hairStyle === 'boné';
+    this.buildAccessories(look);
+    this.brim.visible = look.hairStyle === 'boné' && (!look.hat || look.hat === 'nenhum');
     if (this.brim.visible) this.brim.material = LS.lambert(new THREE.Color(look.shirt).multiplyScalar(0.55).getHex());
+  }
+  // acessórios 3D da cabeça: chapéus, óculos e barba cheia
+  buildAccessories(look) {
+    const S = LS.Skin.PX, g = this.accG;
+    while (g.children.length) g.remove(g.children[0]);
+    const acc = new THREE.Color(look.accent || '#2a2a2a').getHex(), M = c => LS.lambert(c);
+    const add = (w, h, d, x, y, z, mat) => { const m = new THREE.Mesh(LS.boxGeo(w * S, h * S, d * S), mat); m.position.set(x * S, y * S, z * S); m.castShadow = true; g.add(m); return m; };
+    if (look.hat === 'gorro') { add(8.8, 3, 8.8, 0, 7.6, 0, M(acc)); add(9, 1, 9, 0, 6.2, 0, M(new THREE.Color(acc).multiplyScalar(0.75).getHex())); }
+    else if (look.hat === 'chapéu') { add(12, 0.6, 12, 0, 6.8, 0, M(0x6a4a2a)); add(7.6, 2.6, 7.6, 0, 8.4, 0, M(0x6a4a2a)); add(7.8, 0.7, 7.8, 0, 7.4, 0, M(acc)); }
+    else if (look.hat === 'faixa') add(8.5, 1, 8.5, 0, 6.6, 0, M(acc));
+    if (look.glasses === 'escuros') add(8.4, 1.2, 0.6, 0, 3.6, 4.3, M(0x111111));
+    else if (look.glasses === 'viseira') add(8.6, 1.2, 0.8, 0, 3.6, 4.3, new THREE.MeshBasicMaterial({ color: acc }));
+    if (look.beard === 'cheia') add(7, 2.5, 1.2, 0, 0.6, 4.4, M(new THREE.Color(look.hair).getHex()));
+    this.hatVisible = look.hat && look.hat !== 'nenhum';
   }
   setGun(id) {
     if (this.gunId === id) return;
@@ -78,7 +94,8 @@ LS.CharacterModel = class {
     const cols = [0, 0x6a7a5a, 0x4a5a7a, 0x2a2a2a];
     this.vestMesh.visible = vest > 0; if (vest) this.vestMesh.material = LS.lambert(cols[vest]);
     this.helmetMesh.visible = helmet > 0; if (helmet) this.helmetMesh.material = LS.lambert(cols[helmet]);
-    this.brim.visible = !helmet && this.look.hairStyle === 'boné';
+    this.brim.visible = !helmet && this.look.hairStyle === 'boné' && !this.hatVisible;
+    this.accG.children.forEach(m => { if (m.position.y > 6 * LS.Skin.PX) m.visible = !helmet; });
     this.bagMesh.visible = bag > 0;
   }
   shoot() { this.recoilT = 1; }

@@ -198,3 +198,6 @@ kbd { display: inline-block; min-width: 92px; background: #263049; border: 1px s
 .menu-player { position: absolute; right: 9vw; bottom: 9vh; text-align: center; z-index: 2; pointer-events: none; }
 #menu-player-name { font-size: 26px; font-weight: 900; letter-spacing: 2px; text-shadow: 0 2px 10px #000; background: rgba(10, 14, 22, 0.6); padding: 4px 18px; border-bottom: 3px solid var(--accent); }
 .menu-player-sub { font-size: 12px; color: rgba(255, 255, 255, 0.6); margin-top: 6px; }
+
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.presets .chip { background: linear-gradient(90deg, rgba(255,138,31,0.25), rgba(255,197,49,0.15)); }

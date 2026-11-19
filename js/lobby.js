@@ -63,12 +63,16 @@ LS.Lobby = {
   buildUI() {
     const K = LS.Skin, box = document.getElementById('lobby-options');
     const rows = [
-      ['skin', 'Pele', K.SKINS, true], ['hairStyle', 'Cabelo', K.HAIR_STYLES, false], ['hair', 'Cor do cabelo', K.HAIRS, true],
-      ['eyes', 'Olhos', K.EYES, true], ['shirt', 'Camisa', K.SHIRTS, true], ['pattern', 'Estampa', K.PATTERNS, false], ['pants', 'Calça', K.PANTS, true]
+      ['skin', 'Pele', K.SKINS, true], ['hairStyle', 'Cabelo', K.HAIR_STYLES, false], ['hair', 'Cor do cabelo e barba', K.HAIRS, true],
+      ['beard', 'Barba', K.BEARDS, false], ['eyes', 'Olhos', K.EYES, true], ['glasses', 'Óculos', K.GLASSES, false], ['mask', 'Máscara', K.MASKS, false],
+      ['hat', 'Chapéu', K.HATS, false], ['top', 'Roupa', K.TOPS, false], ['shirt', 'Camisa', K.SHIRTS, true], ['pattern', 'Estampa', K.PATTERNS, false],
+      ['accent', 'Cor da roupa / acessórios', K.ACCENTS, true], ['pants', 'Calça', K.PANTS, true]
     ];
-    box.innerHTML = rows.map(([key, label, opts, color]) => '<label class="lobby-label">' + label + '</label><div class="swatches" data-key="' + key + '">' +
+    box.innerHTML = '<label class="lobby-label">Trajes</label><div class="presets">' + Object.keys(K.PRESETS).map(n => '<button class="chip" data-preset="' + n + '">' + n + '</button>').join('') + '</div>' + rows.map(([key, label, opts, color]) => '<label class="lobby-label">' + label + '</label><div class="swatches" data-key="' + key + '">' +
       opts.map(o => color ? '<div class="swatch" data-v="' + o + '" style="background:' + o + '"></div>' : '<button class="chip" data-v="' + o + '">' + o + '</button>').join('') + '</div>').join('');
     box.addEventListener('click', e => {
+      const pr = e.target.closest('[data-preset]');
+      if (pr) { Object.assign(LS.playerProfile.look, K.PRESETS[pr.dataset.preset]); this.changed(); LS.Audio.click(); return; }
       const el = e.target.closest('[data-v]'); if (!el) return;
       const key = el.parentElement.dataset.key;
       LS.playerProfile.look[key] = el.dataset.v;

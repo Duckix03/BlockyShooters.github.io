@@ -14,13 +14,21 @@ Object.assign(LS.World, {
     const key = color + (shadow ? 's' : 'n');
     if (!this.boxBatches[key]) this.boxBatches[key] = { color, shadow, mats: [] };
     this.boxBatches[key].mats.push(new THREE.Matrix4().compose(new THREE.Vector3(cx, y0, cz), new THREE.Quaternion(), new THREE.Vector3(w, h, d)));
-    if (collide) this.addCollider(cx - w / 2, y0, cz - d / 2, cx + w / 2, y0 + h, cz + d / 2);
+    if (collide === true) this.addCollider(cx - w / 2, y0, cz - d / 2, cx + w / 2, y0 + h, cz + d / 2);
+  },
+  // caixa só visual com rotação (telhados inclinados)
+  boxR(cx, y0, cz, w, h, d, color, quat) {
+    if (!this.boxBatches) this.boxBatches = {};
+    const key = color + 's';
+    if (!this.boxBatches[key]) this.boxBatches[key] = { color, shadow: true, mats: [] };
+    this.boxBatches[key].mats.push(new THREE.Matrix4().compose(new THREE.Vector3(cx, y0, cz), quat, new THREE.Vector3(w, h, d)));
   },
   finalizeBoxes(scene) {
     if (!this.unitBox) { this.unitBox = new THREE.BoxGeometry(1, 1, 1); this.unitBox.translate(0, 0.5, 0); }
     for (const k in this.boxBatches) {
       const bt = this.boxBatches[k];
-      const im = new THREE.InstancedMesh(this.unitBox, this.mat(bt.color), bt.mats.length);
+      const mat = bt.color === LS.GLASS ? new THREE.MeshPhongMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.32, shininess: 120, depthWrite: false }) : this.mat(bt.color);
+      const im = new THREE.InstancedMesh(this.unitBox, mat, bt.mats.length);
       bt.mats.forEach((mm, i) => im.setMatrixAt(i, mm));
       im.castShadow = bt.shadow; im.receiveShadow = true; im.frustumCulled = false;
       scene.add(im);

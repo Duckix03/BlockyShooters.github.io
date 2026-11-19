@@ -209,8 +209,14 @@ LS.Combat = {
       const rel = Math.atan2(shooter.pos.x - listener.pos.x, shooter.pos.z - listener.pos.z);
       LS.Audio.gunshot(wdef, dist, -Math.sin(LS.util.angleDiff(listener.yaw, rel)));
     }
-    LS.Effects.flash(muzzle, shooter.isPlayer || (listener && shooter.pos.distanceTo(listener.pos) < 40));
+    const near = shooter.isPlayer || (listener && shooter.pos.distanceTo(listener.pos) < 60);
+    if (near) {
+      LS.Effects.muzzle(muzzle, dir, wdef, true);
+      if (wdef.cat !== 'Escopeta' && wdef.cat !== 'Sniper') LS.Effects.shell(muzzle, shooter.yaw, false);
+      if (shooter.isPlayer) LS.Audio.shellDrop(0);
+    }
     LS.Game.onGunshot(shooter);
+    let whizzed = false;
     for (let p = 0; p < wdef.pellets; p++) {
       const d = this._d.copy(dir);
       d.x += (Math.random() - 0.5) * 2 * spread; d.y += (Math.random() - 0.5) * 2 * spread; d.z += (Math.random() - 0.5) * 2 * spread;
@@ -221,15 +227,29 @@ LS.Combat = {
       const t = hit ? hit.t : wt;
       const end = this._end.copy(origin).addScaledVector(d, t);
       if (p < 3) LS.Effects.tracer(muzzle, end);
+      // bala passando perto do jogador
+      if (!shooter.isPlayer && listener && listener.alive && !whizzed && (!hit || hit.f !== listener)) {
+        const toL = this._tmp.set(listener.pos.x - origin.x, listener.pos.y + 1.4 - origin.y, listener.pos.z - origin.z);
+        const along = toL.dot(d);
+        if (along > 0 && along < t + 2) {
+          const closest = toL.addScaledVector(d, -along).length();
+          if (closest < 2.5) { whizzed = true; LS.Audio.whiz(LS.util.rand(-0.6, 0.6)); }
+        }
+      }
       if (hit) {
         // queda de dano com a distância
         const fall = t > wdef.range ? LS.util.clamp(1 - (t - wdef.range) / (wdef.range * 0.6), 0.25, 1) : 1;
         let dmg = wdef.dmg * fall * (hit.head ? (wdef.cat === 'Sniper' ? 2.5 : 1.8) : 1);
         if (!shooter.isPlayer) dmg *= LS.Game.botDamageMul;
-        LS.Effects.impact(end, true);
-        hit.f.takeDamage(dmg, shooter, hit.head, wdef.name);
-        if (shooter.isPlayer) LS.Game.onPlayerHit(hit.head, !hit.f.alive);
-      } else if (wt < maxR) LS.Effects.impact(end, false);
+        LS.Effects.impact(end, true, d);
+        const g = hit.head ? hit.f.helmet : hit.f.vest, armored = g.level > 0 && g.dur > 0;
+        const dealt = hit.f.takeDamage(dmg, shooter, hit.head, wdef.name);
+        if (shooter.isPlayer) {
+          LS.Game.onPlayerHit(hit.head, !hit.f.alive);
+          LS.Effects.damageNumber(end, dealt, hit.head);
+          if (armored) LS.Audio.armorHit();
+        }
+      } else if (wt < maxR) LS.Effects.impact(end, false, d);
     }
   }
 };

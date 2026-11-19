@@ -9,13 +9,30 @@ LS.Skin = {
   EYES: ['#2a5aa0', '#3a2a1a', '#2a8a3a', '#555555'],
   HAIR_STYLES: ['curto', 'longo', 'careca', 'moicano', 'boné'],
   PATTERNS: ['liso', 'listras', 'zíper', 'camuflado', 'faixa'],
+  ACCENTS: ['#2a2a2a', '#f0f0f0', '#c0302a', '#2a5ab0', '#3a5a2a', '#e0a020', '#20d0e0', '#a040e0', '#6a4a2a'],
+  BEARDS: ['nenhuma', 'curta', 'cheia', 'bigode'],
+  GLASSES: ['nenhum', 'escuros', 'redondos', 'viseira'],
+  MASKS: ['nenhuma', 'bandana', 'máscara'],
+  HATS: ['nenhum', 'gorro', 'chapéu', 'faixa'],
+  TOPS: ['camiseta', 'jaqueta', 'moletom', 'regata', 'colete'],
+  // trajes prontos (originais do LAST SURVIVOR)
+  PRESETS: {
+    'Sobrevivente': { shirt: '#ff8a1f', pattern: 'zíper', top: 'jaqueta', accent: '#2a2a2a', pants: '#2a2a3a', hat: 'nenhum', glasses: 'nenhum', mask: 'nenhuma', beard: 'nenhuma' },
+    'Militar': { shirt: '#2d7a3a', pattern: 'camuflado', top: 'colete', accent: '#3a5a2a', pants: '#3a4a2a', hat: 'gorro', glasses: 'escuros', mask: 'nenhuma' },
+    'Explorador': { shirt: '#d0b020', pattern: 'liso', top: 'camiseta', accent: '#6a4a2a', pants: '#7a5a3a', hat: 'chapéu', glasses: 'nenhum', mask: 'nenhuma', beard: 'curta' },
+    'Neon': { shirt: '#2a2a2a', pattern: 'liso', top: 'moletom', accent: '#a040e0', pants: '#111111', hat: 'nenhum', glasses: 'viseira', mask: 'nenhuma', hairStyle: 'moicano' },
+    'Caçador': { shirt: '#b03030', pattern: 'listras', top: 'jaqueta', accent: '#6a4a2a', pants: '#4a3a2a', hat: 'faixa', glasses: 'nenhum', mask: 'bandana' },
+    'Urbano': { shirt: '#e0e0e0', pattern: 'faixa', top: 'regata', accent: '#2a5ab0', pants: '#1f2f6f', hat: 'nenhum', glasses: 'redondos', mask: 'nenhuma', beard: 'bigode' }
+  },
   // posição de cada parte no atlas: [x, y, largura, altura, profundidade] em pixels
   PARTS: { head: [0, 0, 8, 8, 8], body: [0, 16, 8, 12, 4], arm: [24, 16, 4, 12, 4], leg: [40, 16, 4, 12, 4] },
 
   randomLook() {
     const p = LS.util.pick;
+    const r = (arr, chance) => Math.random() < chance ? p(arr.slice(1)) : arr[0];
     return { skin: p(this.SKINS), hair: p(this.HAIRS), hairStyle: p(this.HAIR_STYLES), eyes: p(this.EYES),
-      shirt: p(this.SHIRTS), pattern: p(this.PATTERNS), pants: p(this.PANTS) };
+      shirt: p(this.SHIRTS), pattern: p(this.PATTERNS), pants: p(this.PANTS), accent: p(this.ACCENTS),
+      beard: r(this.BEARDS, 0.3), glasses: r(this.GLASSES, 0.25), mask: r(this.MASKS, 0.12), hat: r(this.HATS, 0.3), top: p(this.TOPS) };
   },
 
   // retângulos das 6 faces de uma parte, na ordem das faces do BoxGeometry (+x, -x, +y, -y, +z, -z)
@@ -86,6 +103,15 @@ LS.Skin = {
     px(fx + 1, fy + 4, '#ffffff', 0); px(fx + 2, fy + 4, look.eyes, 0); px(fx + 5, fy + 4, look.eyes, 0); px(fx + 6, fy + 4, '#ffffff', 0);
     px(fx + 3, fy + 5, col(look.skin, 0.85), 0); px(fx + 4, fy + 5, col(look.skin, 0.85), 0);
     [2, 3, 4, 5].forEach(x => px(fx + x, fy + 6, col(look.skin, 0.6), 0));
+    const acc = look.accent || '#2a2a2a', bc = look.hair;
+    if (look.beard === 'curta') { for (let x = 0; x < 8; x++) { if (rnd() < 0.7) px(fx + x, fy + 7, bc, 0.25); } [0, 1, 6, 7].forEach(x => px(fx + x, fy + 6, bc, 0.25)); }
+    else if (look.beard === 'cheia') { for (let y = 5; y < 8; y++) for (let x = 0; x < 8; x++) { if (y === 6 && x >= 2 && x <= 5) continue; px(fx + x, fy + y, bc, 0.15); } [H[0], H[1]].forEach(r => rect(r, bc, 0.15, [5, 8])); }
+    else if (look.beard === 'bigode') [2, 3, 4, 5].forEach(x => px(fx + x, fy + 5, bc, 0.1));
+    if (look.mask === 'bandana') { for (let y = 5; y < 8; y++) for (let x = 0; x < 8; x++) px(fx + x, fy + y, (x + y) % 3 === 0 ? '#f0f0f0' : acc, 0.08); [H[0], H[1]].forEach(r => rect(r, acc, 0.08, [5, 7])); }
+    else if (look.mask === 'máscara') { for (let y = 5; y < 8; y++) for (let x = 0; x < 8; x++) px(fx + x, fy + y, '#3a3d42', 0.08); px(fx + 2, fy + 6, '#1a1a1a', 0); px(fx + 5, fy + 6, '#1a1a1a', 0); }
+    if (look.glasses === 'escuros') { [1, 2, 5, 6].forEach(x => px(fx + x, fy + 4, '#101010', 0)); [3, 4].forEach(x => px(fx + x, fy + 4, '#202020', 0)); }
+    else if (look.glasses === 'redondos') { [0, 3, 4, 7].forEach(x => px(fx + x, fy + 4, '#c8a040', 0)); [1, 2, 5, 6].forEach(x => px(fx + x, fy + 3, '#c8a040', 0)); }
+    else if (look.glasses === 'viseira') { for (let x = 0; x < 8; x++) px(fx + x, fy + 4, acc, 0.05); [H[0], H[1]].forEach(r => rect(r, '#202020', 0.05, [4, 5])); }
     // ---- corpo ----
     const B = this.faceRects('body');
     B.forEach(r => rect(r, look.shirt, 0.06));
@@ -94,10 +120,21 @@ LS.Skin = {
     else if (look.pattern === 'zíper') { for (let y = 0; y < 11; y++) { px(front[0] + 3, front[1] + y, col(look.shirt, 0.6), 0); px(front[0] + 4, front[1] + y, col(look.shirt, 0.6), 0); } px(front[0] + 4, front[1] + 1, '#c0c0c0', 0); }
     else if (look.pattern === 'camuflado') B.forEach(r => { for (let i = 0; i < r[2] * r[3] / 4; i++) { const x = Math.floor(rnd() * r[2]), y = Math.floor(rnd() * r[3]); const c = rnd() < 0.5 ? 0.7 : 1.25; px(r[0] + x, r[1] + y, col(look.shirt, c)); if (x + 1 < r[2]) px(r[0] + x + 1, r[1] + y, col(look.shirt, c)); } });
     else if (look.pattern === 'faixa') { for (let y = 0; y < 11; y++) { const x = Math.floor(y * 8 / 11); px(front[0] + x, front[1] + y, '#f0f0f0'); if (x + 1 < 8) px(front[0] + x + 1, front[1] + y, '#f0f0f0'); } }
+    const top = look.top || 'camiseta';
+    if (top === 'jaqueta' || top === 'moletom') {
+      [B[0], B[1], B[5]].forEach(r => rect(r, acc, 0.07)); rect(B[2], acc, 0.07);
+      for (let y = 0; y < 12; y++) for (let x = 0; x < 8; x++) { const open = top === 'jaqueta' && x >= 3 && x <= 4; if (!open) px(front[0] + x, front[1] + y, acc, 0.07); }
+      if (top === 'moletom') { rect([front[0] + 2, front[1] + 7, 4, 2], col(acc, 0.8), 0.05); rect(H[5], col(acc, 0.85), 0.07, [4, 8]); }
+      else { px(front[0] + 2, front[1] + 1, col(acc, 0.6), 0); px(front[0] + 5, front[1] + 1, col(acc, 0.6), 0); }
+    } else if (top === 'colete') {
+      [B[4], B[5]].forEach(r => { for (let y = 1; y < 10; y++) for (let x = 0; x < 8; x++) if (x < 3 || x > 4 || r === B[5]) px(r[0] + x, r[1] + y, col(acc, 0.9), 0.08); });
+      rect([front[0], front[1] + 5, 3, 2], col(acc, 0.65), 0.05); rect([front[0] + 5, front[1] + 5, 3, 2], col(acc, 0.65), 0.05);
+    } else if (top === 'regata') { [B[0], B[1]].forEach(r => rect(r, look.skin, 0.05, [0, 2])); rect([front[0], front[1], 2, 2], look.skin, 0.05); rect([front[0] + 6, front[1], 2, 2], look.skin, 0.05); }
     [B[0], B[1], B[4], B[5]].forEach(r => rect(r, '#3a2412', 0.1, [11, 12])); // cinto
     // ---- braços ----
     const A = this.faceRects('arm');
-    A.forEach((r, i) => { if (i === 2) rect(r, look.shirt, 0.06); else if (i === 3) rect(r, look.skin, 0.05); else { rect(r, look.shirt, 0.06, [0, 4]); rect(r, look.skin, 0.05, [4, 12]); } });
+    const longS = top === 'jaqueta' || top === 'moletom', sleeve = longS ? acc : look.shirt, sl = top === 'regata' ? 0 : longS ? 10 : 4;
+    A.forEach((r, i) => { if (i === 2) rect(r, sl ? sleeve : look.skin, 0.06); else if (i === 3) rect(r, look.skin, 0.05); else { rect(r, sleeve, 0.06, [0, sl]); rect(r, look.skin, 0.05, [sl, 12]); } });
     // ---- pernas ----
     const L = this.faceRects('leg');
     L.forEach((r, i) => { if (i === 2) rect(r, look.pants, 0.06); else if (i === 3) rect(r, '#1c1c1c', 0.1); else { rect(r, look.pants, 0.06, [0, 10]); rect(r, '#1c1c1c', 0.12, [10, 12]); } });
@@ -113,7 +150,7 @@ LS.Skin = {
 };
 
 // perfil do jogador (nome + visual), salvo no navegador
-LS.defaultProfile = { name: 'Jogador', look: { skin: '#e0ac69', hair: '#1a1a1a', hairStyle: 'curto', eyes: '#3a2a1a', shirt: '#ff8a1f', pattern: 'zíper', pants: '#2a2a3a' } };
+LS.defaultProfile = { name: 'Jogador', look: { skin: '#e0ac69', hair: '#1a1a1a', hairStyle: 'curto', eyes: '#3a2a1a', shirt: '#ff8a1f', pattern: 'zíper', pants: '#2a2a3a', accent: '#2a2a2a', beard: 'nenhuma', glasses: 'nenhum', mask: 'nenhuma', hat: 'nenhum', top: 'camiseta' } };
 LS.playerProfile = JSON.parse(JSON.stringify(LS.defaultProfile));
 try {
   const p = JSON.parse(localStorage.getItem('lastsurvivor_profile') || 'null');

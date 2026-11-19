@@ -20,6 +20,7 @@ LS.Fighter.prototype.physics = function (dt, wish, opts) {
       p.y = Math.max(g, LS.WATER_LEVEL - 1.2); v.set(0, 0, 0);
       this.state = 'ground'; this.onGround = true;
       if (this.isPlayer) { LS.Audio.stopLoop('chute'); LS.Audio.land(); }
+      if (LS.Game.player && this.pos.distanceTo(LS.Game.player.pos) < 60) LS.Effects.landDust(this.pos);
     }
     W.collideCircle(p, R, 1.8);
     this.clampToIsland();
