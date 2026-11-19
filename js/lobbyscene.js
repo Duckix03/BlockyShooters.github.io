@@ -10,7 +10,7 @@ LS.LobbyScene = {
     const U = LS.util, R = LS.Tex.rng(2024);
     const rand = (a, b) => a + R() * (b - a), pick = a => a[Math.floor(R() * a.length)];
     sc.background = new THREE.Color(0x070b18);
-    sc.fog = new THREE.Fog(0x0a0f22, 16, 60);
+    sc.fog = new THREE.Fog(0x0d0a24, 9, 48); // fundo mais escuro/roxo: o personagem se destaca (estilo lobby de BR mobile)
     sc.add(new THREE.HemisphereLight(0x6a84c8, 0x141020, 0.5));
     sc.add(new THREE.AmbientLight(0x404a70, 0.32));
     const moon = new THREE.DirectionalLight(0xa8c0ff, 0.5); moon.position.set(-4, 9, 6); moon.castShadow = true;
@@ -236,17 +236,49 @@ LS.LobbyScene = {
       if (R() < 0.4) { const a = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), new THREE.MeshBasicMaterial({ color: 0xff2020, fog: false })); a.position.set(x, h + 0.4, z); sc.add(a); L.anims.push({ type: 'blink', m: a, ph: R() * 6 }); }
     }
 
-    // ---------- palco do personagem: plataforma, anel e feixe de holofote ----------
-    const stage = new THREE.Mesh(new THREE.CylinderGeometry(1.75, 1.85, 0.09, 8), new THREE.MeshPhongMaterial({ color: 0x1c1f28, specular: 0x404a70, shininess: 60 }));
-    stage.position.y = 0.045; stage.rotation.y = Math.PI / 8; add(stage);
-    const edge = new THREE.Mesh(new THREE.CylinderGeometry(1.87, 1.87, 0.03, 8, 1, true), new THREE.MeshBasicMaterial({ color: 0xff8a1f, side: THREE.DoubleSide }));
-    edge.position.y = 0.06; edge.rotation.y = Math.PI / 8; sc.add(edge); L.edge = edge;
-    const ring = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.22, 48), new THREE.MeshBasicMaterial({ color: 0xff8a1f, transparent: true, opacity: 0.85 }));
-    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.095; sc.add(ring); L.ring = ring;
-    const ring2 = new THREE.Mesh(new THREE.RingGeometry(1.35, 1.38, 48, 1, 0, Math.PI * 1.4), new THREE.MeshBasicMaterial({ color: 0xffc531, transparent: true, opacity: 0.6 }));
-    ring2.rotation.x = -Math.PI / 2; ring2.position.y = 0.1; sc.add(ring2); L.anims.push({ type: 'spin', m: ring2 });
-    const spot = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 1.4, 9, 24, 1, true), new THREE.MeshBasicMaterial({ map: coneTex, color: 0xffd8a0, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-    spot.position.set(0, 4.5, 0); sc.add(spot);
+    // ---------- pedestal do personagem (estilo lobby de BR): base em degraus, topo brilhante, colunas de luz e faíscas ----------
+    const metal = new THREE.MeshPhongMaterial({ color: 0x1a1d28, specular: 0x8090c0, shininess: 80 });
+    const base1 = new THREE.Mesh(new THREE.CylinderGeometry(1.75, 1.95, 0.16, 40), metal); base1.position.y = 0.08; add(base1);
+    const base2 = new THREE.Mesh(new THREE.CylinderGeometry(1.45, 1.6, 0.14, 40), metal); base2.position.y = 0.23; add(base2);
+    const trim = new THREE.Mesh(new THREE.TorusGeometry(1.72, 0.035, 8, 64), new THREE.MeshBasicMaterial({ color: 0xffc531 })); trim.rotation.x = Math.PI / 2; trim.position.y = 0.165; sc.add(trim);
+    const topTex = tex(256, 256, (g, w) => { // topo com anéis e raios de luz
+      const gr = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); gr.addColorStop(0, 'rgba(255,200,120,0.9)'); gr.addColorStop(0.55, 'rgba(255,120,40,0.35)'); gr.addColorStop(1, 'rgba(255,90,20,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, w, w); g.strokeStyle = 'rgba(255,240,200,0.9)'; g.lineWidth = 3;
+      for (const r of [40, 78, 112]) { g.beginPath(); g.arc(w / 2, w / 2, r, 0, 7); g.stroke(); }
+      g.lineWidth = 2; for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; g.beginPath(); g.moveTo(w / 2 + Math.cos(a) * 80, w / 2 + Math.sin(a) * 80); g.lineTo(w / 2 + Math.cos(a) * 110, w / 2 + Math.sin(a) * 110); g.stroke(); } });
+    const top = new THREE.Mesh(new THREE.CircleGeometry(1.42, 48), new THREE.MeshBasicMaterial({ map: topTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    top.rotation.x = -Math.PI / 2; top.position.y = 0.305; sc.add(top); L.anims.push({ type: 'spinTop', m: top });
+    const ring = new THREE.Mesh(new THREE.RingGeometry(1.46, 1.56, 64), new THREE.MeshBasicMaterial({ color: 0xff8a1f, transparent: true, opacity: 0.9 }));
+    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.302; sc.add(ring); L.ring = ring;
+    const glowRing = new THREE.Mesh(new THREE.RingGeometry(1.9, 3.2, 64), new THREE.MeshBasicMaterial({ map: reflTex, color: 0xff7a20, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false }));
+    glowRing.rotation.x = -Math.PI / 2; glowRing.position.y = 0.012; sc.add(glowRing);
+    L.pillars = [];
+    for (let i = 0; i < 8; i++) { // colunas de luz subindo da borda
+      const a = i / 8 * Math.PI * 2, m = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.06, 2.6, 6, 1, true), new THREE.MeshBasicMaterial({ map: coneTex, color: i % 2 ? 0xffc531 : 0xff6a1a, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false }));
+      m.position.set(Math.cos(a) * 1.5, 1.6, Math.sin(a) * 1.5); m.rotation.x = Math.PI; sc.add(m); L.pillars.push({ m, ph: i });
+    }
+    const spot = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 1.5, 9, 24, 1, true), new THREE.MeshBasicMaterial({ map: coneTex, color: 0xffd8a0, transparent: true, opacity: 0.14, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    spot.position.set(0, 4.8, 0); sc.add(spot);
+    // faíscas douradas subindo em volta do pedestal
+    const fp = []; L.sparkData = [];
+    for (let i = 0; i < 90; i++) { const a = R() * 6.28, r = 0.6 + R() * 1.1; L.sparkData.push({ a, r, y: R() * 3, v: 0.4 + R() * 0.8 }); fp.push(0, 0, 0); }
+    const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.Float32BufferAttribute(fp, 3));
+    L.sparks = new THREE.Points(fg, new THREE.PointsMaterial({ color: 0xffd27a, size: 0.06, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })); sc.add(L.sparks);
+    // luz de contorno por trás (roxo/ciano) para destacar a silhueta + luz quente no pedestal
+    const rimL = new THREE.PointLight(0xb040ff, 2.2, 6); rimL.position.set(-1.3, 2.3, -1.4); sc.add(rimL);
+    const rimR = new THREE.PointLight(0x28d8ff, 2.2, 6); rimR.position.set(1.3, 2.3, -1.4); sc.add(rimR);
+    const podL = new THREE.PointLight(0xff8a30, 0.6, 3); podL.position.set(0, 0.6, 1.2); sc.add(podL);
+    // caixa misteriosa (airdrop) flutuando ao lado, com brilho e "?"
+    { const crate = new THREE.Group(), P = [], Gl = [];
+      const c = (x, y, z, w, h, d, col, arr) => (arr || P).push([x, y, z, w, h, d, col]);
+      c(0, 0, 0, 0.9, 0.9, 0.9, 0x2a3a6a); for (const sx of [-1, 1]) for (const sz of [-1, 1]) c(sx * 0.42, 0, sz * 0.42, 0.1, 0.94, 0.1, 0xffc531);
+      for (const y of [-0.42, 0.42]) { c(0, y, 0.42, 0.94, 0.1, 0.1, 0xffc531); c(0, y, -0.42, 0.94, 0.1, 0.1, 0xffc531); c(0.42, y, 0, 0.1, 0.1, 0.94, 0xffc531); c(-0.42, y, 0, 0.1, 0.1, 0.94, 0xffc531); }
+      c(0, 0, 0.455, 0.5, 0.5, 0.02, 0x9fe8ff, Gl); c(0, 0, -0.455, 0.5, 0.5, 0.02, 0x9fe8ff, Gl); c(0.455, 0, 0, 0.02, 0.5, 0.5, 0x9fe8ff, Gl); c(-0.455, 0, 0, 0.02, 0.5, 0.5, 0x9fe8ff, Gl);
+      crate.add(LS.Items.mesh(LS.Items.merge(P))); crate.add(new THREE.Mesh(LS.Items.merge(Gl), new THREE.MeshBasicMaterial({ vertexColors: true })));
+      const q = new THREE.Sprite(new THREE.SpriteMaterial({ map: neonTex('?', 0x28d8ff, false), transparent: true, depthWrite: false })); q.scale.set(1.6, 0.4, 1); q.position.y = 0.85; crate.add(q);
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: reflTex, color: 0x28d8ff, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false })); halo.scale.set(2.2, 2.2, 1); crate.add(halo);
+      crate.position.set(-1.75, 0.9, -0.6); crate.scale.setScalar(0.55); sc.add(crate); L.crate = crate;
+      const cl = new THREE.PointLight(0x28d8ff, 1.2, 3.5); cl.position.set(-1.75, 0.9, -0.3); sc.add(cl); }
 
     // ---------- fundir tudo ----------
     add(new THREE.Mesh(LS.Items.merge(solid), LS.Items.material()), true);
@@ -279,7 +311,12 @@ LS.LobbyScene = {
       else if (a.type === 'scroll') a.t.offset.x = (t * 0.05) % 1;
       else if (a.type === 'spin') a.m.rotation.z = t * 0.8;
     }
-    if (L.edge) L.edge.material.color.setHSL(0.07 + Math.sin(t * 0.8) * 0.03, 1, 0.5 + Math.sin(t * 3) * 0.08);
+    for (const a of L.anims) if (a.type === 'spinTop') a.m.rotation.z = -t * 0.35;
+    for (const p of L.pillars) { p.m.material.opacity = 0.25 + 0.3 * (0.5 + 0.5 * Math.sin(t * 2.5 + p.ph * 0.8)); p.m.scale.y = 0.8 + 0.25 * Math.sin(t * 1.7 + p.ph); }
+    const fp = L.sparks.geometry.attributes.position;
+    L.sparkData.forEach((d, i) => { d.y += d.v * dt; if (d.y > 3) d.y = 0; d.a += dt * 0.4; fp.setXYZ(i, Math.cos(d.a) * d.r, 0.3 + d.y, Math.sin(d.a) * d.r); });
+    fp.needsUpdate = true; L.sparks.material.opacity = 0.7 + Math.sin(t * 4) * 0.2;
+    if (L.crate) { L.crate.position.y = 1.0 + Math.sin(t * 1.6) * 0.12; L.crate.rotation.y = t * 0.6; }
     // semáforo: verde 4s, amarelo 1s, vermelho 4s (os dois lados alternados)
     L.lights.forEach((lamps, i) => {
       const c = (t + i * 4.5) % 9, on = c < 4 ? 2 : c < 5 ? 1 : 0;
