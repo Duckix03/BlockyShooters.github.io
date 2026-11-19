@@ -113,14 +113,46 @@ LS.CharacterModel = class {
       return;
     }
     this.deadT = 0; this.root.rotation.x = 0;
-    this.chute.visible = !!s.chute;
+    const now = performance.now() * 0.001, ease = Math.min(1, dt * 4);
+    if (s.fall) {
+      // queda livre: corpo deitado de barriga para baixo, braços e pernas abertos; mergulho = corpo esticado
+      this.chuteT = 0; this.chute.visible = false;
+      const wob = Math.sin(now * 5 + this.seed) * 0.06;
+      this.hips.position.y = this.hipsY;
+      this.hips.rotation.x = LS.util.lerp(this.hips.rotation.x, s.dive ? 1.45 : 1.2, ease);
+      this.hips.rotation.z = LS.util.lerp(this.hips.rotation.z, (s.steer || 0) * 0.45 + wob, ease);
+      this.torso.rotation.x = 0;
+      if (s.dive) { this.armR.rotation.set(0.25, 0, 0.3); this.armL.rotation.set(0.25, 0, -0.3); this.legR.rotation.set(0, 0, 0.06); this.legL.rotation.set(0, 0, -0.06); }
+      else { this.armR.rotation.set(-0.4, 0, 1.35 + wob); this.armL.rotation.set(-0.4, 0, -1.35 - wob); this.legR.rotation.set(0.4, 0, 0.28); this.legL.rotation.set(0.4, 0, -0.28); }
+      this.headG.rotation.x = -0.85;
+      return;
+    }
+    if (s.chute) {
+      // paraquedas abrindo com "estouro", balanço e inclinação na direção da manobra
+      this.chuteT = Math.min(1, (this.chuteT || 0) + dt * 2.2);
+      const k = this.chuteT, c1 = 1.70158, c3 = c1 + 1, back = 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2);
+      this.chute.visible = true; this.chute.scale.set(back, Math.max(0.05, back), back);
+      const sway = Math.sin(now * 1.6 + this.seed) * 0.07;
+      this.chute.rotation.z = sway + (s.steer || 0) * 0.25;
+      this.hips.rotation.x = LS.util.lerp(this.hips.rotation.x, 0, ease * 1.5);
+      this.hips.rotation.z = LS.util.lerp(this.hips.rotation.z, sway * 0.8 + (s.steer || 0) * 0.3, ease);
+      this.hips.position.y = this.hipsY;
+      this.torso.rotation.x = 0;
+      this.armR.rotation.set(Math.PI - 0.15, 0, 0.35); this.armL.rotation.set(Math.PI - 0.15, 0, -0.35);
+      this.legR.rotation.set(-0.15 + Math.sin(now * 2.2) * 0.12, 0, 0.05); this.legL.rotation.set(0.1 - Math.sin(now * 2.2) * 0.12, 0, -0.05);
+      this.headG.rotation.x = 0.15;
+      return;
+    }
+    this.chute.visible = false; this.chuteT = 0;
+    this.hips.rotation.x *= Math.max(0, 1 - dt * 10); this.hips.rotation.z *= Math.max(0, 1 - dt * 10);
+    this.landT = Math.max(0, (this.landT || 0) - dt);
     this.crouchK = LS.util.lerp(this.crouchK, s.crouch ? 1 : 0, Math.min(1, dt * 12));
-    const ck = this.crouchK;
+    const ck = Math.max(this.crouchK, this.landT / 0.35); // impacto da aterrissagem
     this.phase += dt * s.speed * (s.running ? 1.5 : 2.0);
     const amp = LS.util.clamp(s.speed / 6, 0, 1) * (s.running ? 1.0 : 0.7) * (1 - ck * 0.4);
     const sw = Math.sin(this.phase) * amp;
     let lr = sw, ll = -sw;
-    if (s.air || s.chute) { lr = -0.5; ll = 0.3; }
+    if (s.air) { lr = -0.5; ll = 0.3; }
     // agachado: tronco inclinado, pernas abertas para trás/frente
     lr += ck * 0.5; ll -= ck * 0.5;
     this.legR.rotation.x = lr; this.legL.rotation.x = ll;

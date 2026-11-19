@@ -148,7 +148,8 @@ LS.Bot = class extends LS.Fighter {
     }
     if (this.state !== 'ground') {
       const w = this.goTo(this.landing.x, this.landing.z, dt);
-      this.physics(dt, w, {});
+      this.diving = Math.hypot(this.landing.x - this.pos.x, this.landing.z - this.pos.z) > 50;
+      this.physics(dt, w, { dive: this.diving });
       this.yaw = Math.atan2(w.x, w.z) || this.yaw;
       this.finishFrame(dt, 0);
       return;
@@ -255,7 +256,7 @@ LS.Bot = class extends LS.Fighter {
     this.model.root.position.copy(this.pos);
     this.model.root.rotation.y = this.yaw;
     const animR = LS.settings.perfMode ? 70 : 160;
-    if (!far && d2 < animR * animR) this.model.animate({ dt, speed: hs, running: this.running, crouch: this.crouch, air: this.state === 'ground' && !this.onGround,
+    if (!far && d2 < animR * animR) this.model.animate({ dt, fall: this.state === 'fall', dive: this.state === 'fall' && this.diving, steer: 0, speed: hs, running: this.running, crouch: this.crouch, air: this.state === 'ground' && !this.onGround,
       chute: this.state === 'chute', aimPitch: this.pitch, armed: !!this.weapon(), armedAim: this.ai === 'fight', dead: false });
     else this.model.chute.visible = this.state === 'chute';
   }

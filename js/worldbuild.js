@@ -115,6 +115,8 @@ Object.assign(LS.World, {
       this.house(scene, x, z, 9, 8); placed++;
     }
     this.finalizeBoxes(scene);
+    this.finalizeRoofs(scene);
+    this.rebuildTerrainMesh();
     // ---- árvores (instanciadas) ----
     const trunkGeo = new THREE.CylinderGeometry(0.25, 0.35, 1, 6); trunkGeo.translate(0, 0.5, 0);
     const leafGeo = new THREE.ConeGeometry(1, 1, 7); leafGeo.translate(0, 0.5, 0);
@@ -150,7 +152,7 @@ Object.assign(LS.World, {
     const e = new THREE.Euler();
     while (nk < 160 && tries++ < 3000) {
       const x = LS.util.rand(-330, 330), z = LS.util.rand(-330, 330), h = this.heightAt(x, z);
-      if (h < 1 || this.insideTown(x, z, 3)) continue;
+      if (h < 1 || this.insideTown(x, z, 3) || this.nearBuilding(x, z, 3)) continue;
       const sc = LS.util.rand(0.8, 2.6);
       e.set(Math.random() * 3, Math.random() * 3, 0); q.setFromEuler(e);
       p.set(x, h + sc * 0.3, z); s.set(sc * 1.3, sc, sc * 1.1); m.compose(p, q, s); rocks.setMatrixAt(nk++, m);
@@ -165,7 +167,7 @@ Object.assign(LS.World, {
     let nb = 0; tries = 0;
     while (nb < 400 && tries++ < 4000) {
       const x = LS.util.rand(-330, 330), z = LS.util.rand(-330, 330), h = this.heightAt(x, z);
-      if (h < 1.5 || h > 40) continue;
+      if (h < 1.5 || h > 40 || this.nearBuilding(x, z, 1.2)) continue;
       const sc = LS.util.rand(0.7, 1.3);
       p.set(x, h + 0.3, z); s.set(sc * 1.2, sc * 0.8, sc * 1.2); m.compose(p, q, s); bushes.setMatrixAt(nb++, m);
     }

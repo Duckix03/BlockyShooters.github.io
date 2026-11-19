@@ -189,6 +189,7 @@ LS.World = {
     const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true }));
     mesh.receiveShadow = true;
     scene.add(mesh);
+    this.terrainMesh = mesh;
     this.terrainColors = colors;
 
     const water = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshPhongMaterial({ color: 0x2a7fb8, transparent: true, opacity: 0.85, shininess: 80 }));
@@ -201,6 +202,7 @@ LS.World = {
   buildSky(scene) {
     this.hemi = new THREE.HemisphereLight(0xbfd9ff, 0x4a5a3a, 0.6);
     scene.add(this.hemi);
+    this.ambient = new THREE.AmbientLight(0xfff2e0, 0.3); scene.add(this.ambient); // ilumina interiores e sombras
     this.sun = new THREE.DirectionalLight(0xffffff, 0.9);
     this.sun.shadow.camera.left = -70; this.sun.shadow.camera.right = 70;
     this.sun.shadow.camera.top = 70; this.sun.shadow.camera.bottom = -70;

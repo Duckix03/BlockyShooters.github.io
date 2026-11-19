@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>LAST SURVIVOR - Pré-visualização das casas</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #111; font-family: 'Segoe UI', Arial, sans-serif; color: #fff; }
+  #ui { position: fixed; top: 12px; left: 12px; display: flex; flex-wrap: wrap; gap: 6px; max-width: 760px; }
+  #ui button { background: rgba(20, 28, 44, 0.9); color: #fff; border: 1px solid #ff8a1f; padding: 7px 12px; font-weight: 700; cursor: pointer; border-radius: 3px; }
+  #ui button.on { background: #ff8a1f; color: #000; }
+  #info { position: fixed; bottom: 12px; left: 12px; background: rgba(0, 0, 0, 0.6); padding: 8px 12px; font-size: 13px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div id="ui">
+  <button id="b-new">Nova casa</button>
+  <button id="b-one">Térrea</button>
+  <button id="b-two">Sobrado</button>
+  <button id="b-roof">Ocultar telhado</button>
+  <button id="b-wall">Ocultar parede da frente</button>
+  <button id="b-col">Mostrar colisores</button>
+  <button id="b-in">Vista de dentro</button>
+  <button id="b-out">Vista de fora</button>
+</div>
+<div id="info"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/housekit.js"></script>
+<script>
+'use strict';
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight); renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x87ceeb);
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.05, 500);
+scene.add(new THREE.HemisphereLight(0xbfd9ff, 0x4a5a3a, 0.6)); scene.add(new THREE.AmbientLight(0xfff2e0, 0.3));
+const sun = new THREE.DirectionalLight(0xffffff, 0.9); sun.position.set(15, 25, 10); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -20, right: 20, top: 20, bottom: -20 });
+scene.add(sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshLambertMaterial({ color: 0x5d9c3a }));
+ground.rotation.x = -Math.PI / 2; ground.position.y = -0.1; ground.receiveShadow = true; scene.add(ground);
+
+let group = null, opts = { twoStory: false }, view = 'out', yaw = 0.7, pitch = 0.35, dist = 22, inPos = new THREE.Vector3();
+const unit = new THREE.BoxGeometry(1, 1, 1); unit.translate(0, 0.5, 0);
+const mats = {};
+const mat = c => mats[c] || (mats[c] = c === LS.GLASS ? new THREE.MeshPhongMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.32, depthWrite: false }) : new THREE.MeshLambertMaterial({ color: c }));
+let roofMesh, colGroup, frontWall = [];
+
+function build() {
+  if (group) scene.remove(group);
+  group = new THREE.Group(); frontWall = [];
+  const w = opts.twoStory ? 10 + Math.random() * 2 : 8 + Math.random() * 4, d = 8 + Math.random() * 3;
+  const m = LS.HouseKit.build({ w, d, twoStory: opts.twoStory });
+  for (const b of m.boxes) {
+    const mesh = new THREE.Mesh(unit, mat(b.color));
+    mesh.position.set(b.x, b.y, b.z); mesh.scale.set(b.w, b.h, b.d);
+    mesh.castShadow = b.shadow; mesh.receiveShadow = true;
+    if (Math.abs(b.z - m.d / 2) < 0.2 && b.d < 0.5) frontWall.push(mesh);
+    group.add(mesh);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(m.tris.pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(m.tris.col, 3));
+  g.computeVertexNormals();
+  roofMesh = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+  roofMesh.castShadow = true; roofMesh.receiveShadow = true; group.add(roofMesh);
+  colGroup = new THREE.Group(); colGroup.visible = document.getElementById('b-col').classList.contains('on');
+  const all = m.boxes.filter(b => b.collide).map(b => ({ minX: b.x - b.w / 2, maxX: b.x + b.w / 2, minY: b.y, maxY: b.y + b.h, minZ: b.z - b.d / 2, maxZ: b.z + b.d / 2 })).concat(m.colliders);
+  for (const c of all) {
+    const e = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(c.maxX - c.minX, c.maxY - c.minY, c.maxZ - c.minZ)), new THREE.LineBasicMaterial({ color: 0xff2020 }));
+    e.position.set((c.minX + c.maxX) / 2, (c.minY + c.maxY) / 2, (c.minZ + c.maxZ) / 2); colGroup.add(e);
+  }
+  group.add(colGroup);
+  for (const l of m.loot) { const s = new THREE.Mesh(new THREE.SphereGeometry(0.15), new THREE.MeshBasicMaterial({ color: 0x40ff80 })); s.position.set(l.x, l.y + 0.15, l.z); group.add(s); }
+  scene.add(group);
+  inPos.set(0, 1.6, m.d / 2 - 1.5);
+  applyToggles();
+  document.getElementById('info').textContent = (m.twoStory ? 'Sobrado' : 'Casa térrea') + ' · ' + m.w.toFixed(1) + ' x ' + m.d.toFixed(1) + ' m · porta: ' + ['norte', 'sul', 'oeste', 'leste'][m.doorSide] +
+    ' · ' + m.boxes.length + ' blocos · ' + all.length + ' colisores · arraste para girar, roda para zoom';
+}
+function applyToggles() {
+  roofMesh.visible = !document.getElementById('b-roof').classList.contains('on');
+  const hideFront = document.getElementById('b-wall').classList.contains('on');
+  frontWall.forEach(m => m.visible = !hideFront);
+  colGroup.visible = document.getElementById('b-col').classList.contains('on');
+}
+const toggle = id => { document.getElementById(id).classList.toggle('on'); applyToggles(); };
+document.getElementById('b-new').onclick = build;
+document.getElementById('b-one').onclick = () => { opts.twoStory = false; build(); };
+document.getElementById('b-two').onclick = () => { opts.twoStory = true; build(); };
+document.getElementById('b-roof').onclick = () => toggle('b-roof');
+document.getElementById('b-wall').onclick = () => toggle('b-wall');
+document.getElementById('b-col').onclick = () => toggle('b-col');
+document.getElementById('b-in').onclick = () => { view = 'in'; };
+document.getElementById('b-out').onclick = () => { view = 'out'; };
+let drag = null;
+renderer.domElement.addEventListener('mousedown', e => drag = [e.clientX, e.clientY]);
+addEventListener('mouseup', () => drag = null);
+addEventListener('mousemove', e => { if (!drag) return; yaw -= (e.clientX - drag[0]) * 0.006; pitch = Math.max(-1.2, Math.min(1.4, pitch + (e.clientY - drag[1]) * 0.006)); drag = [e.clientX, e.clientY]; });
+addEventListener('wheel', e => { dist = Math.max(4, Math.min(60, dist * (e.deltaY > 0 ? 1.1 : 0.9))); });
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+window.setView = (v, y, p, dd) => { view = v; if (y !== undefined) yaw = y; if (p !== undefined) pitch = p; if (dd !== undefined) dist = dd; };
+function loop() {
+  requestAnimationFrame(loop);
+  if (view === 'out') { camera.position.set(Math.sin(yaw) * Math.cos(pitch) * dist, 2 + Math.sin(pitch) * dist, Math.cos(yaw) * Math.cos(pitch) * dist); camera.lookAt(0, 2.5, 0); }
+  else { camera.position.copy(inPos); camera.lookAt(inPos.x + Math.sin(yaw + Math.PI) * Math.cos(pitch), inPos.y + Math.sin(pitch), inPos.z + Math.cos(yaw + Math.PI) * Math.cos(pitch)); }
+  renderer.render(scene, camera);
+}
+build(); loop();
+</script>
+</body>
+</html>

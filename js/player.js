@@ -7,10 +7,11 @@ LS.Fighter.prototype.physics = function (dt, wish, opts) {
   const W = LS.World, p = this.pos, v = this.vel, R = 0.38;
   if (this.state === 'plane') return;
   if (this.state === 'fall' || this.state === 'chute') {
-    const hs = this.state === 'fall' ? 18 : 10;
+    const dive = this.state === 'fall' && opts.dive;
+    const hs = this.state === 'fall' ? (dive ? 24 : 15) : 10;
     v.x = LS.util.lerp(v.x, wish.x * hs, Math.min(1, dt * 2));
     v.z = LS.util.lerp(v.z, wish.z * hs, Math.min(1, dt * 2));
-    const term = this.state === 'fall' ? -45 : -7;
+    const term = this.state === 'fall' ? (dive ? -62 : -38) : -7;
     v.y = Math.max(term, v.y - LS.GRAVITY * dt);
     if (this.state === 'chute') v.y = LS.util.lerp(v.y, term, Math.min(1, dt * 3));
     p.addScaledVector(v, dt);
@@ -18,7 +19,7 @@ LS.Fighter.prototype.physics = function (dt, wish, opts) {
     if (this.state === 'fall' && (p.y - g < 90 || opts.openChute)) { this.state = 'chute'; if (this.isPlayer) { LS.Audio.stopLoop('wind'); LS.Audio.startLoop('chute', 'wind'); } }
     if (p.y <= Math.max(g, LS.WATER_LEVEL - 1.2)) {
       p.y = Math.max(g, LS.WATER_LEVEL - 1.2); v.set(0, 0, 0);
-      this.state = 'ground'; this.onGround = true;
+      this.state = 'ground'; this.onGround = true; this.model.landT = 0.35;
       if (this.isPlayer) { LS.Audio.stopLoop('chute'); LS.Audio.land(); }
       if (LS.Game.player && this.pos.distanceTo(LS.Game.player.pos) < 60) LS.Effects.landDust(this.pos);
     }
@@ -87,7 +88,8 @@ LS.Player = class extends LS.Fighter {
     if (this.state === 'plane') {
       if (I.wasPressed('Space') && LS.Game.plane.canJump()) LS.Game.jumpFromPlane(this);
     } else if (this.state !== 'ground') {
-      this.physics(dt, { x: wx, z: wz }, { openChute: I.wasPressed('Space') });
+      this.physics(dt, { x: wx, z: wz }, { openChute: I.wasPressed('Space'), dive: !!k.KeyW });
+      this.steer = fx; this.dive = !!k.KeyW;
       this.yaw = this.camYaw;
     } else {
       if (I.wasPressed('KeyC')) this.crouch = !this.crouch;
@@ -128,7 +130,7 @@ LS.Player = class extends LS.Fighter {
     }
     this.model.root.position.copy(this.pos);
     this.model.root.rotation.y = this.yaw;
-    this.model.animate({ dt, speed: Math.hypot(this.vel.x, this.vel.z), running: this.running, crouch: this.crouch, air: this.state === 'ground' && !this.onGround,
+    this.model.animate({ dt, fall: this.state === 'fall', dive: this.dive, steer: this.steer, speed: Math.hypot(this.vel.x, this.vel.z), running: this.running, crouch: this.crouch, air: this.state === 'ground' && !this.onGround,
       chute: this.state === 'chute', aimPitch: this.camPitch, armed: !!this.weapon(), armedAim: this.aiming || this.fireCd > 0, dead: !this.alive });
     this.model.root.visible = this.state !== 'plane';
     this.updateCamera(dt, camera);
@@ -161,7 +163,7 @@ LS.Player = class extends LS.Fighter {
     const wd = this.wdef();
     const zoom = this.aiming && wd ? wd.zoom : 1;
     const baseFov = 70;
-    const targetFov = baseFov / zoom;
+    const targetFov = baseFov / zoom + (this.state === 'fall' ? (this.dive ? 20 : 10) : 0);
     camera.fov = LS.util.lerp(camera.fov, targetFov, Math.min(1, dt * 14));
     camera.updateProjectionMatrix();
     const scoped = this.aiming && wd && wd.scope && camera.fov < baseFov / 2;
@@ -174,7 +176,7 @@ LS.Player = class extends LS.Fighter {
     } else {
       target = this.eyePos(new THREE.Vector3());
       target.y += this.state === 'ground' ? 0.15 : 1.5;
-      dist = this.state === 'ground' ? (this.aiming ? 1.9 : 3.4) : 7;
+      dist = this.state === 'ground' ? (this.aiming ? 1.9 : 3.4) : this.state === 'fall' ? 8 : 9;
       if (!this.alive) dist = 6;
       // ombro direito
       const side = this.state === 'ground' ? 0.75 : 0;
