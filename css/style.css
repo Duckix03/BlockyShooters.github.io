@@ -86,10 +86,20 @@ kbd { display: inline-block; min-width: 92px; background: #263049; border: 1px s
 #hitmarker.show { animation: hit 0.25s; }
 #hitmarker.head::before, #hitmarker.head::after { background: #ff3b3b; }
 @keyframes hit { 0% { opacity: 1; transform: translate(-50%,-50%) rotate(45deg) scale(1.3); } 100% { opacity: 0; transform: translate(-50%,-50%) rotate(45deg) scale(1); } }
-#scope { position: absolute; inset: 0; display: none; background: radial-gradient(circle at center, transparent 0, transparent 32vh, #000 32.2vh); }
-#scope.on { display: block; }
-#scope .scope-ring { position: absolute; left: 50%; top: 50%; width: 64vh; height: 64vh; transform: translate(-50%, -50%); border-radius: 50%; border: 3px solid #111;
-  background: linear-gradient(#000, #000) center/2px 100% no-repeat, linear-gradient(#000, #000) center/100% 2px no-repeat; }
+#scope { position: absolute; inset: 0; display: none; background: radial-gradient(circle at center, transparent 0, transparent 41vmin, rgba(0,0,0,0.85) 41.6vmin, #000 43vmin); }
+#scope.on { display: block; animation: scopeIn 0.12s ease-out; }
+@keyframes scopeIn { from { opacity: 0; transform: scale(1.06); } }
+#scope .scope-lens { position: absolute; left: 50%; top: 50%; width: 84vmin; height: 84vmin; transform: translate(-50%, -50%); border-radius: 50%;
+  box-shadow: inset 0 0 6vmin 2vmin rgba(0,0,0,0.75), inset 0 0 0 0.6vmin #111; background: radial-gradient(circle at 35% 30%, rgba(160,200,255,0.10), transparent 40%); }
+#scope .reticle { position: absolute; left: 50%; top: 50%; width: 84vmin; height: 84vmin; transform: translate(-50%, -50%); }
+#scope .scope-info { position: absolute; left: 50%; top: calc(50% + 34vmin); transform: translateX(-50%); text-align: center; font-weight: 800; text-shadow: 0 1px 3px #000; }
+#scope-zoom { font-size: 16px; color: #ffd27a; letter-spacing: 1px; }
+#scope .breath { width: 140px; height: 4px; background: rgba(255,255,255,0.2); margin: 6px auto; border-radius: 2px; overflow: hidden; }
+#breath-fill { height: 100%; width: 100%; background: #7fd0ff; transition: width 0.1s; }
+#breath-fill.hold { background: #4be07a; }
+#scope .scope-hint { font-size: 11px; color: rgba(255,255,255,0.6); font-weight: 600; }
+#crosshair.ads i { display: none; }
+#crosshair.ads::after { width: 5px; height: 5px; left: -2.5px; top: -2.5px; background: #ff3030; border-radius: 50%; box-shadow: 0 0 4px #ff3030, 0 0 0 1px rgba(0,0,0,0.6); }
 #damage-vignette { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, transparent 40%, rgba(255, 0, 0, 0.6) 100%); transition: opacity 0.3s; }
 #zone-vignette { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, rgba(120, 60, 255, 0.05) 30%, rgba(120, 60, 255, 0.5) 100%); transition: opacity 0.5s; }
 #dmg-indicators { position: absolute; left: 50%; top: 50%; }

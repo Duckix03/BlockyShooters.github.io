@@ -44,6 +44,7 @@ LS.Fighter.prototype.physics = function (dt, wish, opts) {
   if (swimming) g = Math.max(g, LS.WATER_LEVEL - 1.3);
   if (p.y <= g) {
     if (!this.onGround && v.y < -14 && this.isPlayer) LS.Audio.land();
+    if (!this.onGround && v.y < -5) this.model.landT = Math.min(0.3, -v.y * 0.018);
     if (!this.onGround && v.y < -20) this.takeDamage((-v.y - 20) * 3, null, false, 'Queda', true);
     p.y = g; v.y = 0; this.onGround = true;
   } else if (this.onGround && p.y - g < 0.6 && v.y <= 0) { p.y = g; v.y = 0; } // desce rampas sem "voar"
@@ -69,7 +70,7 @@ LS.Player = class extends LS.Fighter {
   }
   update(dt, camera) {
     const I = LS.Input, k = I.keys;
-    const sens = 0.0022 * LS.settings.sensitivity * (this.aiming ? 1 / Math.max(1, (this.wdef() ? this.wdef().zoom : 1) * 0.8) : 1);
+    const sens = 0.0022 * LS.settings.sensitivity * (70 / camera.fov) ** -0.9;
     if (!LS.Game.inventoryOpen) {
       this.camYaw -= I.mouse.dx * sens;
       this.camPitch -= I.mouse.dy * sens;
@@ -112,7 +113,8 @@ LS.Player = class extends LS.Fighter {
       if (!LS.Game.inventoryOpen) {
         if (I.wasPressed('Digit1')) this.switchWeapon(0);
         if (I.wasPressed('Digit2')) this.switchWeapon(1);
-        if (I.mouse.wheel) this.switchWeapon(1 - this.slot);
+        if (I.mouse.wheel && this.scopeUp && this.wdef()) { const mz = this.wdef().zoom; this.scopeZoom = LS.util.clamp((this.scopeZoom || mz) - I.mouse.wheel * 0.5, 2, mz); }
+        else if (I.mouse.wheel) this.switchWeapon(1 - this.slot);
         if (I.wasPressed('KeyR')) this.startReload();
         if (I.wasPressed('KeyH')) this.startHeal('medkit');
         if (I.wasPressed('KeyG')) this.startHeal('bandage');
@@ -130,7 +132,7 @@ LS.Player = class extends LS.Fighter {
     }
     this.model.root.position.copy(this.pos);
     this.model.root.rotation.y = this.yaw;
-    this.model.animate({ dt, fall: this.state === 'fall', dive: this.dive, steer: this.steer, speed: Math.hypot(this.vel.x, this.vel.z), running: this.running, crouch: this.crouch, air: this.state === 'ground' && !this.onGround,
+    this.model.animate({ dt, vy: this.vel.y, fall: this.state === 'fall', dive: this.dive, steer: this.steer, speed: Math.hypot(this.vel.x, this.vel.z), running: this.running, crouch: this.crouch, air: this.state === 'ground' && !this.onGround,
       chute: this.state === 'chute', aimPitch: this.camPitch, armed: !!this.weapon(), armedAim: this.aiming || this.fireCd > 0, dead: !this.alive });
     this.model.root.visible = this.state !== 'plane';
     this.updateCamera(dt, camera);
@@ -160,14 +162,25 @@ LS.Player = class extends LS.Fighter {
     }
   }
   updateCamera(dt, camera) {
-    const wd = this.wdef();
-    const zoom = this.aiming && wd ? wd.zoom : 1;
+    const wd = this.wdef(), sniper = !!(wd && wd.scope);
+    if (wd && this.scopeFor !== wd.name) { this.scopeFor = wd.name; this.scopeZoom = wd.zoom; }
+    // sniper: luneta de verdade (abaixa durante o ferrolho e a recarga); outras armas: só aproximam a câmera
+    const scopeUp = this.aiming && sniper && this.fireCd < 0.25 && this.reloadT <= 0 && this.state === 'ground';
+    this.scopeUp = scopeUp;
+    let zoom = 1;
+    if (this.aiming && wd) zoom = sniper ? (scopeUp ? this.scopeZoom : 1.25) : wd.zoom;
     const baseFov = 70;
     const targetFov = baseFov / zoom + (this.state === 'fall' ? (this.dive ? 20 : 10) : 0);
-    camera.fov = LS.util.lerp(camera.fov, targetFov, Math.min(1, dt * 14));
+    camera.fov = LS.util.lerp(camera.fov, targetFov, Math.min(1, dt * (sniper ? 18 : 14)));
     camera.updateProjectionMatrix();
-    const scoped = this.aiming && wd && wd.scope && camera.fov < baseFov / 2;
-    LS.HUD.setScope(scoped);
+    const scoped = scopeUp && camera.fov < baseFov / 1.8;
+    // respiração: segurar SHIFT com a luneta estabiliza a mira por alguns segundos
+    if (this.breath === undefined) { this.breath = 4; this.breathPenalty = 0; }
+    this.holding = scoped && LS.Input.keys.ShiftLeft && this.breath > 0 && this.breathPenalty <= 0;
+    if (this.holding) { this.breath -= dt; if (this.breath <= 0) this.breathPenalty = 2; }
+    else this.breath = Math.min(4, this.breath + dt * 0.6);
+    this.breathPenalty = Math.max(0, this.breathPenalty - dt);
+    LS.HUD.setScope(scoped, this.scopeZoom, this.breath / 4, this.holding);
     this.model.root.visible = this.state !== 'plane' && !scoped;
 
     let target, dist;
@@ -176,20 +189,30 @@ LS.Player = class extends LS.Fighter {
     } else {
       target = this.eyePos(new THREE.Vector3());
       target.y += this.state === 'ground' ? 0.15 : 1.5;
-      dist = this.state === 'ground' ? (this.aiming ? 1.9 : 3.4) : this.state === 'fall' ? 8 : 9;
+      dist = this.state === 'ground' ? (scopeUp ? 0 : this.aiming ? 2.6 : 3.4) : this.state === 'fall' ? 8 : 9;
+      if (scopeUp) target.y -= 0.15; // olho na luneta
       if (!this.alive) dist = 6;
-      // ombro direito
-      const side = this.state === 'ground' ? 0.75 : 0;
+      // ombro direito (centralizado ao usar a luneta)
+      this.sideK = LS.util.lerp(this.sideK === undefined ? 0.75 : this.sideK, scopeUp ? 0 : (this.state === 'ground' ? (this.aiming ? 1.0 : 0.75) : 0), Math.min(1, dt * 14));
+      const side = this.sideK;
       target.x -= Math.cos(this.camYaw) * side; target.z += Math.sin(this.camYaw) * side;
     }
-    this.camDist = LS.util.lerp(this.camDist, dist, Math.min(1, dt * 10));
-    const cp = Math.cos(this.camPitch);
-    const fwd = this.aimDir.set(Math.sin(this.camYaw) * cp, Math.sin(this.camPitch), Math.cos(this.camYaw) * cp).normalize();
+    this.camDist = LS.util.lerp(this.camDist, dist, Math.min(1, dt * (scopeUp ? 18 : 10)));
+    // balanço da luneta (respiração); menor agachado e quase nenhum segurando o fôlego
+    let yaw = this.camYaw, pitch = this.camPitch;
+    if (scoped) {
+      const tt = performance.now() * 0.001, moving = Math.hypot(this.vel.x, this.vel.z) > 0.5;
+      const amp = 0.0045 * (this.holding ? 0.1 : 1) * (this.crouch ? 0.6 : 1) * (moving ? 2.2 : 1) * (this.breathPenalty > 0 ? 1.8 : 1);
+      yaw += (Math.sin(tt * 0.9) + Math.sin(tt * 2.3) * 0.4) * amp;
+      pitch += (Math.cos(tt * 1.3) * 0.8 + Math.sin(tt * 3.1) * 0.2) * amp;
+    }
+    const cp = Math.cos(pitch);
+    const fwd = this.aimDir.set(Math.sin(yaw) * cp, Math.sin(pitch), Math.cos(yaw) * cp).normalize();
     // colisão da câmera
     const back = this._v.copy(fwd).negate();
     let d = this.camDist;
     if (this.state !== 'plane') { const hit = LS.World.raycast(target, back, this.camDist + 0.3); d = Math.min(d, hit - 0.3); }
-    d = Math.max(0.3, d);
+    d = Math.max(scopeUp ? 0 : 0.3, d);
     this.camPos.copy(target).addScaledVector(back, d);
     camera.position.copy(this.camPos);
     camera.lookAt(this._w.copy(this.camPos).add(fwd));

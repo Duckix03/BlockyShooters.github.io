@@ -1,0 +1,133 @@
+// Céu refeito: cúpula com degradê (zênite/horizonte), disco do sol com brilho, nuvens macias que se movem e estrelas no anoitecer
+'use strict';
+Object.assign(LS.World, {
+  buildSky(scene) {
+    this.hemi = new THREE.HemisphereLight(0xbfd9ff, 0x4a5a3a, 0.6);
+    scene.add(this.hemi);
+    this.ambient = new THREE.AmbientLight(0xfff2e0, 0.3); scene.add(this.ambient);
+    this.sun = new THREE.DirectionalLight(0xffffff, 0.9);
+    Object.assign(this.sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 1, far: 400 });
+    this.sun.shadow.bias = -0.0008;
+    scene.add(this.sun); scene.add(this.sun.target);
+    scene.background = new THREE.Color(0x9fd0f0);
+    scene.fog = new THREE.Fog(0x9fd0f0, LS.effDist() * 0.3, LS.effDist());
+
+    // ---- cúpula ----
+    this.skyUniforms = {
+      topColor: { value: new THREE.Color(0x2f7fd6) }, horizonColor: { value: new THREE.Color(0xbfe3ff) }, groundColor: { value: new THREE.Color(0x6a8a9a) },
+      sunDir: { value: new THREE.Vector3(0, 1, 0) }, sunColor: { value: new THREE.Color(0xfff2d0) }, sunSize: { value: 0.9993 }
+    };
+    const mat = new THREE.ShaderMaterial({
+      uniforms: this.skyUniforms, side: THREE.BackSide, depthWrite: false, fog: false,
+      vertexShader: 'varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: [
+        'uniform vec3 topColor; uniform vec3 horizonColor; uniform vec3 groundColor; uniform vec3 sunDir; uniform vec3 sunColor; uniform float sunSize;',
+        'varying vec3 vDir;',
+        'void main(){',
+        '  vec3 d = normalize(vDir); float h = d.y;',
+        '  vec3 col = h > 0.0 ? mix(horizonColor, topColor, pow(h, 0.55)) : mix(horizonColor, groundColor, min(1.0, -h * 4.0));',
+        '  float s = max(dot(d, normalize(sunDir)), 0.0);',
+        '  col += sunColor * pow(s, 8.0) * 0.35;',            // halo largo
+        '  col += sunColor * pow(s, 64.0) * 0.6;',            // brilho
+        '  col = mix(col, vec3(1.0, 0.98, 0.9) * sunColor * 1.4, smoothstep(sunSize, sunSize + 0.0004, s));', // disco
+        '  gl_FragColor = vec4(col, 1.0);',
+        '}'
+      ].join('\n')
+    });
+    this.skyDome = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), mat);
+    this.skyDome.renderOrder = -10; this.skyDome.frustumCulled = false;
+    scene.add(this.skyDome);
+
+    // ---- estrelas (aparecem no anoitecer) ----
+    const sp = [];
+    for (let i = 0; i < 700; i++) {
+      const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, r = Math.sqrt(1 - u * u);
+      if (u < 0.08) continue;
+      sp.push(Math.cos(a) * r, u, Math.sin(a) * r);
+    }
+    const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
+    this.stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0, depthWrite: false, fog: false }));
+    this.stars.renderOrder = -9; this.stars.frustumCulled = false;
+    scene.add(this.stars);
+
+    // ---- nuvens macias (sprites com textura gerada) ----
+    const tex = [];
+    for (let v = 0; v < 3; v++) {
+      const cv = document.createElement('canvas'); cv.width = 256; cv.height = 128;
+      const g = cv.getContext('2d');
+      for (let i = 0; i < 18; i++) {
+        const x = 40 + Math.random() * 176, y = 50 + Math.random() * 40 - Math.abs(x - 128) * 0.15, r = 18 + Math.random() * 30;
+        const gr = g.createRadialGradient(x, y, 0, x, y, r);
+        gr.addColorStop(0, 'rgba(255,255,255,0.95)'); gr.addColorStop(0.6, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+      }
+      // base levemente sombreada
+      const sh = g.createLinearGradient(0, 40, 0, 128); sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(60,70,90,0.35)');
+      g.globalCompositeOperation = 'source-atop'; g.fillStyle = sh; g.fillRect(0, 0, 256, 128);
+      tex.push(new THREE.CanvasTexture(cv));
+    }
+    this.clouds = [];
+    this.cloudSpan = 700;
+    for (let i = 0; i < 46; i++) {
+      const m = new THREE.SpriteMaterial({ map: tex[i % 3], transparent: true, depthWrite: false, fog: false, opacity: 0.9 });
+      const s = new THREE.Sprite(m);
+      const sc = LS.util.rand(70, 140);
+      s.scale.set(sc, sc * 0.45, 1);
+      s.userData = { x: LS.util.rand(-350, 350), z: LS.util.rand(-350, 350), y: LS.util.rand(150, 200) };
+      s.renderOrder = -8;
+      scene.add(s); this.clouds.push(s);
+    }
+    this.wind = new THREE.Vector2(3.5, 1.2);
+
+    // paleta ao longo da partida: manhã → dia → tarde → pôr do sol → anoitecer
+    this.skyKeys = [
+      { t: 0, top: 0x4a6fa5, hor: 0xf2c4a0, sun: 0xffc890, i: 0.7, night: 0 },
+      { t: 0.22, top: 0x2f7fd6, hor: 0xbfe3ff, sun: 0xfff4e0, i: 1.0, night: 0 },
+      { t: 0.7, top: 0x3a86d8, hor: 0xcfe6f5, sun: 0xfff0d8, i: 0.95, night: 0 },
+      { t: 0.88, top: 0x3b4f8a, hor: 0xff9a5a, sun: 0xff9a50, i: 0.7, night: 0.05 },
+      { t: 1, top: 0x0f1530, hor: 0x6a4a7a, sun: 0xd08060, i: 0.4, night: 0.9 }
+    ].map(k => Object.assign(k, { top: new THREE.Color(k.top), hor: new THREE.Color(k.hor), sun: new THREE.Color(k.sun) }));
+  },
+
+  updateSky(t, scene, focus, dt) {
+    t = LS.util.clamp(t, 0, 1);
+    const K = this.skyKeys;
+    let a = K[0], b = K[K.length - 1];
+    for (let i = 0; i < K.length - 1; i++) if (t >= K[i].t && t <= K[i + 1].t) { a = K[i]; b = K[i + 1]; break; }
+    const k = (t - a.t) / Math.max(0.0001, b.t - a.t), U = this.skyUniforms;
+    U.topColor.value.copy(a.top).lerp(b.top, k);
+    U.horizonColor.value.copy(a.hor).lerp(b.hor, k);
+    U.groundColor.value.copy(U.horizonColor.value).multiplyScalar(0.7);
+    U.sunColor.value.copy(a.sun).lerp(b.sun, k);
+    scene.background.copy(U.horizonColor.value);
+    scene.fog.color.copy(U.horizonColor.value).lerp(U.topColor.value, 0.15);
+    this.sun.color.copy(U.sunColor.value);
+    this.sun.intensity = LS.util.lerp(a.i, b.i, k);
+    this.hemi.intensity = 0.3 + this.sun.intensity * 0.35;
+    this.hemi.color.copy(U.topColor.value).lerp(new THREE.Color(0xffffff), 0.5);
+    // trajetória do sol (nasce, passa alto e se põe no fim da partida)
+    const ang = 0.3 + t * 2.75;
+    const dir = new THREE.Vector3(Math.cos(ang) * 0.75, Math.sin(ang), -0.45).normalize();
+    U.sunDir.value.copy(dir);
+    this.sun.position.copy(focus).addScaledVector(dir, 200);
+    this.sun.target.position.copy(focus);
+    // cúpula, estrelas e nuvens seguem a câmera
+    const cam = LS.Game && LS.Game.camera ? LS.Game.camera.position : focus;
+    const R = Math.max(200, LS.effDist() * 0.92);
+    this.skyDome.position.copy(cam); this.skyDome.scale.setScalar(R);
+    this.stars.position.copy(cam); this.stars.scale.setScalar(R * 0.98);
+    this.stars.material.opacity = LS.util.lerp(a.night, b.night, k);
+    const far = LS.Game && LS.Game.camera ? LS.Game.camera.far : 500, span = this.cloudSpan;
+    const tint = new THREE.Color(0xffffff).lerp(U.sunColor.value, 0.35).lerp(U.horizonColor.value, 0.2);
+    for (const c of this.clouds) {
+      const u = c.userData;
+      u.x += this.wind.x * dt; u.z += this.wind.y * dt;
+      // repete as nuvens em volta da câmera
+      let rx = ((u.x - cam.x) % span + span * 1.5) % span - span / 2, rz = ((u.z - cam.z) % span + span * 1.5) % span - span / 2;
+      c.position.set(cam.x + rx, u.y, cam.z + rz);
+      const dist = Math.hypot(rx, rz, u.y - cam.y);
+      c.material.opacity = 0.9 * LS.util.clamp((far * 0.95 - dist) / (far * 0.3), 0, 1);
+      c.material.color.copy(tint);
+    }
+  }
+});

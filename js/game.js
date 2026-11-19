@@ -227,7 +227,7 @@ LS.Game = {
     const focus = P.state === 'plane' ? this.plane.mesh.position : P.pos;
     LS.Loot.update(dt, focus);
     LS.Effects.update(dt);
-    LS.World.updateSky(this.time / 720, this.scene, focus, dt);
+    LS.World.updateSky(this.time / 430, this.scene, focus, dt);
     if (this.inventoryOpen && Math.floor(this.time * 4) !== Math.floor((this.time - dt) * 4)) LS.HUD.renderInventory();
     LS.HUD.update(dt, this);
     if (this.endTimer > 0) {

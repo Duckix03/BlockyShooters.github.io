@@ -152,7 +152,6 @@ LS.CharacterModel = class {
     const amp = LS.util.clamp(s.speed / 6, 0, 1) * (s.running ? 1.0 : 0.7) * (1 - ck * 0.4);
     const sw = Math.sin(this.phase) * amp;
     let lr = sw, ll = -sw;
-    if (s.air) { lr = -0.5; ll = 0.3; }
     // agachado: tronco inclinado, pernas abertas para trás/frente
     lr += ck * 0.5; ll -= ck * 0.5;
     this.legR.rotation.x = lr; this.legL.rotation.x = ll;
@@ -170,6 +169,20 @@ LS.CharacterModel = class {
       const idle = s.idle ? Math.sin(performance.now() * 0.002) * 0.05 : 0;
       this.armR.rotation.set(-sw * 0.9 - t * 0.5, 0, 0.05 + idle); this.armL.rotation.set(sw * 0.9 - t * 0.5, 0, -0.05 - idle);
     }
-    this.headG.rotation.x = -pitch * 0.6 - t * 0.6;
+    // ---- pulo: subida com joelho à frente, descida com pernas esticadas e braços abertos ----
+    this.airK = LS.util.lerp(this.airK || 0, s.air ? 1 : 0, Math.min(1, dt * (s.air ? 14 : 18)));
+    if (this.airK > 0.01) {
+      const vy = s.vy || 0, up = LS.util.clamp((vy + 2) / 6, 0, 1), a = this.airK, L = LS.util.lerp;
+      const pr = L(-0.35, -1.05, up), pl = L(-0.12, 0.4, up);           // pernas
+      this.legR.rotation.x = L(this.legR.rotation.x, pr, a); this.legL.rotation.x = L(this.legL.rotation.x, pl, a);
+      this.legR.rotation.z = 0.12 * a; this.legL.rotation.z = -0.12 * a;
+      this.torso.rotation.x = L(this.torso.rotation.x, L(0.12, -0.1, up), a);
+      if (!(s.armed && (!s.running || s.armedAim))) {                    // braços livres
+        const az = L(1.15, 0.7, up), ax = L(-0.25, -0.55, up);
+        this.armR.rotation.set(L(this.armR.rotation.x, ax, a), 0, L(this.armR.rotation.z, az, a));
+        this.armL.rotation.set(L(this.armL.rotation.x, ax, a), 0, L(this.armL.rotation.z, -az, a));
+      }
+    } else { this.legR.rotation.z = 0; this.legL.rotation.z = 0; }
+    this.headG.rotation.x = -pitch * 0.6 - this.torso.rotation.x * 0.6;
   }
 };

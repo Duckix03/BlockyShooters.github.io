@@ -58,7 +58,13 @@ LS.HUD = {
     this.el['dmg-indicators'].appendChild(d);
     setTimeout(() => d.remove(), 900);
   },
-  setScope(on) { this.el.scope.classList.toggle('on', on); this.el.crosshair.style.display = on ? 'none' : ''; },
+  setScope(on, zoom, breath, holding) {
+    if (this.scopeOn !== on) { this.el.scope.classList.toggle('on', on); this.el.crosshair.style.display = on ? 'none' : ''; this.scopeOn = on; }
+    if (on) {
+      this.$('scope-zoom').textContent = (zoom || 1).toFixed(1) + 'x';
+      const bf = this.$('breath-fill'); bf.style.width = Math.round((breath || 0) * 100) + '%'; bf.classList.toggle('hold', !!holding);
+    }
+  },
 
   update(dt, G) {
     const P = G.player, E = this.el;
@@ -93,6 +99,7 @@ LS.HUD = {
     const gap = 6 + (d ? d.spread * 300 : 4) * (P.aiming ? 0.5 : 1) * (moving ? 1.6 : 1) * (P.crouch ? 0.75 : 1) + P.recoilKick * 1.5;
     E.crosshair.style.setProperty('--gap', gap.toFixed(1) + 'px');
     E.crosshair.style.visibility = P.state === 'ground' && P.alive ? 'visible' : 'hidden';
+    E.crosshair.classList.toggle('ads', !!(P.aiming && d && !d.scope)); // mira de ponto ao aproximar
     // cura
     if (P.healType) {
       E['heal-progress'].classList.remove('hidden');
