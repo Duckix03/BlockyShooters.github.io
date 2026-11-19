@@ -9,10 +9,11 @@ Object.assign(LS.World, {
   },
   // caixa visual (+ colisor opcional). cx,cz = centro; y0 = base
   // as caixas são agrupadas por cor e viram InstancedMesh (poucas draw calls)
-  box(scene, cx, y0, cz, w, h, d, color, collide = true, shadow = true) {
+  // tex (opcional): textura da parede ('plaster', 'planks', 'brick')
+  box(scene, cx, y0, cz, w, h, d, color, collide = true, shadow = true, tex) {
     if (!this.boxBatches) this.boxBatches = {};
-    const key = color + (shadow ? 's' : 'n');
-    if (!this.boxBatches[key]) this.boxBatches[key] = { color, shadow, mats: [] };
+    const key = color + (shadow ? 's' : 'n') + (tex || '');
+    if (!this.boxBatches[key]) this.boxBatches[key] = { color, shadow, tex, mats: [] };
     this.boxBatches[key].mats.push(new THREE.Matrix4().compose(new THREE.Vector3(cx, y0, cz), new THREE.Quaternion(), new THREE.Vector3(w, h, d)));
     if (collide === true) this.addCollider(cx - w / 2, y0, cz - d / 2, cx + w / 2, y0 + h, cz + d / 2);
   },
@@ -27,7 +28,7 @@ Object.assign(LS.World, {
     if (!this.unitBox) { this.unitBox = new THREE.BoxGeometry(1, 1, 1); this.unitBox.translate(0, 0.5, 0); }
     for (const k in this.boxBatches) {
       const bt = this.boxBatches[k];
-      const mat = bt.color === LS.GLASS ? new THREE.MeshPhongMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.32, shininess: 120, depthWrite: false, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }) : this.mat(bt.color);
+      const mat = bt.color === LS.GLASS ? new THREE.MeshPhongMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.32, shininess: 120, depthWrite: false, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }) : bt.tex ? LS.Tex.material(bt.color, bt.tex) : this.mat(bt.color);
       const im = new THREE.InstancedMesh(this.unitBox, mat, bt.mats.length);
       bt.mats.forEach((mm, i) => im.setMatrixAt(i, mm));
       im.castShadow = bt.shadow; im.receiveShadow = true; im.frustumCulled = false;
@@ -70,7 +71,7 @@ Object.assign(LS.World, {
   tower(scene, cx, cz, w, d) {
     const y0 = this.heightAt(cx, cz) - 0.1, h = LS.util.rand(9, 22);
     const col = LS.util.pick([0x9aa3ad, 0xc4b8a8, 0x7d8a96, 0xb0a090]);
-    this.box(scene, cx, y0, cz, w, h, d, col);
+    this.box(scene, cx, y0, cz, w, h, d, col, true, true, 'plaster');
     for (let y = 2; y < h - 1; y += 3) { // faixas de janelas
       this.box(scene, cx, y0 + y, cz, w + 0.16, 1.1, d + 0.16, 0x2b3a4a, false, false);
     }
@@ -150,8 +151,8 @@ Object.assign(LS.World, {
     const roundGeo = new THREE.IcosahedronGeometry(1, 0);
     const MAXT = 700;
     const trunks = new THREE.InstancedMesh(trunkGeo, this.mat(0x5a3d22), MAXT);
-    const pines = new THREE.InstancedMesh(leafGeo, this.mat(0x2f6b2a), MAXT);
-    const rounds = new THREE.InstancedMesh(roundGeo, this.mat(0x4a8a30), MAXT);
+    const pines = new THREE.InstancedMesh(leafGeo, LS.Tex.material(0x2f6b2a, 'leaves'), MAXT);
+    const rounds = new THREE.InstancedMesh(roundGeo, LS.Tex.material(0x4a8a30, 'leaves'), MAXT);
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
     let nt = 0, np = 0, nr = 0; tries = 0;
     while (nt < MAXT && tries++ < 6000) {
@@ -190,7 +191,7 @@ Object.assign(LS.World, {
     q.identity();
     rocks.count = nk; rocks.frustumCulled = false; rocks.castShadow = true; rocks.receiveShadow = true; scene.add(rocks);
     // ---- arbustos (sem colisão, bons para se esconder) ----
-    const bushes = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), this.mat(0x3d7a2a), 400);
+    const bushes = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), LS.Tex.material(0x3d7a2a, 'leaves'), 400);
     let nb = 0; tries = 0;
     while (nb < 400 && tries++ < 4000) {
       const x = LS.util.rand(-330, 330), z = LS.util.rand(-330, 330), h = this.heightAt(x, z);

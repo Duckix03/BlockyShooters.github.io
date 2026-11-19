@@ -31,6 +31,7 @@
 <div id="info"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="js/housekit.js"></script>
+<script src="js/textures.js"></script>
 <script>
 'use strict';
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -58,7 +59,7 @@ function build() {
   const m = LS.HouseKit.build({ w, d, twoStory: opts.twoStory, kind: opts.kind });
   const extra = opts.kind === 'fazenda' ? LS.HouseKit.fence(m, () => -0.1) : [];
   for (const b of m.boxes.concat(extra)) {
-    const mesh = new THREE.Mesh(unit, mat(b.color));
+    const mesh = new THREE.Mesh(unit, b.tex ? LS.Tex.material(b.color, b.tex) : mat(b.color));
     mesh.position.set(b.x, b.y, b.z); mesh.scale.set(b.w, b.h, b.d);
     mesh.castShadow = b.shadow; mesh.receiveShadow = true;
     if (Math.abs(b.z - m.d / 2) < 0.2 && b.d < 0.5) frontWall.push(mesh);
@@ -70,6 +71,8 @@ function build() {
   g.computeVertexNormals();
   roofMesh = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }));
   roofMesh.castShadow = true; roofMesh.receiveShadow = true; group.add(roofMesh);
+  const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(m.gables.pos, 3)); gg.setAttribute('color', new THREE.Float32BufferAttribute(m.gables.col, 3)); gg.computeVertexNormals();
+  const gm = new THREE.Mesh(gg, LS.Tex.material(0xffffff, m.wallTex, true)); gm.material.side = THREE.DoubleSide; gm.castShadow = gm.receiveShadow = true; roofMesh.add(gm);
   colGroup = new THREE.Group(); colGroup.visible = document.getElementById('b-col').classList.contains('on');
   const all = m.boxes.concat(extra).filter(b => b.collide).map(b => ({ minX: b.x - b.w / 2, maxX: b.x + b.w / 2, minY: b.y, maxY: b.y + b.h, minZ: b.z - b.d / 2, maxZ: b.z + b.d / 2 })).concat(m.colliders);
   for (const c of all) {

@@ -52,6 +52,9 @@ LS.HouseKit = {
     const c3 = hex => { const c = new THREE.Color(hex); return [c.r, c.g, c.b]; };
     const tri = (a, b, c, hex) => { const k = c3(hex); out.tris.pos.push(...a, ...b, ...c); out.tris.col.push(...k, ...k, ...k); };
     const quad = (a, b, c, e, hex) => { tri(a, b, c, hex); tri(a, c, e, hex); };
+    const wallTex = kind === 'galpao' ? 'planks' : kind === 'loja' ? 'brick' : 'plaster';
+    out.wallTex = wallTex; out.gables = { pos: [], col: [] }; // oitões ficam numa malha à parte (com a textura da parede)
+    const gtri = (a, b, c, hex) => { const k = c3(hex); out.gables.pos.push(...a, ...b, ...c); out.gables.col.push(...k, ...k, ...k); };
 
     // caixa em coordenadas da parede: u = ao longo da parede, n = normal (+z na parede 'x', +x na parede 'z')
     const wb = (axis, xc, y0, zc, u0, u1, yb, yt, n0, n1, col, collide = false, shadow = true) => {
@@ -227,7 +230,7 @@ LS.HouseKit = {
     for (const e of [1, -1]) for (const f of [h2, -h2]) {
       if (e === frontE) continue;
       const x = e * (L / 2) + f;
-      tri(P(x, top, -S / 2 - h2), P(x, top, S / 2 + h2), P(x, ridge, 0), wallCol);
+      gtri(P(x, top, -S / 2 - h2), P(x, top, S / 2 + h2), P(x, ridge, 0), wallCol);
     }
     if (kind === 'loja') { // fachada falsa (2 cm mais grossa que a parede) + placa
       const fTop = ridge + th + 0.35;
@@ -252,6 +255,7 @@ LS.HouseKit = {
       box(px, base + ch, pz, 0.84, 0.12, 0.84, 0x5a3a2a, false); // topo da chaminé
     }
     out.colliders.push({ minX: -w / 2 - 0.2, minY: top, minZ: -d / 2 - 0.2, maxX: w / 2 + 0.2, maxY: top + r * 0.6, maxZ: d / 2 + 0.2 });
+    for (const b of out.boxes) if (b.color === wallCol) b.tex = wallTex;
     out.top = top; out.ridge = ridge; out.doorPos = doorPos;
     return out;
   },
