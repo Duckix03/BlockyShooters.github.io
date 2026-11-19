@@ -77,22 +77,30 @@ LS.HUD = {
     E['hp-num'].textContent = Math.ceil(P.hp);
     const vd = P.vest.level ? LS.GEAR.vest.levels[P.vest.level].dur : 1;
     E['armor-fill'].style.width = (P.vest.level ? P.vest.dur / vd * 100 : 0) + '%';
-    const gear = (el, lv, dur, max) => { el.className = 'gear-item' + (lv ? ' l' + lv : ''); el.querySelector('span').textContent = lv ? 'Nv.' + lv + (max ? ' ' + Math.ceil(dur / max * 100) + '%' : '') : '-'; };
-    gear(E['gear-vest'], P.vest.level, P.vest.dur, vd);
-    gear(E['gear-helmet'], P.helmet.level, P.helmet.dur, P.helmet.level ? LS.GEAR.helmet.levels[P.helmet.level].dur : 1);
-    gear(E['gear-bag'], P.bag, 0, 0);
+    // ícones gerados por código: só troca a imagem quando o item muda
+    const setImg = (img, src) => { if (img.dataset.k !== src) { img.dataset.k = src; img.src = src || ''; } };
+    const gear = (el, kind, lv, dur, max) => {
+      el.className = 'gear-item' + (lv ? ' l' + lv : ''); el.querySelector('span').textContent = lv ? 'Nv.' + lv + (max ? ' ' + Math.ceil(dur / max * 100) + '%' : '') : '-';
+      setImg(el.querySelector('img'), LS.Icons.get(kind, null, lv || 1));
+    };
+    gear(E['gear-vest'], 'vest', P.vest.level, P.vest.dur, vd);
+    gear(E['gear-helmet'], 'helmet', P.helmet.level, P.helmet.dur, P.helmet.level ? LS.GEAR.helmet.levels[P.helmet.level].dur : 1);
+    gear(E['gear-bag'], 'bag', P.bag, 0, 0);
+    if (!this.medIcons) { this.medIcons = true; setImg(this.$('ico-medkit'), LS.Icons.get('med', 'medkit')); setImg(this.$('ico-bandage'), LS.Icons.get('med', 'bandage')); }
     E['med-count'].textContent = P.meds.medkit; E['band-count'].textContent = P.meds.bandage;
     // armas
     for (let i = 0; i < 2; i++) {
       const w = P.weapons[i], s = E['slot-' + i];
       s.classList.toggle('active', i === P.slot && !!w);
       s.querySelector('.name').textContent = w ? LS.WEAPONS[w.id].name : 'VAZIO';
+      const wi = s.querySelector('.wi'); wi.classList.toggle('on', !!w); if (w) setImg(wi, LS.Icons.get('weapon', w.id));
     }
     const w = P.weapon(), d = P.wdef();
     E['weapon-name'].textContent = d ? d.name + ' · ' + d.cat.toUpperCase() : 'DESARMADO';
     E['ammo-mag'].textContent = w ? w.mag : '-';
     E['ammo-mag'].classList.toggle('empty', !!w && w.mag === 0);
     E['ammo-res'].textContent = d ? P.ammo[d.ammo] : '-';
+    const ai = this.$('ammo-ico'); ai.classList.toggle('on', !!d); if (d) setImg(ai, LS.Icons.get('ammo', d.ammo));
     E['reload-text'].classList.toggle('hidden', P.reloadT <= 0);
     // mira dinâmica
     const moving = Math.hypot(P.vel.x, P.vel.z) > 1;
@@ -182,25 +190,25 @@ LS.HUD = {
     P.weapons.forEach((w, i) => {
       if (!w) { h += '<div class="inv-item"><span>Slot ' + (i + 1) + ': vazio</span></div>'; return; }
       const d = LS.WEAPONS[w.id];
-      h += '<div class="inv-item"><span>' + (i === P.slot ? '▶ ' : '') + '<b>' + d.name + '</b><span class="sub">' + d.cat + ' · Dano ' + d.dmg + (d.pellets > 1 ? 'x' + d.pellets : '') +
-        ' · ' + d.rate + ' tiros/s · ' + w.mag + '/' + d.mag + ' · ' + LS.AMMO_TYPES[d.ammo].name + '</span></span><span class="btns">' +
+      h += '<div class="inv-item"><span>' + LS.Icons.img('weapon', w.id) + '<span>' + (i === P.slot ? '▶ ' : '') + '<b>' + d.name + '</b><span class="sub">' + LS.Items.RARITY_NAMES[d.rarity] + ' · ' + d.cat + ' · Dano ' + d.dmg + (d.pellets > 1 ? 'x' + d.pellets : '') +
+        ' · ' + d.rate + ' tiros/s · ' + w.mag + '/' + d.mag + ' · ' + LS.AMMO_TYPES[d.ammo].name + '</span></span></span><span class="btns">' +
         (i !== P.slot ? '<button data-inv="equip" data-v="' + i + '">EQUIPAR</button>' : '<button data-inv="reload">RECARREGAR</button>') +
         '<button class="sec" data-inv="dropw" data-v="' + i + '">LARGAR</button></span></div>';
     });
     E['inv-weapons'].innerHTML = h;
     h = '';
-    for (const t in P.ammo) h += '<div class="inv-item"><span>' + LS.AMMO_TYPES[t].name + '<span class="sub">' + P.ammo[t] + ' / ' + P.maxAmmo(t) + '</span></span>' +
+    for (const t in P.ammo) h += '<div class="inv-item"><span>' + LS.Icons.img('ammo', t) + '<span>' + LS.AMMO_TYPES[t].name + '<span class="sub">' + P.ammo[t] + ' / ' + P.maxAmmo(t) + '</span></span></span>' +
       (P.ammo[t] > 0 ? '<button class="sec" data-inv="dropa" data-v="' + t + '">LARGAR</button>' : '') + '</div>';
     E['inv-ammo'].innerHTML = h;
     const lv = l => l ? 'Nível ' + l : 'Nenhum';
     E['inv-gear'].innerHTML =
-      '<div class="inv-item"><span>🦺 Colete<span class="sub">' + lv(P.vest.level) + (P.vest.level ? ' · ' + Math.ceil(P.vest.dur) + ' durabilidade · -' + LS.GEAR.vest.levels[P.vest.level].red * 100 + '% dano' : '') + '</span></span></div>' +
-      '<div class="inv-item"><span>⛑ Capacete<span class="sub">' + lv(P.helmet.level) + (P.helmet.level ? ' · ' + Math.ceil(P.helmet.dur) + ' durabilidade' : '') + '</span></span></div>' +
-      '<div class="inv-item"><span>🎒 Mochila<span class="sub">' + lv(P.bag) + ' · capacidade x' + P.bagMult() + '</span></span></div>';
+      '<div class="inv-item"><span>' + LS.Icons.img('vest', null, P.vest.level || 1, P.vest.level ? 'ico' : 'ico off') + '<span>Colete<span class="sub">' + lv(P.vest.level) + (P.vest.level ? ' · ' + Math.ceil(P.vest.dur) + ' durabilidade · -' + LS.GEAR.vest.levels[P.vest.level].red * 100 + '% dano' : '') + '</span></span></span></div>' +
+      '<div class="inv-item"><span>' + LS.Icons.img('helmet', null, P.helmet.level || 1, P.helmet.level ? 'ico' : 'ico off') + '<span>Capacete<span class="sub">' + lv(P.helmet.level) + (P.helmet.level ? ' · ' + Math.ceil(P.helmet.dur) + ' durabilidade' : '') + '</span></span></span></div>' +
+      '<div class="inv-item"><span>' + LS.Icons.img('bag', null, P.bag || 1, P.bag ? 'ico' : 'ico off') + '<span>Mochila<span class="sub">' + lv(P.bag) + ' · capacidade x' + P.bagMult() + '</span></span></span></div>';
     h = '';
     for (const t in P.meds) {
       const m = LS.MEDS[t];
-      h += '<div class="inv-item"><span>' + m.name + '<span class="sub">' + P.meds[t] + ' / ' + P.maxMed(t) + ' · +' + m.heal + ' HP · ' + m.time + 's</span></span><span class="btns">' +
+      h += '<div class="inv-item"><span>' + LS.Icons.img('med', t) + '<span>' + m.name + '<span class="sub">' + P.meds[t] + ' / ' + P.maxMed(t) + ' · +' + m.heal + ' HP · ' + m.time + 's</span></span></span><span class="btns">' +
         (P.meds[t] > 0 ? '<button data-inv="heal" data-v="' + t + '">USAR</button><button class="sec" data-inv="dropm" data-v="' + t + '">LARGAR</button>' : '') + '</span></div>';
     }
     E['inv-meds'].innerHTML = h;
