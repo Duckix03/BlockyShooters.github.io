@@ -164,8 +164,7 @@ LS.HouseKit = {
     const dx = nx ? nx * w / 2 : doorPos, dz = nz ? nz * d / 2 : doorPos;
     const onDoor = (u0, u1, yb, yt, n0, n1, col, collide = false, shadow = true) => wb(D.axis, D.xc, 0, D.zc, u0, u1, yb, yt, D.out * n0, D.out * n1, col, collide, shadow);
 
-    if (kind === 'casa') { // toldo + degrau (ambos entram 2 cm na parede: nada encosta no mesmo plano)
-      onDoor(doorPos - 1.0, doorPos + 1.0, 2.6, 2.72, h2 - 0.02, h2 + 1.18, roofCol);
+    if (kind === 'casa') { // degrau (entra na soleira: nada encosta no mesmo plano)
       onDoor(doorPos - 0.9, doorPos + 0.9, -0.15, 0.0, h2 - 0.05, h2 + 0.88, 0x8a8a8a, false, false);
     } else if (kind === 'loja') { // toldo largo listrado + degrau
       const awn = K.pick(ST.awnings);
@@ -207,18 +206,18 @@ LS.HouseKit = {
       ring(slabY - 0.06, y1 + 0.06, 0.05, trimCol); // faixa entre andares: anel externo, não um bloco maciço
       out.loot.push({ x: K.rand(-w / 2 + 1.5, w / 2 - 1.5), y: y1 + 0.05, z: K.rand(0.5, d / 2 - 1.2) });
       out.loot.push({ x: K.rand(-w / 2 + 1.5, w / 2 - 1.5), y: y1 + 0.05, z: K.rand(0.5, d / 2 - 1.2) });
-      this.furniture(box, w / 2 - 1.4, y1, d / 2 - 1.1, K.pick(['cama', 'estante', 'caixas']));
+      this.furniture(box, w / 2 - 1.4, y1, d / 2 - 1.1, K.pick(['cama', 'estante', 'caixas']), 1);
       top = y1 + H2;
     }
-    // cantoneiras (6 cm para fora, escondem os encontros das paredes e dos anéis)
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(sx * w / 2, 0, sz * d / 2, t + 0.12, top - 0.03, t + 0.12, trimCol, false);
+    // cantoneiras: só do lado de fora (6 cm), por dentro ficam escondidas na parede (sem "poste" no canto do cômodo)
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(sx * (w / 2 + 0.05), 0, sz * (d / 2 + 0.05), t + 0.02, top - 0.03, t + 0.02, trimCol, false);
 
     // ---- móveis (cantos longe da porta e da escada) ----
     const kinds = { casa: ['cama', 'mesa', 'sofá', 'estante', 'geladeira', 'caixas'], fazenda: ['cama', 'mesa', 'sofá', 'estante', 'fogão', 'caixas'],
       loja: ['prateleira', 'prateleira', 'geladeira', 'caixas'], galpao: ['feno', 'feno', 'caixas', 'barril'] }[kind];
     const corners = [[-1, 1], [1, 1], [1, -1], [-1, -1]].filter(([sx, sz]) => !(twoStory && sz === -1) && !(nx && sx === nx) && !(nz && sz === nz));
     corners.sort(() => Math.random() - 0.5).slice(0, 2 + (Math.random() < 0.4 ? 1 : 0))
-      .forEach(([sx, sz]) => this.furniture(box, sx * (w / 2 - 1.3), 0, sz * (d / 2 - 1.0), K.pick(kinds)));
+      .forEach(([sx, sz]) => this.furniture(box, sx * (w / 2 - 1.3), 0, sz * (d / 2 - 1.0), K.pick(kinds), sz));
     if (kind === 'loja') this.furniture(box, -nx * (w / 2 - 2.2), 0, -nz * (d / 2 - 2.0), 'balcão');
     for (let i = 0; i < 2 + (Math.random() < 0.5 ? 1 : 0); i++) out.loot.push({ x: K.rand(-w / 2 + 1.3, w / 2 - 1.3), y: 0.1, z: K.rand(0, d / 2 - 1.3) });
 
@@ -249,6 +248,12 @@ LS.HouseKit = {
       const sw = Math.min(3.2, D.half * 2 - 1.2);
       onDoor(-sw / 2, sw / 2, H1 + 0.35, H1 + 1.15, h2 + 0.02, h2 + 0.1, trimCol);
       onDoor(-sw / 2 + 0.12, sw / 2 - 0.12, H1 + 0.47, H1 + 1.03, h2 + 0.1, h2 + 0.13, K.pick([0xf2efe6, 0xffd24a, 0x9fe0ff]), false, false);
+    }
+    // vigas aparentes segurando o beiral das empenas (cumeeira + duas terças), encaixadas logo abaixo do forro
+    if (kind !== 'loja') for (const e of [1, -1]) for (const n of [0, -(S / 2 - 0.45), S / 2 - 0.45]) {
+      const yTop = ridge - (Math.abs(n) + 0.06) * tanA - 0.01, a0 = L / 2 - 0.05, a1 = hl - 0.06;
+      const [x0, , z0] = P(e * (a0 + a1) / 2, 0, n), lw = a1 - a0;
+      box(x0, yTop - 0.16, z0, alongX ? lw : 0.12, 0.16, alongX ? 0.12 : lw, trimCol, false);
     }
     // chaminé apoiada no telhado (não atravessa o forro)
     if ((kind === 'casa' || kind === 'fazenda') && Math.random() < 0.6) {
@@ -291,11 +296,11 @@ LS.HouseKit = {
     return out;
   },
 
-  furniture(box, x, y0, z, kind) {
-    const wood = 0x7a5232, dark = 0x4a3222;
-    if (kind === 'cama') { box(x, y0, z, 2.0, 0.45, 1.1, wood); box(x, y0 + 0.45, z, 1.9, 0.15, 1.0, 0xe8e8f0, false); box(x - 0.7, y0 + 0.6, z, 0.4, 0.12, 0.8, 0xffffff, false); }
+  furniture(box, x, y0, z, kind, face = -1) {
+    const wood = 0x7a5232, dark = 0x4a3222, f = face >= 0 ? 1 : -1;
+    if (kind === 'cama') { box(x, y0, z, 2.0, 0.45, 1.1, wood); box(x, y0 + 0.45, z, 1.9, 0.15, 1.0, 0xe8e8f0, false); box(x - 0.7, y0 + 0.6, z, 0.4, 0.12, 0.8, 0xffffff, false); box(x - 0.98, y0, z, 0.1, 0.95, 1.18, dark); } // cabeceira
     else if (kind === 'mesa') { box(x, y0 + 0.7, z, 1.4, 0.08, 0.9, wood); box(x, y0, z, 0.15, 0.7, 0.15, dark); box(x + 0.85, y0, z, 0.45, 0.5, 0.45, dark); }
-    else if (kind === 'sofá') { box(x, y0, z, 1.9, 0.45, 0.85, 0x7a3a3a); box(x, y0 + 0.45, z - 0.33, 1.9, 0.5, 0.2, 0x6a2a2a, false); }
+    else if (kind === 'sofá') { box(x, y0, z, 1.9, 0.45, 0.85, 0x7a3a3a); box(x, y0 + 0.45, z + f * 0.33, 1.9, 0.5, 0.2, 0x6a2a2a, false); }
     else if (kind === 'estante') box(x, y0, z, 1.1, 2.0, 0.45, dark);
     else if (kind === 'geladeira') box(x, y0, z, 0.8, 1.8, 0.7, 0xeeeeee);
     else if (kind === 'fogão') { box(x, y0, z, 0.8, 0.9, 0.7, 0x3a3a3a); box(x, y0 + 0.9, z, 0.7, 0.04, 0.6, 0x1a1a1a, false); }

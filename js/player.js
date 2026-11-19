@@ -49,6 +49,16 @@ LS.Fighter.prototype.physics = function (dt, wish, opts) {
     p.y = g; v.y = 0; this.onGround = true;
   } else if (this.onGround && p.y - g < 0.6 && v.y <= 0) { p.y = g; v.y = 0; } // desce rampas sem "voar"
   else this.onGround = false;
+  // escalar pedras: andando contra uma pedra, sobe por ela até o topo (como no Roblox)
+  this.climbing = false;
+  if (!swimming && (wish.x || wish.z)) for (const b of W.nearBoxes(p.x, p.z, R + 1)) {
+    if (!b.climb || p.y >= b.maxY - 0.05 || b.maxY - p.y > 3.4) continue;
+    const cx = LS.util.clamp(p.x, b.minX, b.maxX), cz = LS.util.clamp(p.z, b.minZ, b.maxZ), dx = cx - p.x, dz = cz - p.z, dist = Math.hypot(dx, dz);
+    if (dist > R + 0.12 || (dist > 1e-3 && (dx * wish.x + dz * wish.z) / dist < 0.35)) continue;
+    v.y = Math.max(v.y, 4.2); this.climbing = true; this.onGround = false;
+    if (b.maxY - p.y < 0.6) { v.x += wish.x * 2; v.z += wish.z * 2; } // empurrãozinho para subir na beirada
+    break;
+  }
   // bate a cabeça em tetos
   for (const b of W.nearBoxes(p.x, p.z, 1)) {
     if (p.x > b.minX && p.x < b.maxX && p.z > b.minZ && p.z < b.maxZ && p.y + 1.8 > b.minY && p.y < b.minY && v.y > 0) { v.y = 0; p.y = b.minY - 1.8; }
@@ -194,8 +204,12 @@ LS.Player = class extends LS.Fighter {
       if (!this.alive) dist = 6;
       // ombro direito (centralizado ao usar a luneta)
       this.sideK = LS.util.lerp(this.sideK === undefined ? 0.75 : this.sideK, scopeUp ? 0 : (this.state === 'ground' ? (this.aiming ? 1.0 : 0.75) : 0), Math.min(1, dt * 14));
-      const side = this.sideK;
-      target.x -= Math.cos(this.camYaw) * side; target.z += Math.sin(this.camYaw) * side;
+      // o ponto do ombro não pode atravessar parede (senão a câmera "vê" através dela, tipo shift lock)
+      const sx = -Math.cos(this.camYaw), sz = Math.sin(this.camYaw), sdir = this._s || (this._s = new THREE.Vector3());
+      sdir.set(sx, 0, sz);
+      let side = this.sideK;
+      if (side > 0.01) side = Math.max(0, Math.min(side, LS.World.raycast(target, sdir, side + 0.4) - 0.4));
+      target.x += sx * side; target.z += sz * side;
     }
     this.camDist = LS.util.lerp(this.camDist, dist, Math.min(1, dt * (scopeUp ? 18 : 10)));
     // balanço da luneta (respiração); menor agachado e quase nenhum segurando o fôlego
@@ -214,6 +228,12 @@ LS.Player = class extends LS.Fighter {
     if (this.state !== 'plane') { const hit = LS.World.raycast(target, back, this.camDist + 0.45); d = Math.min(d, hit - 0.45); } // folga > near (0,25) da câmera
     d = Math.max(scopeUp ? 0 : 0.3, d);
     this.camPos.copy(target).addScaledVector(back, d);
+    // a câmera é uma esfera de 0,32 m: se encostar numa parede de lado (o raio passa raspando), aproxima até sair
+    // (de costas colado na parede ela pode ir até a cabeça do boneco, nunca para o outro lado)
+    if (this.state !== 'plane' && !scopeUp) {
+      const W = LS.World, cp = this.camPos;
+      while (d > 0.05 && W.sphereHits(cp.x, cp.y, cp.z, 0.32)) { d = Math.max(0.05, d - 0.15); cp.copy(target).addScaledVector(back, d); }
+    }
     camera.position.copy(this.camPos);
     camera.lookAt(this._w.copy(this.camPos).add(fwd));
   }
