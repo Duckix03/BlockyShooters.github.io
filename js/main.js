@@ -50,7 +50,8 @@ LS.UI = {
   onAction(a) {
     LS.Audio.init(); LS.Audio.click();
     switch (a) {
-      case 'play': LS.Game.state = 'menu'; LS.Input.enabled = false; LS.Input.unlock(); LS.Lobby.open(); break;
+      case 'play': if (LS.Game.state !== 'menu' && LS.Game.state !== 'lobby') LS.Game.quitToMenu(); LS.Lobby.startSearch(); break;
+      case 'customize': LS.Lobby.open(); break;
       case 'lobby-start': LS.Lobby.startSearch(); break;
       case 'lobby-cancel': LS.Lobby.cancelSearch(); break;
       case 'lobby-random': LS.Lobby.random(); break;
@@ -76,6 +77,7 @@ window.addEventListener('load', () => {
     return;
   }
   LS.Game.init();
+  LS.Lobby.build();
   LS.UI.bindSettings();
   LS.UI.updateMenuStats();
   document.querySelectorAll('[data-action]').forEach(b => b.addEventListener('click', () => LS.UI.onAction(b.dataset.action)));

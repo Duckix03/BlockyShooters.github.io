@@ -28,11 +28,11 @@ LS.Lobby = {
     this.ring = ring;
     // árvores e caixas decorativas
     const trunk = M(0x5a3d22), leaf = M(0x3d7a2a);
-    [[-4, -3], [4.5, -2.5], [-3, 3.8]].forEach(([x, z]) => {
+    [[-4.5, -4], [4.5, -2.5], [-6, -1]].forEach(([x, z]) => {
       const t = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2.4, 0.5), trunk); t.position.set(x, 1.2, z); t.castShadow = true; sc.add(t);
       const l = new THREE.Mesh(new THREE.BoxGeometry(2, 1.6, 2), leaf); l.position.set(x, 2.8, z); l.castShadow = true; sc.add(l);
     });
-    [[2.6, 1.8, 0xb03a2e], [3.2, 0.9, 0xc98a1e], [-2.8, -1.2, 0x2e6bb0]].forEach(([x, z, c]) => {
+    [[2.6, 1.8, 0xb03a2e], [3.2, 0.9, 0xc98a1e], [-3.6, -2.4, 0x2e6bb0]].forEach(([x, z, c]) => {
       const b = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), M(c)); b.position.set(x, 0.4, z); b.rotation.y = Math.random(); b.castShadow = true; sc.add(b);
     });
     // personagem do jogador
@@ -49,10 +49,15 @@ LS.Lobby = {
     document.getElementById('lobby').addEventListener('mousedown', e => {
       if (LS.Game.state === 'lobby' && (e.target.id === 'lobby' || e.target.classList.contains('lobby-hint'))) { this.dragging = true; this.lastX = e.clientX; }
     });
+    document.getElementById('menu-main').addEventListener('mousedown', e => {
+      if (LS.Game.state === 'menu' && !e.target.closest('button')) { this.dragging = true; this.lastX = e.clientX; }
+    });
     window.addEventListener('mouseup', () => { this.dragging = false; });
     window.addEventListener('mousemove', e => { if (this.dragging) { this.rotY += (e.clientX - this.lastX) * 0.01; this.lastX = e.clientX; } });
     window.addEventListener('resize', () => { this.camera.aspect = window.innerWidth / window.innerHeight; this.camera.updateProjectionMatrix(); });
+    document.body.appendChild(document.getElementById('lobby-mm'));
     this.buildUI();
+    this.syncUI();
   },
 
   buildUI() {
@@ -83,6 +88,7 @@ LS.Lobby = {
       row.querySelectorAll('[data-v]').forEach(el => el.classList.toggle('sel', el.dataset.v === look[row.dataset.key]));
     });
     document.getElementById('lobby-name').value = LS.playerProfile.name;
+    document.getElementById('menu-player-name').textContent = LS.playerProfile.name;
     const s = LS.stats;
     document.getElementById('lobby-stats').textContent = '🏆 ' + s.wins + ' vitórias  ·  💀 ' + s.kills + ' abates  ·  🎮 ' + s.games + ' partidas';
   },
@@ -121,8 +127,11 @@ LS.Lobby = {
     this.ring.material.color.setHSL(0.07, 1, 0.5 + Math.sin(t * 3) * 0.1);
     // câmera: personagem à direita do painel
     const aspect = window.innerWidth / window.innerHeight;
-    this.camera.position.set(-1.1, 1.6, 6.4 / Math.min(1, aspect / 1.5));
-    this.camera.lookAt(-1.1, 0.95, 0);
+    const inMenu = LS.Game.state === 'menu';
+    const tx = inMenu ? -2.4 : -1.1, dist = (inMenu ? 7.2 : 6.4) / Math.min(1, aspect / 1.5);
+    this.camX = LS.util.lerp(this.camX === undefined ? tx : this.camX, tx, Math.min(1, dt * 4));
+    this.camera.position.set(this.camX, 1.6, dist);
+    this.camera.lookAt(this.camX, 0.95, 0);
     if (this.searching) {
       this.mmT -= dt;
       if (this.mmT <= 0) {

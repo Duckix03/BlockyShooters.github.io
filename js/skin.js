@@ -4,7 +4,7 @@ LS.Skin = {
   PX: 1.8 / 32, // tamanho de 1 "pixel" em metros
   SKINS: ['#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#ffdbac', '#5c3a21'],
   HAIRS: ['#1a1a1a', '#4a2a10', '#8a5a2a', '#d8b860', '#a0301a', '#e8e8e8', '#3a60c0', '#d040a0'],
-  SHIRTS: ['#ff8a1f', '#3a6ea5', '#b03030', '#2d7a3a', '#6a3a9a', '#2a2a2a', '#e0e0e0', '#d0b020', '#2d8a8a'],
+  SHIRTS: ['#ff8a1f', '#3a6ea5', '#b03030', '#2d7a3a', '#6a3a9a', '#2a2a2a', '#e0e0e0', '#d0b020', '#c05a8a'],
   PANTS: ['#2a2a3a', '#3a4a2a', '#4a3a2a', '#1f2f6f', '#555555', '#7a5a3a', '#111111'],
   EYES: ['#2a5aa0', '#3a2a1a', '#2a8a3a', '#555555'],
   HAIR_STYLES: ['curto', 'longo', 'careca', 'moicano', 'boné'],

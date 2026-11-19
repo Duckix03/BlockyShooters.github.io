@@ -153,6 +153,7 @@ LS.Game = {
     LS.HUD.show(false); LS.Audio.stopAll();
     if (LS.Audio.ctx) LS.Audio.ctx.resume();
     LS.UI.showScreen('menu-main'); LS.UI.updateMenuStats();
+    if (LS.Lobby.built) { LS.Lobby.model.applyLook(LS.playerProfile.look); LS.Lobby.syncUI(); }
   },
   endMatch(win) {
     this.state = 'ended'; LS.Input.enabled = false; LS.Input.unlock();
@@ -201,7 +202,7 @@ LS.Game = {
     const dt = Math.min(this.clock.getDelta(), 0.05);
     this.fpsAcc += dt; this.fpsFrames++;
     if (this.fpsAcc >= 0.5) { document.getElementById('fps').textContent = Math.round(this.fpsFrames / this.fpsAcc) + ' FPS'; this.fpsAcc = 0; this.fpsFrames = 0; }
-    if (this.state === 'lobby') { LS.Lobby.update(dt); this.renderer.render(LS.Lobby.scene, LS.Lobby.camera); LS.Input.endFrame(); return; }
+    if (this.state === 'lobby' || (this.state === 'menu' && LS.Lobby.built)) { LS.Lobby.update(dt); this.renderer.render(LS.Lobby.scene, LS.Lobby.camera); LS.Input.endFrame(); return; }
     if (!this.built) return;
     if (this.state === 'playing') this.update(dt);
     else if (this.state === 'menu' || this.state === 'ended') { // câmera orbitando a ilha no fundo
