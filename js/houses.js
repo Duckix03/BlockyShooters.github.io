@@ -29,27 +29,32 @@ Object.assign(LS.World, {
     this.terrainDirty = false;
   },
 
-  house(scene, cx, cz, w, d) {
-    // piso acima do ponto mais alto do terreno sob a casa (nada atravessa o chão)
+  // kind: 'casa' | 'loja' | 'galpao' | 'fazenda' (ver LS.HouseKit.STYLE)
+  house(scene, cx, cz, w, d, kind = 'casa') {
+    const m = LS.HouseKit.build({ w, d, kind, twoStory: w >= 9.5 && d >= 8 && Math.random() < 0.45 });
+    const e = m.ext, ecx = (e.minX + e.maxX) / 2, ecz = (e.minZ + e.maxZ) / 2, ehw = (e.maxX - e.minX) / 2, ehd = (e.maxZ - e.minZ) / 2;
+    // piso acima do ponto mais alto do terreno sob a construção (inclui a varanda; nada atravessa o chão)
     let hMax = -Infinity, hMin = Infinity;
     for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 0], [0, -1], [0, 1], [-1, 0], [1, 0]]) {
-      const h = this.heightAt(cx + sx * (w / 2 + 0.5), cz + sz * (d / 2 + 0.5));
+      const h = this.heightAt(cx + ecx + sx * ehw, cz + ecz + sz * ehd);
       hMax = Math.max(hMax, h); hMin = Math.min(hMin, h);
     }
     const y0 = hMax + 0.05;
-    this.flattenRect(cx, cz, w / 2, d / 2, y0 - 0.12, 1.5, 4);
-    // fundação de pedra (aparece só onde o terreno era inclinado)
+    // a fazenda aplaina também o quintal, para a cerca não ficar flutuando
+    this.flattenRect(cx + ecx, cz + ecz, ehw, ehd, y0 - 0.12, kind === 'fazenda' ? 5 : 1.5, 4);
+    // fundação de pedra (aparece só onde o terreno era inclinado); topo 4 cm abaixo do piso
     const fb = Math.min(hMin, y0 - 0.3) - 0.6;
     this.box(scene, cx, fb, cz, w + 0.5, y0 - 0.04 - fb, d + 0.5, 0x8a8580, true);
-    const m = LS.HouseKit.build({ w, d, twoStory: w >= 9.5 && d >= 8 && Math.random() < 0.45 });
     for (const b of m.boxes) this.box(scene, cx + b.x, y0 + b.y, cz + b.z, b.w, b.h, b.d, b.color, b.collide, b.shadow);
+    if (kind === 'fazenda') for (const b of LS.HouseKit.fence(m, (x, z) => this.heightAt(cx + x, cz + z) - y0))
+      this.box(scene, cx + b.x, y0 + b.y, cz + b.z, b.w, b.h, b.d, b.color, b.collide, b.shadow);
     for (const c of m.colliders) this.addCollider(cx + c.minX, y0 + c.minY, cz + c.minZ, cx + c.maxX, y0 + c.maxY, cz + c.maxZ);
     if (!this.roofTris) this.roofTris = { pos: [], col: [] };
     const p = m.tris.pos;
     for (let i = 0; i < p.length; i += 3) this.roofTris.pos.push(p[i] + cx, p[i + 1] + y0, p[i + 2] + cz);
     for (const c of m.tris.col) this.roofTris.col.push(c);
     for (const l of m.loot) this.lootSpots.push({ x: cx + l.x, y: y0 + l.y, z: cz + l.z, indoor: true });
-    this.buildings.push({ x: cx, z: cz, w, d, color: m.wallCol });
+    this.buildings.push({ x: cx, z: cz, w, d, color: m.wallCol, kind });
   },
   // malha única com todos os telhados e oitões
   finalizeRoofs(scene) {

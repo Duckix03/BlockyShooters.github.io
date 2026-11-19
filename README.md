@@ -90,7 +90,7 @@ Seu visual fica salvo para as próximas partidas.
 ## 🗺️ A Ilha
 
 - 🏘️ **7 cidades**: Vila Porto · Centro · Fazenda · Base Militar · Mirante · Vila Sul · Usina
-- 🏠 **Casas** com janelas de vidro, telhados, chaminés e móveis para se proteger
+- 🏠 **Construções variadas**: casas e sobrados, lojas com vitrine e fachada, galpões e casas de fazenda com varanda e cerca; janelas com moldura, portas abertas e móveis para se proteger
 - 🏡 **Sobrados** com escada e loot no andar de cima
 - 🏢 **Prédios** no Centro e **contêineres** na Base Militar
 - 🏔️ **Montanhas com neve**, 🌲 **florestas**, 🪨 **rochas**, 🏖️ **praias** e 🌊 **mar**
