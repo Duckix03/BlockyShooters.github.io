@@ -27,7 +27,7 @@ LS.Fighter = class {
   bagMult() { return LS.GEAR.bag.levels[this.bag]; }
   maxAmmo(t) { return Math.round(LS.AMMO_TYPES[t].baseMax * this.bagMult()); }
   maxMed(t) { return Math.round(LS.MEDS[t].baseMax * this.bagMult()); }
-  headY() { return this.crouch ? 1.15 : 1.62; }
+  headY() { return this.crouch ? 1.28 : 1.57; }
   eyePos(out) { return out.set(this.pos.x, this.pos.y + this.headY(), this.pos.z); }
 
   switchWeapon(i) {

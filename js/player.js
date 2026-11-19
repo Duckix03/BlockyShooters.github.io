@@ -59,7 +59,7 @@ LS.Fighter.prototype.clampToIsland = function () {
 // ---------- Jogador ----------
 LS.Player = class extends LS.Fighter {
   constructor() {
-    super('Você', true, { shirt: 0xff8a1f, pants: 0x222833, hair: 0x1a1a1a, chute: 0xff8a1f });
+    super(LS.playerProfile.name, true, { look: LS.playerProfile.look, chute: 0xff8a1f });
     this.camYaw = 0; this.camPitch = -0.1; this.camDist = 3.6;
     this.stepT = 0; this.prompt = ''; this.pickMsgT = 0;
     this.camPos = new THREE.Vector3(); this.aimDir = new THREE.Vector3(0, 0, 1);

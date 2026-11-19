@@ -250,11 +250,12 @@ LS.Bot = class extends LS.Fighter {
   finishFrame(dt, hs) {
     const P = LS.Game.player;
     const d2 = P ? (this.pos.x - P.pos.x) ** 2 + (this.pos.z - P.pos.z) ** 2 : 0;
-    const far = d2 > LS.settings.renderDistance * LS.settings.renderDistance * 0.5;
+    const ed = LS.effDist(), far = d2 > ed * ed * 0.5;
     this.model.root.visible = !far && this.state !== 'plane';
     this.model.root.position.copy(this.pos);
     this.model.root.rotation.y = this.yaw;
-    if (!far && d2 < 160 * 160) this.model.animate({ dt, speed: hs, running: this.running, crouch: this.crouch, air: this.state === 'ground' && !this.onGround,
+    const animR = LS.settings.perfMode ? 70 : 160;
+    if (!far && d2 < animR * animR) this.model.animate({ dt, speed: hs, running: this.running, crouch: this.crouch, air: this.state === 'ground' && !this.onGround,
       chute: this.state === 'chute', aimPitch: this.pitch, armed: !!this.weapon(), armedAim: this.ai === 'fight', dead: false });
     else this.model.chute.visible = this.state === 'chute';
   }

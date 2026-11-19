@@ -60,6 +60,8 @@ LS.Game = {
     this.build(() => {
       LS.Loot.spawnAll(); LS.Effects.clear();
       this.fighters.forEach(f => f.reset());
+      this.player.name = LS.playerProfile.name; this.player.model.applyLook(LS.playerProfile.look);
+      this.bots.forEach(b => b.model.applyLook(LS.Skin.randomLook()));
       this.plane.reset(); this.zone.reset();
       this.time = 0; this.endTimer = 0; this.ended = false;
       this.player.camYaw = Math.atan2(this.plane.end.x - this.plane.start.x, this.plane.end.z - this.plane.start.z);
@@ -175,8 +177,9 @@ LS.Game = {
   applySettings() {
     const s = LS.settings, r = this.renderer;
     const q = s.quality;
-    r.setPixelRatio(q === 'low' ? 0.75 : q === 'medium' ? 1 : Math.min(window.devicePixelRatio, 2));
-    const shadows = q !== 'low';
+    const base = q === 'low' ? 0.75 : q === 'medium' ? 1 : Math.min(window.devicePixelRatio, 2);
+    r.setPixelRatio(Math.max(0.3, base * (s.resScale || 1) * (s.perfMode ? 0.85 : 1)));
+    const shadows = q !== 'low' && !s.perfMode;
     if (this.built) {
       const sun = LS.World.sun;
       const size = q === 'high' ? 2048 : 1024;
@@ -186,9 +189,9 @@ LS.Game = {
         r.shadowMap.enabled = shadows; sun.castShadow = shadows;
         this.scene.traverse(o => { if (o.material) o.material.needsUpdate = true; });
       }
-      this.scene.fog.far = s.renderDistance; this.scene.fog.near = s.renderDistance * 0.3;
+      const fd = LS.effDist(); this.scene.fog.far = fd; this.scene.fog.near = fd * 0.3;
     } else r.shadowMap.enabled = shadows;
-    this.camera.far = s.renderDistance + 100; this.camera.updateProjectionMatrix();
+    this.camera.far = LS.effDist() + 100; this.camera.updateProjectionMatrix();
     LS.Audio.setVolume(s.volume);
   },
 
@@ -198,6 +201,7 @@ LS.Game = {
     const dt = Math.min(this.clock.getDelta(), 0.05);
     this.fpsAcc += dt; this.fpsFrames++;
     if (this.fpsAcc >= 0.5) { document.getElementById('fps').textContent = Math.round(this.fpsFrames / this.fpsAcc) + ' FPS'; this.fpsAcc = 0; this.fpsFrames = 0; }
+    if (this.state === 'lobby') { LS.Lobby.update(dt); this.renderer.render(LS.Lobby.scene, LS.Lobby.camera); LS.Input.endFrame(); return; }
     if (!this.built) return;
     if (this.state === 'playing') this.update(dt);
     else if (this.state === 'menu' || this.state === 'ended') { // câmera orbitando a ilha no fundo

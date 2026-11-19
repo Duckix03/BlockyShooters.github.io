@@ -7,6 +7,7 @@ LS.Input = {
   init(canvasEl) {
     this.canvas = canvasEl;
     window.addEventListener('keydown', e => {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
       if (e.code === 'Tab' || e.code === 'Space') e.preventDefault();
       if (!this.keys[e.code]) this.pressed[e.code] = true;
       this.keys[e.code] = true;

@@ -25,6 +25,39 @@
   </div>
 </div>
 
+<!-- LOBBY -->
+<div id="lobby" class="screen">
+  <div class="lobby-top">
+    <div class="lobby-logo">LAST<span>SURVIVOR</span></div>
+    <div class="lobby-title">LOBBY</div>
+    <div class="lobby-stats" id="lobby-stats"></div>
+  </div>
+  <div class="lobby-panel">
+    <h2>PERSONAGEM</h2>
+    <label class="lobby-label">Nome</label>
+    <input id="lobby-name" maxlength="16" spellcheck="false" autocomplete="off">
+    <div id="lobby-options"></div>
+    <div class="lobby-row-btns">
+      <button class="btn small" data-action="lobby-random">🎲 ALEATÓRIO</button>
+      <button class="btn small" data-action="lobby-reset">PADRÃO</button>
+    </div>
+  </div>
+  <div class="lobby-hint">Arraste para girar o personagem</div>
+  <div class="lobby-actions">
+    <div class="lobby-mode">MODO: <b>SOLO</b> · 31 JOGADORES · ILHA</div>
+    <button class="btn btn-primary big" data-action="lobby-start">INICIAR PARTIDA</button>
+    <button class="btn" data-action="lobby-back">VOLTAR AO MENU</button>
+  </div>
+  <div id="lobby-mm" class="hidden">
+    <div class="mm-box">
+      <div class="mm-spinner"></div>
+      <h3>PROCURANDO PARTIDA</h3>
+      <div id="mm-count">1 / 31 jogadores</div>
+      <button class="btn small" data-action="lobby-cancel">CANCELAR</button>
+    </div>
+  </div>
+</div>
+
 <!-- CONFIGURAÇÕES -->
 <div id="panel-settings" class="screen panel-screen">
   <div class="panel">
@@ -48,6 +81,14 @@
     <div class="setting">
       <label>Distância de renderização <span id="val-dist"></span></label>
       <input type="range" id="set-dist" min="150" max="700" step="10">
+    </div>
+    <div class="setting">
+      <label>Escala de resolução <span id="val-res"></span></label>
+      <input type="range" id="set-res" min="0.4" max="1" step="0.05">
+    </div>
+    <div class="setting">
+      <label>Modo desempenho <small style="color:#8a96ad">(sem sombras, menos efeitos)</small></label>
+      <label class="switch"><input type="checkbox" id="set-perf"><span></span></label>
     </div>
     <div class="setting">
       <label>Tela cheia</label>
@@ -230,6 +271,7 @@
 <script src="js/input.js"></script>
 <script src="js/world.js"></script>
 <script src="js/worldbuild.js"></script>
+<script src="js/skin.js"></script>
 <script src="js/character.js"></script>
 <script src="js/effects.js"></script>
 <script src="js/loot.js"></script>
@@ -238,6 +280,7 @@
 <script src="js/bot.js"></script>
 <script src="js/zone.js"></script>
 <script src="js/hud.js"></script>
+<script src="js/lobby.js"></script>
 <script src="js/game.js"></script>
 <script src="js/main.js"></script>
 </body>

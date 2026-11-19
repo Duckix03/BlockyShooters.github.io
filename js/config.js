@@ -9,12 +9,14 @@ LS.BOT_COUNT = 30;
 LS.GRAVITY = 24;
 
 // ---------- Configurações persistentes ----------
-LS.defaultSettings = { sensitivity: 1, quality: 'medium', volume: 0.6, renderDistance: 400, fullscreen: false, showFps: false };
+LS.defaultSettings = { sensitivity: 1, quality: 'medium', volume: 0.6, renderDistance: 400, fullscreen: false, showFps: false, resScale: 1, perfMode: false };
 LS.settings = Object.assign({}, LS.defaultSettings);
 try {
   const saved = JSON.parse(localStorage.getItem('lastsurvivor_settings') || '{}');
   Object.assign(LS.settings, saved);
 } catch (e) { /* ignora configurações corrompidas */ }
+// distância de renderização efetiva (limitada no modo desempenho)
+LS.effDist = () => LS.settings.perfMode ? Math.min(LS.settings.renderDistance, 250) : LS.settings.renderDistance;
 LS.saveSettings = function () {
   localStorage.setItem('lastsurvivor_settings', JSON.stringify(LS.settings));
 };

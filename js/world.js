@@ -248,7 +248,7 @@ LS.World = {
     const dir = new THREE.Vector3(Math.cos(ang) * 0.6, Math.sin(ang), -0.5).normalize();
     this.sun.position.copy(focus).addScaledVector(dir, 200);
     this.sun.target.position.copy(focus);
-    this.sunMesh.position.copy(focus).addScaledVector(dir, LS.settings.renderDistance * 0.85);
+    this.sunMesh.position.copy(focus).addScaledVector(dir, LS.effDist() * 0.85);
     this.sunMesh.material.color.copy(this.sun.color);
     this.clouds.rotation.y += dt * 0.004;
   }

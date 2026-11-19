@@ -108,7 +108,7 @@ LS.Loot = {
   },
   update(dt, focus) {
     this.time += dt;
-    const vis2 = 140 * 140;
+    const vis2 = LS.settings.perfMode ? 80 * 80 : 140 * 140;
     for (const it of this.items) {
       const dx = it.pos.x - focus.x, dz = it.pos.z - focus.z, d2 = dx * dx + dz * dz;
       it.mesh.visible = d2 < vis2;

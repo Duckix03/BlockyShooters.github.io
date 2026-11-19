@@ -32,7 +32,9 @@ Você e 30 bots saltam de um avião sobre uma ilha. Vence quem for o último sob
 - `js/audio.js`: sons sintetizados (Web Audio)
 - `js/input.js`: teclado, mouse e pointer lock
 - `js/world.js`, `js/worldbuild.js`: terreno, céu/ciclo de luz, construções, colisões e raycast
-- `js/character.js`: modelo humanoide e animações
+- `js/skin.js`: texturas pixeladas dos personagens e perfil do jogador
+- `js/character.js`: personagem em blocos e animações
+- `js/lobby.js`: lobby com personalização e busca de partida
 - `js/effects.js`: traçantes, clarões e impactos
 - `js/loot.js`: itens no chão
 - `js/combat.js`: inventário, dano, colete/capacete e disparos

@@ -26,10 +26,10 @@ LS.Effects = {
     m.position.copy(pos); m.scale.setScalar(LS.util.rand(0.8, 1.5));
     this.scene.add(m);
     this.items.push({ obj: m, life: 0.05, max: 0.05, type: 'flash' });
-    if (withLight) { this.flashLight.position.copy(pos); this.flashLight.intensity = 2.5; }
+    if (withLight && !LS.settings.perfMode) { this.flashLight.position.copy(pos); this.flashLight.intensity = 2.5; }
   },
   impact(pos, blood) {
-    const n = blood ? 6 : 5;
+    const n = LS.settings.perfMode ? 2 : (blood ? 6 : 5);
     for (let i = 0; i < n; i++) {
       const m = new THREE.Mesh(this.puffGeo, (blood ? this.bloodMat : this.dustMat).clone());
       m.position.copy(pos);

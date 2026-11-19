@@ -1,7 +1,7 @@
 // Menus, painéis de configuração e inicialização
 'use strict';
 LS.UI = {
-  screens: ['menu-main', 'panel-settings', 'panel-controls', 'panel-credits', 'loading', 'pause', 'endscreen'],
+  screens: ['menu-main', 'lobby', 'panel-settings', 'panel-controls', 'panel-credits', 'loading', 'pause', 'endscreen'],
   current: 'menu-main', backTo: 'menu-main',
 
   showScreen(id) {
@@ -26,6 +26,8 @@ LS.UI = {
       $('set-dist').value = S.renderDistance; $('val-dist').textContent = S.renderDistance + ' m';
       $('set-fullscreen').checked = !!document.fullscreenElement;
       $('set-fps').checked = S.showFps;
+      $('set-res').value = S.resScale; $('val-res').textContent = Math.round(S.resScale * 100) + '%';
+      $('set-perf').checked = S.perfMode;
     };
     this.syncSettings = sync;
     const changed = () => { LS.saveSettings(); sync(); LS.Game.applySettings(); };
@@ -34,6 +36,8 @@ LS.UI = {
     $('set-vol').addEventListener('input', e => { S.volume = +e.target.value; changed(); });
     $('set-dist').addEventListener('input', e => { S.renderDistance = +e.target.value; changed(); });
     $('set-fps').addEventListener('change', e => { S.showFps = e.target.checked; changed(); });
+    $('set-res').addEventListener('input', e => { S.resScale = +e.target.value; changed(); });
+    $('set-perf').addEventListener('change', e => { S.perfMode = e.target.checked; changed(); });
     $('set-fullscreen').addEventListener('change', e => {
       S.fullscreen = e.target.checked; LS.saveSettings();
       if (e.target.checked) { const p = document.documentElement.requestFullscreen(); if (p && p.catch) p.catch(() => { e.target.checked = false; }); }
@@ -46,7 +50,12 @@ LS.UI = {
   onAction(a) {
     LS.Audio.init(); LS.Audio.click();
     switch (a) {
-      case 'play': LS.Game.startMatch(); break;
+      case 'play': LS.Game.state = 'menu'; LS.Input.enabled = false; LS.Input.unlock(); LS.Lobby.open(); break;
+      case 'lobby-start': LS.Lobby.startSearch(); break;
+      case 'lobby-cancel': LS.Lobby.cancelSearch(); break;
+      case 'lobby-random': LS.Lobby.random(); break;
+      case 'lobby-reset': LS.Lobby.reset(); break;
+      case 'lobby-back': LS.Lobby.cancelSearch(); LS.Game.quitToMenu(); break;
       case 'settings': this.syncSettings(); this.openPanel('panel-settings'); break;
       case 'controls': this.openPanel('panel-controls'); break;
       case 'credits': this.openPanel('panel-credits'); break;
@@ -72,5 +81,6 @@ window.addEventListener('load', () => {
   document.querySelectorAll('[data-action]').forEach(b => b.addEventListener('click', () => LS.UI.onAction(b.dataset.action)));
   window.addEventListener('keydown', e => {
     if (e.code === 'Escape' && LS.UI.subPanelOpen()) LS.UI.back();
+    else if (e.code === 'Escape' && LS.UI.current === 'lobby') { if (LS.Lobby.searching) LS.Lobby.cancelSearch(); else LS.Game.quitToMenu(); }
   });
 });
