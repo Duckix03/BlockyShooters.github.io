@@ -130,6 +130,7 @@ LS.Player = class extends LS.Fighter {
         if (I.wasPressed('KeyH')) this.startHeal('medkit');
         if (I.wasPressed('KeyG')) this.startHeal('bandage');
         const d = this.wdef();
+        if (!d && I.mouse.leftPressed) this.tryPunch(); // sem arma: soco
         if (d && (d.auto ? I.mouse.left : I.mouse.leftPressed)) {
           if (this.running) this.running = false;
           const origin = this.shotOrigin();
@@ -144,7 +145,8 @@ LS.Player = class extends LS.Fighter {
     this.model.root.position.copy(this.pos);
     this.model.root.rotation.y = this.yaw;
     this.model.animate({ dt, vy: this.vel.y, fall: this.state === 'fall', dive: this.dive, steer: this.steer, speed: Math.hypot(this.vel.x, this.vel.z), running: this.running, crouch: this.crouch, air: this.state === 'ground' && !this.onGround,
-      chute: this.state === 'chute', aimPitch: this.camPitch, armed: !!this.weapon(), armedAim: this.aiming || this.fireCd > 0, dead: !this.alive });
+      chute: this.state === 'chute', aimPitch: this.camPitch, armed: !!this.weapon(), armedAim: this.aiming || this.fireCd > 0, dead: !this.alive,
+      reload: this.reloadT > 0 && this.wdef() ? 1 - this.reloadT / this.wdef().reload : -1, heal: this.healType });
     this.model.root.visible = this.state !== 'plane';
     this.updateCamera(dt, camera);
   }
