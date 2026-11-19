@@ -90,13 +90,19 @@ LS.CharacterModel = class {
     this.gun = null; this.gunId = id;
     if (id) { this.gun = LS.buildGunMesh(id); this.gun.rotation.x = Math.PI / 2; this.gunHolder.add(this.gun); }
   }
+  // colete, capacete e mochila com o modelo de cada nível (mesmos modelos do chão)
   setGear(vest, helmet, bag) {
-    const cols = [0, 0x6a7a5a, 0x4a5a7a, 0x2a2a2a];
-    this.vestMesh.visible = vest > 0; if (vest) this.vestMesh.material = LS.lambert(cols[vest]);
-    this.helmetMesh.visible = helmet > 0; if (helmet) this.helmetMesh.material = LS.lambert(cols[helmet]);
+    const put = (key, parent, kind, lv) => {
+      if (this['_' + key + 'Lv'] === lv) return;
+      this['_' + key + 'Lv'] = lv;
+      if (this[key]) parent.remove(this[key]);
+      this[key] = lv ? LS.Items.mesh(LS.Items.gearGeometry(kind, lv)) : null;
+      if (this[key]) parent.add(this[key]);
+    };
+    put('vestModel', this.torso, 'vest', vest); put('helmetModel', this.headG, 'helmet', helmet); put('bagModel', this.torso, 'bag', bag);
+    this.vestMesh.visible = this.helmetMesh.visible = this.bagMesh.visible = false;
     this.brim.visible = !helmet && this.look.hairStyle === 'boné' && !this.hatVisible;
     this.accG.children.forEach(m => { if (m.position.y > 6 * LS.Skin.PX) m.visible = !helmet; });
-    this.bagMesh.visible = bag > 0;
   }
   shoot() { this.recoilT = 1; }
   muzzleWorld(target) {

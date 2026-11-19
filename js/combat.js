@@ -49,18 +49,18 @@ LS.Fighter = class {
       }
       this.weapons[s] = { id: it.id, mag: it.ammoInMag };
       if (!this.weapon() || s === this.slot || !this.weapons[this.slot]) { this.slot = s; this.model.setGun(it.id); this.reloadT = 0; }
-      LS.Loot.remove(it); return label;
+      LS.Loot.remove(it, this); return label;
     }
     if (it.type === 'ammo') {
       const space = this.maxAmmo(it.id) - this.ammo[it.id]; if (space <= 0) return null;
       const take = Math.min(space, it.amount); this.ammo[it.id] += take; it.amount -= take;
-      if (it.amount <= 0) LS.Loot.remove(it);
+      if (it.amount <= 0) LS.Loot.remove(it, this);
       return LS.AMMO_TYPES[it.id].name + ' +' + take;
     }
     if (it.type === 'med') {
       const space = this.maxMed(it.id) - this.meds[it.id]; if (space <= 0) return null;
       const take = Math.min(space, it.amount); this.meds[it.id] += take; it.amount -= take;
-      if (it.amount <= 0) LS.Loot.remove(it);
+      if (it.amount <= 0) LS.Loot.remove(it, this);
       return LS.MEDS[it.id].name + ' +' + take;
     }
     if (it.type === 'vest' || it.type === 'helmet') {
@@ -72,7 +72,7 @@ LS.Fighter = class {
       this.bag = it.level;
     }
     this.model.setGear(this.vest.level, this.helmet.level, this.bag);
-    LS.Loot.remove(it); return label;
+    LS.Loot.remove(it, this); return label;
   }
   dropWeapon(s) {
     const w = this.weapons[s]; if (!w) return;

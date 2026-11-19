@@ -36,7 +36,7 @@ LS.Game = {
       () => LS.World.buildTerrain(this.scene),
       () => LS.World.buildSky(this.scene),
       () => LS.World.buildProps(this.scene),
-      () => { LS.Effects.init(this.scene); LS.Loot.init(this.scene); LS.HUD.setMapImage(LS.World.buildMapImage(512)); },
+      () => { LS.Effects.init(this.scene); LS.Loot.init(this.scene); LS.Icons.preload(); LS.HUD.setMapImage(LS.World.buildMapImage(512)); },
       () => {
         this.zone = new LS.Zone(this.scene); this.plane = new LS.Plane(this.scene);
         this.player = new LS.Player(); this.scene.add(this.player.model.root);
