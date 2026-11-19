@@ -160,7 +160,7 @@ Object.assign(LS.World, {
       e.set(Math.random() * 3, Math.random() * 3, 0); q.setFromEuler(e);
       p.set(x, h + sc * 0.3, z); s.set(sc * 1.3, sc, sc * 1.1); m.compose(p, q, s); rocks.setMatrixAt(nk++, m);
       const r = sc * 0.85;
-      this.addCollider(x - r, h - 1, z - r, x + r, h + sc * 1.1, z + r);
+      this.addCollider(x - r, h - 1, z - r, x + r, h + sc * 1.1, z + r).climb = true; // dá para escalar
       if (Math.random() < 0.25) this.lootSpots.push({ x: x + r + 1, z, y: this.heightAt(x + r + 1, z) + 0.1 });
     }
     q.identity();

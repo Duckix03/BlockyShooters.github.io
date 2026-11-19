@@ -47,6 +47,14 @@ LS.World = {
       }
     return b;
   },
+  // verdadeiro se uma esfera (x,y,z,r) encosta em algum colisor
+  sphereHits(x, y, z, r) {
+    for (const b of this.nearBoxes(x, z, r + 0.5)) {
+      const cx = Math.max(b.minX, Math.min(x, b.maxX)), cy = Math.max(b.minY, Math.min(y, b.maxY)), cz = Math.max(b.minZ, Math.min(z, b.maxZ));
+      if ((cx - x) ** 2 + (cy - y) ** 2 + (cz - z) ** 2 < r * r) return true;
+    }
+    return y - r < this.heightAt(x, z);
+  },
   nearBoxes(x, z, r) {
     const C = this.CELL, out = new Set();
     for (let cx = Math.floor((x - r) / C); cx <= Math.floor((x + r) / C); cx++)
