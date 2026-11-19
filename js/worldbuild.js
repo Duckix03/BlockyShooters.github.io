@@ -86,6 +86,30 @@ Object.assign(LS.World, {
     const ox = alongX ? 0 : 2.2, oz = alongX ? 2.2 : 0;
     this.lootSpots.push({ x: cx + ox, z: cz + oz, y: this.heightAt(cx + ox, cz + oz) + 0.1 });
   },
+  // colisores de uma pedra girada: fatia a malha em camadas horizontais e usa a caixa de cada fatia.
+  // Assim a pedra é sólida onde aparece (antes o colisor era um quadrado menor e dava para entrar nela).
+  // Retorna o maior x ocupado (para colocar loot ao lado).
+  rockColliders(geo, mtx, h, layers = 5) {
+    const pa = geo.attributes.position, V = [];
+    for (let i = 0; i < pa.count; i++) V.push(new THREE.Vector3().fromBufferAttribute(pa, i).applyMatrix4(mtx));
+    let yMin = Infinity, yMax = -Infinity, xMax = -Infinity;
+    for (const v of V) { yMin = Math.min(yMin, v.y); yMax = Math.max(yMax, v.y); xMax = Math.max(xMax, v.x); }
+    const y0 = Math.max(yMin, h - 1);
+    for (let k = 0; k < layers; k++) {
+      const a = y0 + (yMax - y0) * k / layers, b = y0 + (yMax - y0) * (k + 1) / layers;
+      let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      const add = (x, z) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); };
+      for (const v of V) if (v.y >= a && v.y <= b) add(v.x, v.z);
+      for (let t = 0; t < V.length; t += 3) for (const [i, j] of [[0, 1], [1, 2], [2, 0]]) {
+        const p = V[t + i], q = V[t + j];
+        for (const yp of [a, b]) if ((p.y - yp) * (q.y - yp) < 0) { const s = (yp - p.y) / (q.y - p.y); add(p.x + (q.x - p.x) * s, p.z + (q.z - p.z) * s); }
+      }
+      if (x0 > x1) continue;
+      const sh = 0.04; // um fio menor que a pedra: sem parede invisível nas quinas
+      this.addCollider(x0 + sh, k === 0 ? Math.min(a, h - 1) : a, z0 + sh, x1 - sh, b, z1 - sh).climb = true;
+    }
+    return xMax;
+  },
   insideTown(x, z, pad) {
     for (const t of this.towns) if (Math.hypot(x - t.x, z - t.z) < t.r + (pad || 0)) return t;
     return null;
@@ -144,7 +168,8 @@ Object.assign(LS.World, {
       } else {
         p.set(x, h + th + 1.4 * sc, z); s.set(2.6 * sc, 2.3 * sc, 2.6 * sc); m.compose(p, q, s); rounds.setMatrixAt(nr++, m);
       }
-      this.addCollider(x - 0.35, h - 1, z - 0.35, x + 0.35, h + th + 2, z + 0.35);
+      const tr = Math.max(0.3, 0.33 * sc); // raio real do tronco
+      this.addCollider(x - tr, h - 1, z - tr, x + tr, h + th + 2, z + tr);
     }
     trunks.count = nt; pines.count = np; rounds.count = nr;
     [trunks, pines, rounds].forEach(im => { im.frustumCulled = false; im.castShadow = true; im.receiveShadow = true; scene.add(im); });
@@ -159,9 +184,8 @@ Object.assign(LS.World, {
       const sc = LS.util.rand(0.8, 2.6);
       e.set(Math.random() * 3, Math.random() * 3, 0); q.setFromEuler(e);
       p.set(x, h + sc * 0.3, z); s.set(sc * 1.3, sc, sc * 1.1); m.compose(p, q, s); rocks.setMatrixAt(nk++, m);
-      const r = sc * 0.85;
-      this.addCollider(x - r, h - 1, z - r, x + r, h + sc * 1.1, z + r).climb = true; // dá para escalar
-      if (Math.random() < 0.25) this.lootSpots.push({ x: x + r + 1, z, y: this.heightAt(x + r + 1, z) + 0.1 });
+      const ext = this.rockColliders(rockGeo, m, h); // camadas que seguem o formato da pedra (dá para escalar)
+      if (Math.random() < 0.25) this.lootSpots.push({ x: ext + 1, z, y: this.heightAt(ext + 1, z) + 0.1 });
     }
     q.identity();
     rocks.count = nk; rocks.frustumCulled = false; rocks.castShadow = true; rocks.receiveShadow = true; scene.add(rocks);

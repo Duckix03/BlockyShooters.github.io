@@ -36,9 +36,10 @@ LS.Fighter.prototype.physics = function (dt, wish, opts) {
   v.z = LS.util.lerp(v.z, wish.z * speed, Math.min(1, dt * accel));
   if (opts.jump && this.onGround && !swimming) { v.y = 8.2; this.onGround = false; if (this.isPlayer) LS.Audio.jump(); }
   v.y -= LS.GRAVITY * dt;
-  const oldY = p.y;
+  const oldY = p.y, prev = this._prev || (this._prev = { x: 0, z: 0 });
+  prev.x = p.x; prev.z = p.z;
   p.x += v.x * dt; p.z += v.z * dt; p.y += v.y * dt;
-  this.blocked = W.collideCircle(p, R, this.crouch ? 1.2 : 1.8);
+  this.blocked = W.collideCircle(p, R, this.crouch ? 1.2 : 1.8, prev);
   this.clampToIsland();
   let g = W.groundAt(p.x, p.z, Math.max(oldY, p.y), R);
   if (swimming) g = Math.max(g, LS.WATER_LEVEL - 1.3);
