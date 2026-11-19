@@ -47,6 +47,14 @@ LS.World = {
       }
     return b;
   },
+  // verdadeiro se uma esfera (x,y,z,r) encosta em algum colisor
+  sphereHits(x, y, z, r) {
+    for (const b of this.nearBoxes(x, z, r + 0.5)) {
+      const cx = Math.max(b.minX, Math.min(x, b.maxX)), cy = Math.max(b.minY, Math.min(y, b.maxY)), cz = Math.max(b.minZ, Math.min(z, b.maxZ));
+      if ((cx - x) ** 2 + (cy - y) ** 2 + (cz - z) ** 2 < r * r) return true;
+    }
+    return y - r < this.heightAt(x, z);
+  },
   nearBoxes(x, z, r) {
     const C = this.CELL, out = new Set();
     for (let cx = Math.floor((x - r) / C); cx <= Math.floor((x + r) / C); cx++)
@@ -65,7 +73,14 @@ LS.World = {
     return g;
   },
   // empurra um cilindro (personagem) para fora das caixas; retorna true se colidiu
-  collideCircle(pos, r, height) {
+  // prev = posição antes do movimento: se o centro entrar numa caixa, sai pelo lado de onde veio (nunca atravessa)
+  collideCircle(pos, r, height, prev) {
+    let hit = false;
+    // até 3 passadas: empurrar para fora de uma caixa pode encostar em outra (cantos, paredes juntas)
+    for (let it = 0; it < 3; it++) { const h = this._collideOnce(pos, r, height, prev); hit = hit || h; if (!h) break; }
+    return hit;
+  },
+  _collideOnce(pos, r, height, prev) {
     let hit = false;
     for (const b of this.nearBoxes(pos.x, pos.z, r + 1)) {
       if (pos.y + height <= b.minY || pos.y >= b.maxY - 0.5) continue;
@@ -77,8 +92,12 @@ LS.World = {
       if (d2 > 1e-8) {
         const d = Math.sqrt(d2), push = r - d;
         pos.x += dx / d * push; pos.z += dz / d * push;
-      } else { // centro dentro da caixa: sai pelo lado mais próximo
-        const opts = [[pos.x - b.minX + r, -1, 0], [b.maxX - pos.x + r, 1, 0], [pos.z - b.minZ + r, 0, -1], [b.maxZ - pos.z + r, 0, 1]];
+      } else { // centro dentro da caixa: sai pelo lado de onde veio (ou o mais próximo)
+        let opts = [[pos.x - b.minX + r, -1, 0], [b.maxX - pos.x + r, 1, 0], [pos.z - b.minZ + r, 0, -1], [b.maxZ - pos.z + r, 0, 1]];
+        if (prev) {
+          const from = opts.filter(o => (o[1] < 0 && prev.x <= b.minX) || (o[1] > 0 && prev.x >= b.maxX) || (o[2] < 0 && prev.z <= b.minZ) || (o[2] > 0 && prev.z >= b.maxZ));
+          if (from.length) opts = from;
+        }
         opts.sort((a, c) => a[0] - c[0]);
         pos.x += opts[0][1] * opts[0][0]; pos.z += opts[0][2] * opts[0][0];
       }
