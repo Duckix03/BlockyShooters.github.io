@@ -15,7 +15,7 @@ LS.Lobby = {
     sc.add(this.model.root);
     // dois sobreviventes conversando no fundo
     this.extras = [];
-    [[-3.2, -4.2, 0.6], [-2.2, -4.6, -2.4]].forEach(([x, z, ry]) => {
+    [[-3.4, -6.5, 0.6], [-2.4, -6.9, -2.4]].forEach(([x, z, ry]) => {
       const m = new LS.CharacterModel({}); m.root.position.set(x, 0, z); m.root.rotation.y = ry;
       sc.add(m.root); this.extras.push(m);
     });
@@ -96,7 +96,7 @@ LS.Lobby = {
     const t = performance.now() * 0.001;
     const menuNow = LS.Game.state === 'menu';
     if (!this.dragging) { if (menuNow) this.rotY = LS.util.lerp(this.rotY, Math.sin(t * 0.4) * 0.25, Math.min(1, dt * 2)); else this.rotY += dt * 0.25; }
-    this.model.root.rotation.y = this.rotY;
+    this.model.root.rotation.y = this.rotY; this.model.root.position.y = 0.3; // em cima do pedestal
     const armed = !!this.model.gunId;
     this.model.animate({ dt, speed: 0, aimPitch: 0, armed, running: armed, armedAim: false, idle: true });
     this.extras.forEach((m, i) => {
@@ -109,10 +109,14 @@ LS.Lobby = {
     // câmera: personagem à direita do painel
     const aspect = window.innerWidth / window.innerHeight;
     const inMenu = LS.Game.state === 'menu';
-    const tx = inMenu ? 0 : -1.1, dist = (inMenu ? 6.6 : 6.4) / Math.min(1, aspect / 1.5);
-    this.camX = LS.util.lerp(this.camX === undefined ? tx : this.camX, tx, Math.min(1, dt * 4));
-    this.camera.position.set(this.camX, 1.6, dist);
-    this.camera.lookAt(this.camX, 0.95, 0);
+    // menu: câmera perto e baixa, personagem grande no centro em cima do pedestal (estilo lobby de BR mobile)
+    const tx = inMenu ? 0 : -1.1, dist = (inMenu ? 4.4 : 6.4) / Math.min(1, aspect / 1.5), cy = inMenu ? 1.45 : 1.6, ly = inMenu ? 1.2 : 0.95;
+    const k = Math.min(1, dt * 4);
+    this.camX = LS.util.lerp(this.camX === undefined ? tx : this.camX, tx, k);
+    this.camD = LS.util.lerp(this.camD === undefined ? dist : this.camD, dist, k);
+    this.camY = LS.util.lerp(this.camY === undefined ? cy : this.camY, cy, k); this.camLY = LS.util.lerp(this.camLY === undefined ? ly : this.camLY, ly, k);
+    this.camera.position.set(this.camX + Math.sin(t * 0.3) * 0.08, this.camY, this.camD);
+    this.camera.lookAt(this.camX, this.camLY, 0);
     if (this.searching) {
       this.mmT -= dt;
       if (this.mmT <= 0) {
