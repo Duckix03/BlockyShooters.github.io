@@ -181,8 +181,8 @@ LS.World = {
 
     const geo = new THREE.PlaneGeometry(LS.MAP_SIZE, LS.MAP_SIZE, S, S);
     geo.rotateX(-Math.PI / 2);
-    const pos = geo.attributes.position, colors = new Float32Array(pos.count * 3);
-    const c = new THREE.Color(), sand = new THREE.Color(0xd9c58b), grass = new THREE.Color(0x5d9c3a), grass2 = new THREE.Color(0x3f7d2c),
+    const pos = geo.attributes.position, colors = new Float32Array(pos.count * 3), tmix = new Float32Array(pos.count); // tmix: 0 grama .. 1 terra
+    const c = new THREE.Color(), sand = new THREE.Color(0xd9c58b), grass = new THREE.Color(0x6cbf45), grass2 = new THREE.Color(0x4f9e38),
       rock = new THREE.Color(0x7a7268), snow = new THREE.Color(0xf2f4f7), dirt = new THREE.Color(0x9b8360);
     for (let i = 0; i < pos.count; i++) {
       const ix = i % W, iz = Math.floor(i / W);
@@ -190,22 +190,24 @@ LS.World = {
       const x = pos.getX(i), z = pos.getZ(i);
       const hn = (ix < S ? this.heights[i + 1] : h), hs = (iz < S ? this.heights[i + W] : h);
       const slope = Math.hypot(hn - h, hs - h) / cell;
-      if (h < 1.6) c.copy(sand);
+      let mx = 0;
+      if (h < 1.6) { c.copy(sand); mx = 1; }
       else { c.copy(grass).lerp(grass2, LS.util.noise(x * 0.05, z * 0.05)); }
-      if (slope > 0.6 || h > 30) c.lerp(rock, LS.util.clamp(Math.max((slope - 0.6) * 2, (h - 30) / 10), 0, 1));
+      if (slope > 0.6 || h > 30) { const k = LS.util.clamp(Math.max((slope - 0.6) * 2, (h - 30) / 10), 0, 1); c.lerp(rock, k); mx = Math.max(mx, k); }
       if (h > 70) c.lerp(snow, LS.util.clamp((h - 70) / 15, 0, 1));
       for (const t of this.towns) {
         const dd = Math.hypot(x - t.x, z - t.z);
         if (dd < t.r + 4) { // ruas em grade
           const lx = ((x - t.x) % 18 + 18) % 18, lz = ((z - t.z) % 18 + 18) % 18;
-          if (lx < 4 || lz < 4) c.lerp(dirt, 0.85); else c.lerp(dirt, 0.25);
+          if (lx < 4 || lz < 4) { c.lerp(dirt, 0.85); mx = 1; } else { c.lerp(dirt, 0.25); mx = Math.max(mx, 0.3); }
         }
       }
-      colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+      colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b; tmix[i] = mx;
     }
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geo.setAttribute('tmix', new THREE.BufferAttribute(tmix, 1));
     geo.computeVertexNormals();
-    const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true }));
+    const mesh = new THREE.Mesh(geo, LS.Tex.terrainMaterial()); // grama e caminhos de terra texturizados
     mesh.receiveShadow = true;
     scene.add(mesh);
     this.terrainMesh = mesh;

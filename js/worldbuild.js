@@ -9,10 +9,11 @@ Object.assign(LS.World, {
   },
   // caixa visual (+ colisor opcional). cx,cz = centro; y0 = base
   // as caixas são agrupadas por cor e viram InstancedMesh (poucas draw calls)
-  box(scene, cx, y0, cz, w, h, d, color, collide = true, shadow = true) {
+  // tex (opcional): textura da parede ('plaster', 'planks', 'brick')
+  box(scene, cx, y0, cz, w, h, d, color, collide = true, shadow = true, tex) {
     if (!this.boxBatches) this.boxBatches = {};
-    const key = color + (shadow ? 's' : 'n');
-    if (!this.boxBatches[key]) this.boxBatches[key] = { color, shadow, mats: [] };
+    const key = color + (shadow ? 's' : 'n') + (tex || '');
+    if (!this.boxBatches[key]) this.boxBatches[key] = { color, shadow, tex, mats: [] };
     this.boxBatches[key].mats.push(new THREE.Matrix4().compose(new THREE.Vector3(cx, y0, cz), new THREE.Quaternion(), new THREE.Vector3(w, h, d)));
     if (collide === true) this.addCollider(cx - w / 2, y0, cz - d / 2, cx + w / 2, y0 + h, cz + d / 2);
   },
@@ -27,7 +28,7 @@ Object.assign(LS.World, {
     if (!this.unitBox) { this.unitBox = new THREE.BoxGeometry(1, 1, 1); this.unitBox.translate(0, 0.5, 0); }
     for (const k in this.boxBatches) {
       const bt = this.boxBatches[k];
-      const mat = bt.color === LS.GLASS ? new THREE.MeshPhongMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.32, shininess: 120, depthWrite: false, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }) : this.mat(bt.color);
+      const mat = bt.color === LS.GLASS ? new THREE.MeshPhongMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.32, shininess: 120, depthWrite: false, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }) : bt.tex ? LS.Tex.material(bt.color, bt.tex) : this.mat(bt.color);
       const im = new THREE.InstancedMesh(this.unitBox, mat, bt.mats.length);
       bt.mats.forEach((mm, i) => im.setMatrixAt(i, mm));
       im.castShadow = bt.shadow; im.receiveShadow = true; im.frustumCulled = false;
@@ -70,7 +71,7 @@ Object.assign(LS.World, {
   tower(scene, cx, cz, w, d) {
     const y0 = this.heightAt(cx, cz) - 0.1, h = LS.util.rand(9, 22);
     const col = LS.util.pick([0x9aa3ad, 0xc4b8a8, 0x7d8a96, 0xb0a090]);
-    this.box(scene, cx, y0, cz, w, h, d, col);
+    this.box(scene, cx, y0, cz, w, h, d, col, true, true, 'plaster');
     for (let y = 2; y < h - 1; y += 3) { // faixas de janelas
       this.box(scene, cx, y0 + y, cz, w + 0.16, 1.1, d + 0.16, 0x2b3a4a, false, false);
     }
@@ -144,35 +145,22 @@ Object.assign(LS.World, {
     this.finalizeBoxes(scene);
     this.finalizeRoofs(scene);
     this.rebuildTerrainMesh();
-    // ---- árvores (instanciadas) ----
-    const trunkGeo = new THREE.CylinderGeometry(0.25, 0.35, 1, 6); trunkGeo.translate(0, 0.5, 0);
-    const leafGeo = new THREE.ConeGeometry(1, 1, 7); leafGeo.translate(0, 0.5, 0);
-    const roundGeo = new THREE.IcosahedronGeometry(1, 0);
-    const MAXT = 700;
-    const trunks = new THREE.InstancedMesh(trunkGeo, this.mat(0x5a3d22), MAXT);
-    const pines = new THREE.InstancedMesh(leafGeo, this.mat(0x2f6b2a), MAXT);
-    const rounds = new THREE.InstancedMesh(roundGeo, this.mat(0x4a8a30), MAXT);
+    // ---- árvores (cartoon, instanciadas por espécie: pinheiro, abeto, redonda, oval e de outono) ----
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
-    let nt = 0, np = 0, nr = 0; tries = 0;
-    while (nt < MAXT && tries++ < 6000) {
+    const MAXT = 700, trees = []; tries = 0;
+    while (trees.length < MAXT && tries++ < 6000) {
       const x = LS.util.rand(-330, 330), z = LS.util.rand(-330, 330), h = this.heightAt(x, z);
       if (h < 2 || h > 55 || this.insideTown(x, z, 4)) continue;
       if (LS.util.noise(x * 0.02 + 5, z * 0.02 + 5) < 0.38) continue; // aglomerados (florestas)
       let blocked = false;
       for (const b of this.nearBoxes(x, z, 2)) if (x > b.minX - 2 && x < b.maxX + 2 && z > b.minZ - 2 && z < b.maxZ + 2) { blocked = true; break; }
       if (blocked) continue;
-      const th = LS.util.rand(2.5, 4.5), sc = LS.util.rand(0.8, 1.4);
-      p.set(x, h - 0.2, z); s.set(sc, th, sc); m.compose(p, q, s); trunks.setMatrixAt(nt++, m);
-      if (Math.random() < 0.55) {
-        p.set(x, h + th * 0.6, z); s.set(2.6 * sc, 6 * sc, 2.6 * sc); m.compose(p, q, s); pines.setMatrixAt(np++, m);
-      } else {
-        p.set(x, h + th + 1.4 * sc, z); s.set(2.6 * sc, 2.3 * sc, 2.6 * sc); m.compose(p, q, s); rounds.setMatrixAt(nr++, m);
-      }
-      const tr = Math.max(0.3, 0.33 * sc); // raio real do tronco
-      this.addCollider(x - tr, h - 1, z - tr, x + tr, h + th + 2, z + tr);
+      const kind = LS.Flora.pickTree(), sc = LS.util.rand(0.85, 1.35), sy = LS.util.rand(0.9, 1.15), sp = LS.Flora.spec(kind);
+      trees.push({ kind, x, y: h - 0.1, z, s: sc, sy, rot: Math.random() * Math.PI * 2 });
+      const tr = Math.max(0.3, sp.trunkR * sc); // raio real do tronco
+      this.addCollider(x - tr, h - 1, z - tr, x + tr, h + sp.height * sc * sy, z + tr);
     }
-    trunks.count = nt; pines.count = np; rounds.count = nr;
-    [trunks, pines, rounds].forEach(im => { im.frustumCulled = false; im.castShadow = true; im.receiveShadow = true; scene.add(im); });
+    LS.Flora.instance(scene, trees);
     // ---- rochas ----
     const rockGeo = new THREE.DodecahedronGeometry(1, 0);
     const rocks = new THREE.InstancedMesh(rockGeo, this.mat(0x8a8580), 160);
@@ -190,15 +178,15 @@ Object.assign(LS.World, {
     q.identity();
     rocks.count = nk; rocks.frustumCulled = false; rocks.castShadow = true; rocks.receiveShadow = true; scene.add(rocks);
     // ---- arbustos (sem colisão, bons para se esconder) ----
-    const bushes = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), this.mat(0x3d7a2a), 400);
-    let nb = 0; tries = 0;
-    while (nb < 400 && tries++ < 4000) {
+    const bushes = [];
+    tries = 0;
+    while (bushes.length < 400 && tries++ < 4000) {
       const x = LS.util.rand(-330, 330), z = LS.util.rand(-330, 330), h = this.heightAt(x, z);
       if (h < 1.5 || h > 40 || this.nearBuilding(x, z, 1.2)) continue;
-      const sc = LS.util.rand(0.7, 1.3);
-      p.set(x, h + 0.3, z); s.set(sc * 1.2, sc * 0.8, sc * 1.2); m.compose(p, q, s); bushes.setMatrixAt(nb++, m);
+      const sc = LS.util.rand(0.8, 1.4);
+      bushes.push({ kind: LS.Flora.pickBush(), x, y: h - 0.05, z, s: sc, sy: LS.util.rand(0.85, 1.1), rot: Math.random() * Math.PI * 2 });
     }
-    bushes.count = nb; bushes.frustumCulled = false; bushes.receiveShadow = true; scene.add(bushes);
+    LS.Flora.instance(scene, bushes, false);
     // ---- pontos de loot na natureza ----
     for (let i = 0; i < 60; i++) {
       const x = LS.util.rand(-300, 300), z = LS.util.rand(-300, 300), h = this.heightAt(x, z);

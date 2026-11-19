@@ -45,7 +45,7 @@ Object.assign(LS.World, {
     // fundação de pedra (aparece só onde o terreno era inclinado); topo 4 cm abaixo do piso
     const fb = Math.min(hMin, y0 - 0.3) - 0.6;
     this.box(scene, cx, fb, cz, w + 0.5, y0 - 0.04 - fb, d + 0.5, 0x8a8580, true);
-    for (const b of m.boxes) this.box(scene, cx + b.x, y0 + b.y, cz + b.z, b.w, b.h, b.d, b.color, b.collide, b.shadow);
+    for (const b of m.boxes) this.box(scene, cx + b.x, y0 + b.y, cz + b.z, b.w, b.h, b.d, b.color, b.collide, b.shadow, b.tex);
     if (kind === 'fazenda') for (const b of LS.HouseKit.fence(m, (x, z) => this.heightAt(cx + x, cz + z) - y0))
       this.box(scene, cx + b.x, y0 + b.y, cz + b.z, b.w, b.h, b.d, b.color, b.collide, b.shadow);
     for (const c of m.colliders) this.addCollider(cx + c.minX, y0 + c.minY, cz + c.minZ, cx + c.maxX, y0 + c.maxY, cz + c.maxZ);
@@ -53,6 +53,10 @@ Object.assign(LS.World, {
     const p = m.tris.pos;
     for (let i = 0; i < p.length; i += 3) this.roofTris.pos.push(p[i] + cx, p[i + 1] + y0, p[i + 2] + cz);
     for (const c of m.tris.col) this.roofTris.col.push(c);
+    if (!this.gableTris) this.gableTris = {};
+    const gt = this.gableTris[m.wallTex] || (this.gableTris[m.wallTex] = { pos: [], col: [] }), gp = m.gables.pos;
+    for (let i = 0; i < gp.length; i += 3) gt.pos.push(gp[i] + cx, gp[i + 1] + y0, gp[i + 2] + cz);
+    for (const c of m.gables.col) gt.col.push(c);
     for (const l of m.loot) this.lootSpots.push({ x: cx + l.x, y: y0 + l.y, z: cz + l.z, indoor: true });
     this.buildings.push({ x: cx, z: cz, w, d, color: m.wallCol, kind });
   },
@@ -67,6 +71,13 @@ Object.assign(LS.World, {
     mesh.castShadow = true; mesh.receiveShadow = true;
     scene.add(mesh);
     this.roofTris = null;
+    // oitões: uma malha por textura de parede
+    for (const tex in this.gableTris || {}) {
+      const t = this.gableTris[tex], gg = new THREE.BufferGeometry();
+      gg.setAttribute('position', new THREE.Float32BufferAttribute(t.pos, 3)); gg.setAttribute('color', new THREE.Float32BufferAttribute(t.col, 3)); gg.computeVertexNormals();
+      const gm = new THREE.Mesh(gg, LS.Tex.material(0xffffff, tex, true)); gm.material.side = THREE.DoubleSide; gm.castShadow = gm.receiveShadow = true; scene.add(gm);
+    }
+    this.gableTris = null;
   },
   // verdadeiro se (x,z) fica dentro (ou perto) de alguma construção
   nearBuilding(x, z, pad) {
