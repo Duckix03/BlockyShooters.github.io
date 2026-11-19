@@ -64,6 +64,7 @@ LS.Game = {
       this.bots.forEach(b => b.model.applyLook(LS.Skin.randomLook()));
       this.plane.reset(); this.zone.reset();
       this.time = 0; this.endTimer = 0; this.ended = false;
+      const df = LS.Menu.diff(); this.botDamageMul = df.dmg; this.bots.forEach(b => { b.skill = LS.util.rand(df.skill[0], df.skill[1]); });
       this.player.camYaw = Math.atan2(this.plane.end.x - this.plane.start.x, this.plane.end.z - this.plane.start.z);
       document.getElementById('killfeed').innerHTML = '';
       LS.UI.showScreen(null);
@@ -166,6 +167,8 @@ LS.Game = {
     t.textContent = win ? 'VITÓRIA!' : 'FIM DE JOGO';
     t.className = win ? 'win' : 'lose';
     document.getElementById('end-sub').textContent = win ? 'Você é o último sobrevivente da ilha!' : 'Você foi eliminado. Tente novamente!';
+    const rw = LS.Menu.award(P, win);
+    document.getElementById('end-xp').textContent = '+' + rw.xp + ' XP · +' + rw.coins + ' moedas' + (rw.levelUp ? ' · SUBIU PARA O NÍVEL ' + rw.level + '!' : '');
     document.getElementById('end-place').textContent = '#' + (win ? 1 : P.placement);
     document.getElementById('end-kills').textContent = P.kills;
     document.getElementById('end-dmg').textContent = Math.round(P.damageDealt);
@@ -193,7 +196,7 @@ LS.Game = {
       const fd = LS.effDist(); this.scene.fog.far = fd; this.scene.fog.near = fd * 0.3;
     } else r.shadowMap.enabled = shadows;
     this.camera.far = LS.effDist() + 100; this.camera.updateProjectionMatrix();
-    LS.Audio.setVolume(s.volume);
+    LS.Audio.setVolume(s.muted ? 0 : s.volume);
   },
 
   // ---------- Loop ----------

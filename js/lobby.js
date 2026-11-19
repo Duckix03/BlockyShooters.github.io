@@ -7,42 +7,16 @@ LS.Lobby = {
     if (this.built) return;
     this.built = true;
     const sc = this.scene = new THREE.Scene();
-    sc.background = new THREE.Color(0x141c2c);
-    sc.fog = new THREE.Fog(0x141c2c, 12, 30);
-    this.camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
-    sc.add(new THREE.HemisphereLight(0xbfd9ff, 0x2a2030, 0.75));
-    const key = new THREE.DirectionalLight(0xffe2c0, 0.9); key.position.set(3, 6, 4); key.castShadow = true;
-    key.shadow.mapSize.set(1024, 1024); key.shadow.camera.left = -6; key.shadow.camera.right = 6; key.shadow.camera.top = 6; key.shadow.camera.bottom = -6;
-    sc.add(key);
-    const rim = new THREE.PointLight(0xff8a1f, 1.2, 12); rim.position.set(-2, 2.5, -2.5); sc.add(rim);
-    // plataforma de blocos
-    const M = c => new THREE.MeshLambertMaterial({ color: c });
-    const block = new THREE.BoxGeometry(1, 1, 1);
-    const grassTop = M(0x4f8a34), dirt = M(0x7a5a3a), stone = M(0x6c6c74), glow = new THREE.MeshBasicMaterial({ color: 0xff8a1f });
-    for (let x = -6; x <= 6; x++) for (let z = -6; z <= 6; z++) {
-      const d = Math.hypot(x, z); if (d > 6.3) continue;
-      const m = new THREE.Mesh(block, d < 2.2 ? stone : (Math.random() < 0.15 ? dirt : grassTop));
-      m.position.set(x, -0.5 - (d > 4.5 ? Math.random() * 0.3 : 0), z); m.receiveShadow = true; sc.add(m);
-    }
-    const ring = new THREE.Mesh(new THREE.RingGeometry(1.6, 1.75, 32), glow); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02; sc.add(ring);
-    this.ring = ring;
-    // árvores e caixas decorativas
-    const trunk = M(0x5a3d22), leaf = M(0x3d7a2a);
-    [[-4.5, -4], [4.5, -2.5], [-6, -1]].forEach(([x, z]) => {
-      const t = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2.4, 0.5), trunk); t.position.set(x, 1.2, z); t.castShadow = true; sc.add(t);
-      const l = new THREE.Mesh(new THREE.BoxGeometry(2, 1.6, 2), leaf); l.position.set(x, 2.8, z); l.castShadow = true; sc.add(l);
-    });
-    [[2.6, 1.8, 0xb03a2e], [3.2, 0.9, 0xc98a1e], [-3.6, -2.4, 0x2e6bb0]].forEach(([x, z, c]) => {
-      const b = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), M(c)); b.position.set(x, 0.4, z); b.rotation.y = Math.random(); b.castShadow = true; sc.add(b);
-    });
-    // personagem do jogador
+    this.camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 120);
+    LS.LobbyScene.build(sc, this);
+    // personagem do jogador (segura a arma escolhida no Arsenal)
     this.model = new LS.CharacterModel({ look: LS.playerProfile.look });
+    this.model.setGun(LS.playerProfile.weapon || null);
     sc.add(this.model.root);
-    // bots esperando ao fundo
+    // dois sobreviventes conversando no fundo
     this.extras = [];
-    [[-1.9, -1.6], [1.9, -1.8], [-0.4, -3.2], [3.4, -3.6]].forEach(([x, z], i) => {
-      const m = new LS.CharacterModel({}); m.root.position.set(x, 0, z); m.root.rotation.y = LS.util.rand(-0.5, 0.5);
-      if (i % 2 === 0) m.setGun(LS.util.pick(['ak47', 'm4a1', 'mp5', 'awm']));
+    [[-3.2, -4.2, 0.6], [-2.2, -4.6, -2.4]].forEach(([x, z, ry]) => {
+      const m = new LS.CharacterModel({}); m.root.position.set(x, 0, z); m.root.rotation.y = ry;
       sc.add(m.root); this.extras.push(m);
     });
     // rotação com o mouse
@@ -120,19 +94,22 @@ LS.Lobby = {
 
   update(dt) {
     const t = performance.now() * 0.001;
-    if (!this.dragging) this.rotY += dt * 0.25;
+    const menuNow = LS.Game.state === 'menu';
+    if (!this.dragging) { if (menuNow) this.rotY = LS.util.lerp(this.rotY, Math.sin(t * 0.4) * 0.25, Math.min(1, dt * 2)); else this.rotY += dt * 0.25; }
     this.model.root.rotation.y = this.rotY;
-    this.model.animate({ dt, speed: 0, aimPitch: 0, armed: false, idle: true });
+    const armed = !!this.model.gunId;
+    this.model.animate({ dt, speed: 0, aimPitch: 0, armed, running: armed, armedAim: false, idle: true });
     this.extras.forEach((m, i) => {
-      m.root.position.y = 0;
-      m.animate({ dt, speed: 0, aimPitch: Math.sin(t + i) * 0.1, armed: !!m.gunId, armedAim: false, crouch: i === 3, idle: true });
-      m.headG.rotation.y = Math.sin(t * 0.7 + i * 2) * 0.5;
+      m.animate({ dt, speed: 0, aimPitch: 0, armed: false, idle: true });
+      m.headG.rotation.y = Math.sin(t * 0.7 + i * 2) * 0.35;
+      if (i === 0) m.armR.rotation.x = -0.3 + Math.sin(t * 2) * 0.25; // gesticulando
     });
     this.ring.material.color.setHSL(0.07, 1, 0.5 + Math.sin(t * 3) * 0.1);
+    LS.LobbyScene.update(this, dt, t);
     // câmera: personagem à direita do painel
     const aspect = window.innerWidth / window.innerHeight;
     const inMenu = LS.Game.state === 'menu';
-    const tx = inMenu ? -2.4 : -1.1, dist = (inMenu ? 7.2 : 6.4) / Math.min(1, aspect / 1.5);
+    const tx = inMenu ? 0 : -1.1, dist = (inMenu ? 6.6 : 6.4) / Math.min(1, aspect / 1.5);
     this.camX = LS.util.lerp(this.camX === undefined ? tx : this.camX, tx, Math.min(1, dt * 4));
     this.camera.position.set(this.camX, 1.6, dist);
     this.camera.lookAt(this.camX, 0.95, 0);

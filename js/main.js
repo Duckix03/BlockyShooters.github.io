@@ -1,19 +1,18 @@
 // Menus, painéis de configuração e inicialização
 'use strict';
 LS.UI = {
-  screens: ['menu-main', 'lobby', 'panel-settings', 'panel-controls', 'panel-credits', 'loading', 'pause', 'endscreen'],
+  screens: ['menu-main', 'lobby', 'panel-arsenal', 'panel-stats', 'panel-news', 'panel-settings', 'panel-controls', 'panel-credits', 'loading', 'pause', 'endscreen'],
   current: 'menu-main', backTo: 'menu-main',
 
   showScreen(id) {
     this.screens.forEach(s => document.getElementById(s).classList.toggle('active', s === id));
     this.current = id;
   },
-  subPanelOpen() { return ['panel-settings', 'panel-controls', 'panel-credits'].includes(this.current); },
+  subPanelOpen() { return ['panel-settings', 'panel-controls', 'panel-credits', 'panel-arsenal', 'panel-stats', 'panel-news'].includes(this.current); },
   openPanel(id) { this.backTo = this.current; this.showScreen(id); },
   back() { this.showScreen(this.backTo || 'menu-main'); },
   updateMenuStats() {
-    const s = LS.stats;
-    document.getElementById('menu-stats').textContent = 'Partidas: ' + s.games + '  ·  Vitórias: ' + s.wins + '  ·  Abates totais: ' + s.kills;
+    if (LS.Menu) LS.Menu.render();
   },
 
   // ---------- Configurações ----------
@@ -52,6 +51,13 @@ LS.UI = {
     switch (a) {
       case 'play': if (LS.Game.state !== 'menu' && LS.Game.state !== 'lobby') LS.Game.quitToMenu(); LS.Lobby.startSearch(); break;
       case 'customize': LS.Lobby.open(); break;
+      case 'arsenal': LS.Menu.renderArsenal(); this.openPanel('panel-arsenal'); break;
+      case 'stats': LS.Menu.renderStats(); this.openPanel('panel-stats'); break;
+      case 'stats-reset': LS.Menu.resetStats(); break;
+      case 'news': this.openPanel('panel-news'); break;
+      case 'difficulty': LS.Menu.cycleDifficulty(); break;
+      case 'mute': LS.Menu.toggleMute(); break;
+      case 'fullscreen': LS.Menu.toggleFullscreen(); break;
       case 'lobby-start': LS.Lobby.startSearch(); break;
       case 'lobby-cancel': LS.Lobby.cancelSearch(); break;
       case 'lobby-random': LS.Lobby.random(); break;
@@ -78,6 +84,8 @@ window.addEventListener('load', () => {
   }
   LS.Game.init();
   LS.Lobby.build();
+  LS.Menu.init();
+  document.getElementById('arsenal-list').addEventListener('click', e => { const b = e.target.closest('[data-wpn]'); if (b) { LS.Audio.init(); LS.Audio.click(); LS.Menu.pickLobbyWeapon(b.dataset.wpn); } });
   LS.UI.bindSettings();
   LS.UI.updateMenuStats();
   document.querySelectorAll('[data-action]').forEach(b => b.addEventListener('click', () => LS.UI.onAction(b.dataset.action)));
