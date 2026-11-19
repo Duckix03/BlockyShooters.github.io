@@ -21,18 +21,23 @@ LS.Tex = {
   },
 
   GEN: {
+    // grama cartoon: cor chapada, manchas suaves grandes e tufinhos desenhados com contorno (sem ruído granulado)
     grass(g, R, T) {
-      g.fillStyle = T.rgb(205, 212, 195); g.fillRect(0, 0, T.S, T.S);
-      T.blotches(g, R, 40, 20, 60, [235, 240, 205], [150, 165, 135], 0.35);
-      g.lineCap = 'round';
-      for (let i = 0; i < 4200; i++) { // folhinhas de grama vistas de cima
-        const x = R() * T.S, y = R() * T.S, a = R() * Math.PI * 2, L = 2 + R() * 6, k = R();
-        const c = k < 0.45 ? [125, 150, 105] : k < 0.85 ? [235, 245, 210] : [245, 235, 170];
-        g.strokeStyle = T.rgb(...c, 0.75); g.lineWidth = 1 + R() * 1.2;
-        T.wrap(g, () => { g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * L, y + Math.sin(a) * L); g.stroke(); });
+      g.fillStyle = T.rgb(222, 228, 210); g.fillRect(0, 0, T.S, T.S);
+      T.blotches(g, R, 14, 40, 90, [240, 245, 222], [196, 206, 182], 0.5);
+      g.lineCap = 'round'; g.lineJoin = 'round';
+      for (let i = 0; i < 46; i++) { // tufos em "W" (3 folhinhas)
+        const x = R() * T.S, y = R() * T.S, sz = 5 + R() * 5, dark = R() < 0.65;
+        T.wrap(g, () => {
+          g.strokeStyle = dark ? T.rgb(150, 168, 130, 0.9) : T.rgb(250, 255, 235, 0.95); g.lineWidth = 2.2;
+          g.beginPath(); g.moveTo(x - sz * 0.6, y - sz * 0.8); g.lineTo(x - sz * 0.25, y); g.lineTo(x, y - sz); g.lineTo(x + sz * 0.25, y); g.lineTo(x + sz * 0.6, y - sz * 0.8); g.stroke();
+        });
       }
-      for (let i = 0; i < 70; i++) { const x = R() * T.S, y = R() * T.S; g.fillStyle = T.rgb(...(R() < 0.5 ? [255, 250, 200] : [250, 220, 230]), 0.8); T.wrap(g, () => g.fillRect(x, y, 2, 2)); } // florzinhas
-      T.grain(g, R, 18);
+      for (let i = 0; i < 14; i++) { // florzinhas de 4 pétalas
+        const x = R() * T.S, y = R() * T.S, c = R() < 0.5 ? [255, 255, 255] : [255, 236, 140];
+        T.wrap(g, () => { g.fillStyle = T.rgb(...c); for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) { g.beginPath(); g.arc(x + dx, y + dy, 1.8, 0, 7); g.fill(); }
+          g.fillStyle = T.rgb(250, 190, 60); g.beginPath(); g.arc(x, y, 1.2, 0, 7); g.fill(); });
+      }
     },
     dirt(g, R, T) {
       g.fillStyle = T.rgb(210, 200, 185); g.fillRect(0, 0, T.S, T.S);
@@ -47,15 +52,25 @@ LS.Tex = {
         T.wrap(g, () => { g.beginPath(); g.moveTo(...pts[0]); pts.forEach(p => g.lineTo(...p)); g.stroke(); }); } // rachaduras
       T.grain(g, R, 26);
     },
+    // folhagem cartoon: "escamas" de folhas arredondadas com sombra embaixo e brilho em cima
     leaves(g, R, T) {
-      g.fillStyle = T.rgb(175, 190, 165); g.fillRect(0, 0, T.S, T.S);
-      for (let i = 0; i < 900; i++) { // folhas sobrepostas
-        const x = R() * T.S, y = R() * T.S, w = 4 + R() * 8, a = R() * Math.PI, k = R();
-        const c = k < 0.35 ? [105, 125, 95] : k < 0.8 ? [215, 230, 195] : [245, 250, 215];
-        T.wrap(g, () => { g.fillStyle = T.rgb(...c, 0.85); g.beginPath(); g.ellipse(x, y, w, w * 0.45, a, 0, 7); g.fill();
-          g.strokeStyle = T.rgb(110, 125, 95, 0.35); g.lineWidth = 0.8; g.beginPath(); g.moveTo(x - Math.cos(a) * w, y - Math.sin(a) * w); g.lineTo(x + Math.cos(a) * w, y + Math.sin(a) * w); g.stroke(); });
+      g.fillStyle = T.rgb(200, 212, 190); g.fillRect(0, 0, T.S, T.S);
+      for (let i = 0; i < 170; i++) {
+        const x = R() * T.S, y = R() * T.S, r = 9 + R() * 9;
+        T.wrap(g, () => {
+          g.fillStyle = T.rgb(150, 165, 140, 0.8); g.beginPath(); g.arc(x, y + r * 0.28, r, 0, 7); g.fill();     // sombra
+          g.fillStyle = T.rgb(226, 236, 214); g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();                    // folha
+          g.fillStyle = T.rgb(250, 255, 240, 0.85); g.beginPath(); g.ellipse(x - r * 0.3, y - r * 0.38, r * 0.38, r * 0.2, -0.5, 0, 7); g.fill(); // brilho
+        });
       }
-      T.grain(g, R, 20);
+    },
+    bark(g, R, T) { // casca: listras verticais onduladas
+      g.fillStyle = T.rgb(210, 200, 190); g.fillRect(0, 0, T.S, T.S);
+      for (let i = 0; i < 28; i++) {
+        let x = R() * T.S; const w = 3 + R() * 6, dark = R() < 0.6;
+        g.strokeStyle = dark ? T.rgb(140, 125, 110, 0.8) : T.rgb(235, 228, 218, 0.8); g.lineWidth = w;
+        g.beginPath(); g.moveTo(x, -10); for (let y = 0; y <= T.S + 10; y += 20) { x += (R() - 0.5) * 6; g.lineTo(x, y); } g.stroke();
+      }
     },
     plaster(g, R, T) {
       g.fillStyle = T.rgb(228, 226, 220); g.fillRect(0, 0, T.S, T.S);
@@ -105,7 +120,7 @@ LS.Tex = {
     return (this.cache[name] = { tex, gain: (p.length / 4) / sum, canvas: c });
   },
   // tamanho de 1 ladrilho no mundo (metros)
-  SCALE: { grass: 3, dirt: 2.5, leaves: 1.6, plaster: 2.2, planks: 2.4, brick: 1.4 },
+  SCALE: { grass: 4, dirt: 2.5, leaves: 1.8, bark: 1.2, plaster: 2.2, planks: 2.4, brick: 1.4 },
 
   // ---------- injeção no shader (Lambert/Phong) ----------
   VERT: `#include <begin_vertex>

@@ -182,7 +182,7 @@ LS.World = {
     const geo = new THREE.PlaneGeometry(LS.MAP_SIZE, LS.MAP_SIZE, S, S);
     geo.rotateX(-Math.PI / 2);
     const pos = geo.attributes.position, colors = new Float32Array(pos.count * 3), tmix = new Float32Array(pos.count); // tmix: 0 grama .. 1 terra
-    const c = new THREE.Color(), sand = new THREE.Color(0xd9c58b), grass = new THREE.Color(0x5d9c3a), grass2 = new THREE.Color(0x3f7d2c),
+    const c = new THREE.Color(), sand = new THREE.Color(0xd9c58b), grass = new THREE.Color(0x6cbf45), grass2 = new THREE.Color(0x4f9e38),
       rock = new THREE.Color(0x7a7268), snow = new THREE.Color(0xf2f4f7), dirt = new THREE.Color(0x9b8360);
     for (let i = 0; i < pos.count; i++) {
       const ix = i % W, iz = Math.floor(i / W);
