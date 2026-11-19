@@ -42,7 +42,7 @@ LS.HouseKit = {
     const K = this, t = K.T, h2 = t / 2, w = spec.w, d = spec.d;
     const kind = K.STYLE[spec.kind] ? spec.kind : 'casa', ST = K.STYLE[kind];
     const wallCol = spec.wallCol || K.pick(ST.walls), roofCol = spec.roofCol || K.pick(ST.roofs);
-    const trimCol = K.pick(ST.trims.filter(c => c !== wallCol)), doorCol = K.pick(ST.doors), baseCol = K.pick(K.BASES);
+    const trimCol = K.pick(ST.trims.filter(c => c !== wallCol)), baseCol = K.pick(K.BASES);
     const twoStory = (kind === 'casa' || kind === 'fazenda') && !!spec.twoStory && w >= 9.5 && d >= 8;
     let doorSide = spec.doorSide !== undefined ? spec.doorSide : Math.floor(Math.random() * 4);
     if (twoStory && doorSide === 0) doorSide = 1; // a escada fica na parede norte
@@ -79,24 +79,12 @@ LS.HouseKit = {
       if (!vitrine) wb(axis, xc, y0, zc, a + 0.06, b - 0.06, my - 0.025, my + 0.025, -0.03, 0.03, trimCol);
       wb(axis, xc, y0, zc, a + 0.03, b - 0.03, bot + 0.01, top - 0.03, -0.012, 0.012, LS.GLASS, false, false);
     };
-    // ---- porta: batente que sobressai, soleira e folha aberta encostada por dentro (ou de correr, no galpão) ----
+    // ---- porta: só o vão com batente e soleira (sem folha: não atrapalha a passagem nem a mira) ----
     const doorDecor = (axis, xc, y0, zc, a, b, top, inn) => {
       wb(axis, xc, y0, zc, a - 0.06, a + 0.08, 0, top, -h2 - 0.03, h2 + 0.03, trimCol);
       wb(axis, xc, y0, zc, b - 0.08, b + 0.06, 0, top, -h2 - 0.03, h2 + 0.03, trimCol);
       wb(axis, xc, y0, zc, a - 0.07, b + 0.07, top - 0.08, top + 0.08, -h2 - 0.04, h2 + 0.04, trimCol);
       wb(axis, xc, y0, zc, a + 0.08, b - 0.08, -0.04, 0.03, -h2, h2, K.STONE, false, false);       // soleira
-      const dw = b - a;
-      if (kind === 'galpao') { // duas folhas de correr abertas por fora
-        const o0 = -inn * (h2 + 0.05), o1 = -inn * (h2 + 0.1);
-        wb(axis, xc, y0, zc, a - dw / 2, a - 0.02, 0.02, top - 0.05, o0, o1, doorCol);
-        wb(axis, xc, y0, zc, b + 0.02, b + dw / 2, 0.02, top - 0.05, o0, o1, doorCol);
-        for (const [u0, u1] of [[a - dw / 2, a - 0.02], [b + 0.02, b + dw / 2]]) // X de reforço (só aparência)
-          wb(axis, xc, y0, zc, u0 + 0.1, u1 - 0.1, top / 2 - 0.06, top / 2 + 0.06, -inn * (h2 + 0.1), -inn * (h2 + 0.13), trimCol);
-      } else {
-        const n0 = inn * (h2 + 0.01), n1 = inn * (h2 + dw - 0.22);
-        wb(axis, xc, y0, zc, a + 0.09, a + 0.14, 0.02, top - 0.1, n0, n1, doorCol);
-        wb(axis, xc, y0, zc, a + 0.14, a + 0.19, 1.0, 1.08, inn * (h2 + dw - 0.4), inn * (h2 + dw - 0.34), 0xd8c070, false, false); // maçaneta
-      }
     };
 
     // ---- paredes com aberturas ----
