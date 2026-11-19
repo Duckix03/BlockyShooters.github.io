@@ -1,0 +1,235 @@
+// Base comum de jogador e bots: inventário, armas, dano, cura + disparo
+'use strict';
+LS.Fighter = class {
+  constructor(name, isPlayer, modelOpts) {
+    this.name = name; this.isPlayer = isPlayer;
+    this.model = new LS.CharacterModel(modelOpts || {});
+    this.pos = new THREE.Vector3(); this.vel = new THREE.Vector3();
+    this.yaw = 0; this.pitch = 0;
+    this.reset();
+  }
+  reset() {
+    this.hp = 100; this.alive = true;
+    this.vest = { level: 0, dur: 0 }; this.helmet = { level: 0, dur: 0 }; this.bag = 0;
+    this.weapons = [null, null]; this.slot = 0;
+    this.ammo = { light: 0, rifle: 0, sniper: 0, shell: 0 };
+    this.meds = { medkit: 0, bandage: 0 };
+    this.kills = 0; this.damageDealt = 0;
+    this.reloadT = 0; this.fireCd = 0; this.healT = 0; this.healType = null;
+    this.crouch = false; this.running = false; this.aiming = false; this.onGround = false;
+    this.state = 'plane'; // plane | fall | chute | ground
+    this.recoilKick = 0; this.lastShotT = 0; this.placement = 0;
+    this.model.setGun(null); this.model.setGear(0, 0, 0);
+    this.model.root.visible = false;
+  }
+  weapon() { return this.weapons[this.slot]; }
+  wdef() { const w = this.weapon(); return w ? LS.WEAPONS[w.id] : null; }
+  bagMult() { return LS.GEAR.bag.levels[this.bag]; }
+  maxAmmo(t) { return Math.round(LS.AMMO_TYPES[t].baseMax * this.bagMult()); }
+  maxMed(t) { return Math.round(LS.MEDS[t].baseMax * this.bagMult()); }
+  headY() { return this.crouch ? 1.15 : 1.62; }
+  eyePos(out) { return out.set(this.pos.x, this.pos.y + this.headY(), this.pos.z); }
+
+  switchWeapon(i) {
+    if (i === this.slot || !this.weapons[i]) return false;
+    this.slot = i; this.reloadT = 0; this.fireCd = Math.max(this.fireCd, 0.35);
+    this.model.setGun(this.weapons[i].id);
+    return true;
+  }
+  // devolve texto da coleta ou null
+  pickup(it, allowSwap) {
+    if (!it.alive) return null;
+    const label = LS.Loot.label(it);
+    if (it.type === 'weapon') {
+      let s = this.weapons[0] ? (this.weapons[1] ? -1 : 1) : 0;
+      if (s < 0) {
+        if (!allowSwap) return null;
+        s = this.slot;
+        this.dropWeapon(s);
+      }
+      this.weapons[s] = { id: it.id, mag: it.ammoInMag };
+      if (!this.weapon() || s === this.slot || !this.weapons[this.slot]) { this.slot = s; this.model.setGun(it.id); this.reloadT = 0; }
+      LS.Loot.remove(it); return label;
+    }
+    if (it.type === 'ammo') {
+      const space = this.maxAmmo(it.id) - this.ammo[it.id]; if (space <= 0) return null;
+      const take = Math.min(space, it.amount); this.ammo[it.id] += take; it.amount -= take;
+      if (it.amount <= 0) LS.Loot.remove(it);
+      return LS.AMMO_TYPES[it.id].name + ' +' + take;
+    }
+    if (it.type === 'med') {
+      const space = this.maxMed(it.id) - this.meds[it.id]; if (space <= 0) return null;
+      const take = Math.min(space, it.amount); this.meds[it.id] += take; it.amount -= take;
+      if (it.amount <= 0) LS.Loot.remove(it);
+      return LS.MEDS[it.id].name + ' +' + take;
+    }
+    if (it.type === 'vest' || it.type === 'helmet') {
+      const g = this[it.type], def = LS.GEAR[it.type].levels[it.level];
+      if (it.level < g.level || (it.level === g.level && g.dur >= def.dur * 0.6)) return null;
+      g.level = it.level; g.dur = def.dur;
+    } else if (it.type === 'bag') {
+      if (it.level <= this.bag) return null;
+      this.bag = it.level;
+    }
+    this.model.setGear(this.vest.level, this.helmet.level, this.bag);
+    LS.Loot.remove(it); return label;
+  }
+  dropWeapon(s) {
+    const w = this.weapons[s]; if (!w) return;
+    const it = LS.Loot.spawn('weapon', w.id, 0, 1, this.pos.x + Math.sin(this.yaw) * 1.2, this.pos.y + 0.1, this.pos.z + Math.cos(this.yaw) * 1.2);
+    it.ammoInMag = w.mag;
+    this.weapons[s] = null;
+    if (s === this.slot) { this.reloadT = 0; const o = 1 - s; if (this.weapons[o]) { this.slot = o; this.model.setGun(this.weapons[o].id); } else this.model.setGun(null); }
+  }
+  startReload() {
+    const w = this.weapon(), d = this.wdef();
+    if (!w || this.reloadT > 0 || w.mag >= d.mag || this.ammo[d.ammo] <= 0) return false;
+    this.reloadT = d.reload; this.cancelHeal();
+    if (this.isPlayer) LS.Audio.reload(d);
+    return true;
+  }
+  startHeal(type) {
+    if (this.meds[type] <= 0 || this.hp >= 100 || this.healType) return false;
+    this.healType = type; this.healT = LS.MEDS[type].time; this.reloadT = 0;
+    return true;
+  }
+  cancelHeal() { this.healType = null; this.healT = 0; }
+
+  updateTimers(dt) {
+    this.fireCd = Math.max(0, this.fireCd - dt);
+    this.recoilKick = Math.max(0, this.recoilKick - dt * 6);
+    if (this.reloadT > 0) {
+      this.reloadT -= dt;
+      if (this.reloadT <= 0) {
+        this.reloadT = 0;
+        const w = this.weapon(), d = this.wdef();
+        if (w) { const need = d.mag - w.mag, take = Math.min(need, this.ammo[d.ammo]); w.mag += take; this.ammo[d.ammo] -= take; }
+      }
+    }
+    if (this.healType) {
+      this.healT -= dt;
+      if (this.healT <= 0) {
+        const m = LS.MEDS[this.healType];
+        this.hp = Math.min(100, this.hp + m.heal); this.meds[this.healType]--;
+        if (this.isPlayer) LS.Audio.heal();
+        this.healType = null;
+      }
+    }
+  }
+  // tenta atirar na direção dada; devolve true se disparou
+  tryFire(origin, dir, accuracyMul) {
+    const w = this.weapon(), d = this.wdef();
+    if (!w || this.fireCd > 0 || this.reloadT > 0 || this.healType || this.state !== 'ground') return false;
+    if (w.mag <= 0) { this.fireCd = 0.25; if (this.isPlayer) LS.Audio.empty(); this.startReload(); return false; }
+    w.mag--; this.fireCd = 1 / d.rate;
+    let spread = d.spread * (accuracyMul || 1);
+    if (!this.aiming) spread *= d.cat === 'Sniper' ? 8 : 1.8;
+    if (this.crouch) spread *= 0.7;
+    if (this.vel.lengthSq() > 4) spread *= 1.6;
+    if (!this.onGround) spread *= 2.5;
+    LS.Combat.fire(this, origin, dir, d, spread);
+    this.model.shoot();
+    this.recoilKick = Math.min(this.recoilKick + d.recoil, 12);
+    this.lastShotT = LS.Game.time;
+    if (w.mag <= 0) this.startReload();
+    return true;
+  }
+  takeDamage(amount, attacker, head, weaponName, ignoreArmor) {
+    if (!this.alive) return 0;
+    let dmg = amount;
+    if (!ignoreArmor) {
+      const g = head ? this.helmet : this.vest;
+      if (g.level > 0 && g.dur > 0) {
+        const def = LS.GEAR[head ? 'helmet' : 'vest'].levels[g.level];
+        const absorbed = dmg * def.red;
+        dmg -= absorbed; g.dur = Math.max(0, g.dur - absorbed * 1.5);
+      }
+    }
+    this.hp -= dmg;
+    if (this.healType && !ignoreArmor) this.cancelHeal();
+    if (attacker) attacker.damageDealt += dmg;
+    LS.Game.onDamage(this, attacker, dmg, head);
+    if (this.hp <= 0) { this.hp = 0; this.die(attacker, weaponName, head); }
+    return dmg;
+  }
+  die(killer, weaponName, head) {
+    this.alive = false; this.healType = null; this.reloadT = 0;
+    if (killer && killer !== this) killer.kills++;
+    // espalha o inventário no chão
+    const U = LS.util, p = this.pos, gy = LS.World.groundAt(p.x, p.z, p.y + 0.5, 0.3) + 0.1;
+    const drop = (type, id, lv, amt, extra) => {
+      const a = Math.random() * Math.PI * 2, r = U.rand(0.6, 1.8);
+      const it = LS.Loot.spawn(type, id, lv, amt, p.x + Math.cos(a) * r, gy, p.z + Math.sin(a) * r);
+      if (extra !== undefined) it.ammoInMag = extra;
+    };
+    this.weapons.forEach(w => { if (w) drop('weapon', w.id, 0, 1, w.mag); });
+    for (const t in this.ammo) if (this.ammo[t] > 0) drop('ammo', t, 0, this.ammo[t]);
+    for (const t in this.meds) if (this.meds[t] > 0) drop('med', t, 0, this.meds[t]);
+    if (this.vest.level && this.vest.dur > 10) drop('vest', null, this.vest.level, 1);
+    if (this.helmet.level && this.helmet.dur > 10) drop('helmet', null, this.helmet.level, 1);
+    if (this.bag) drop('bag', null, this.bag, 1);
+    this.weapons = [null, null]; this.model.setGun(null);
+    LS.Game.onKill(this, killer, weaponName, head);
+  }
+};
+
+LS.Combat = {
+  _o: new THREE.Vector3(), _d: new THREE.Vector3(), _tmp: new THREE.Vector3(), _end: new THREE.Vector3(),
+  // interseção raio-esfera; retorna t ou -1
+  raySphere(o, d, cx, cy, cz, r) {
+    const ox = o.x - cx, oy = o.y - cy, oz = o.z - cz;
+    const b = ox * d.x + oy * d.y + oz * d.z, c = ox * ox + oy * oy + oz * oz - r * r;
+    const h = b * b - c; if (h < 0) return -1;
+    const t = -b - Math.sqrt(h); return t >= 0 ? t : -1;
+  },
+  // testa o raio contra todos os personagens vivos
+  hitFighter(o, d, maxT, shooter) {
+    let best = null, bt = maxT, head = false;
+    for (const f of LS.Game.fighters) {
+      if (!f.alive || f === shooter || f.state === 'plane') continue;
+      const dx = f.pos.x - o.x, dz = f.pos.z - o.z;
+      if (dx * dx + dz * dz > (maxT + 3) * (maxT + 3)) continue;
+      const k = f.crouch ? 0.7 : 1, p = f.pos;
+      let t = this.raySphere(o, d, p.x, p.y + f.headY(), p.z, 0.24);
+      if (t >= 0 && t < bt) { bt = t; best = f; head = true; }
+      for (const hy of [0.35, 0.8, 1.25]) {
+        t = this.raySphere(o, d, p.x, p.y + hy * k, p.z, 0.36);
+        if (t >= 0 && t < bt) { bt = t; best = f; head = false; }
+      }
+    }
+    return best ? { f: best, t: bt, head } : null;
+  },
+  fire(shooter, origin, dir, wdef, spread) {
+    const muzzle = shooter.model.muzzleWorld(new THREE.Vector3());
+    const listener = LS.Game.player;
+    // som
+    if (shooter.isPlayer) LS.Audio.gunshot(wdef);
+    else if (listener) {
+      const dist = shooter.pos.distanceTo(listener.pos);
+      const rel = Math.atan2(shooter.pos.x - listener.pos.x, shooter.pos.z - listener.pos.z);
+      LS.Audio.gunshot(wdef, dist, -Math.sin(LS.util.angleDiff(listener.yaw, rel)));
+    }
+    LS.Effects.flash(muzzle, shooter.isPlayer || (listener && shooter.pos.distanceTo(listener.pos) < 40));
+    LS.Game.onGunshot(shooter);
+    for (let p = 0; p < wdef.pellets; p++) {
+      const d = this._d.copy(dir);
+      d.x += (Math.random() - 0.5) * 2 * spread; d.y += (Math.random() - 0.5) * 2 * spread; d.z += (Math.random() - 0.5) * 2 * spread;
+      d.normalize();
+      const maxR = wdef.range * 1.6;
+      const wt = LS.World.raycast(origin, d, maxR);
+      const hit = this.hitFighter(origin, d, wt, shooter);
+      const t = hit ? hit.t : wt;
+      const end = this._end.copy(origin).addScaledVector(d, t);
+      if (p < 3) LS.Effects.tracer(muzzle, end);
+      if (hit) {
+        // queda de dano com a distância
+        const fall = t > wdef.range ? LS.util.clamp(1 - (t - wdef.range) / (wdef.range * 0.6), 0.25, 1) : 1;
+        let dmg = wdef.dmg * fall * (hit.head ? (wdef.cat === 'Sniper' ? 2.5 : 1.8) : 1);
+        if (!shooter.isPlayer) dmg *= LS.Game.botDamageMul;
+        LS.Effects.impact(end, true);
+        hit.f.takeDamage(dmg, shooter, hit.head, wdef.name);
+        if (shooter.isPlayer) LS.Game.onPlayerHit(hit.head, !hit.f.alive);
+      } else if (wt < maxR) LS.Effects.impact(end, false);
+    }
+  }
+};

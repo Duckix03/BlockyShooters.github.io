@@ -1,0 +1,94 @@
+// LAST SURVIVOR - configuração global, dados de armas/itens e utilitários
+'use strict';
+const LS = window.LS = {};
+
+LS.MAP_SIZE = 800;          // tamanho do terreno (metros)
+LS.ISLAND_RADIUS = 340;     // raio útil da ilha
+LS.WATER_LEVEL = 0;
+LS.BOT_COUNT = 30;
+LS.GRAVITY = 24;
+
+// ---------- Configurações persistentes ----------
+LS.defaultSettings = { sensitivity: 1, quality: 'medium', volume: 0.6, renderDistance: 400, fullscreen: false, showFps: false };
+LS.settings = Object.assign({}, LS.defaultSettings);
+try {
+  const saved = JSON.parse(localStorage.getItem('lastsurvivor_settings') || '{}');
+  Object.assign(LS.settings, saved);
+} catch (e) { /* ignora configurações corrompidas */ }
+LS.saveSettings = function () {
+  localStorage.setItem('lastsurvivor_settings', JSON.stringify(LS.settings));
+};
+
+LS.stats = { games: 0, wins: 0, kills: 0 };
+try { Object.assign(LS.stats, JSON.parse(localStorage.getItem('lastsurvivor_stats') || '{}')); } catch (e) { /* ignora */ }
+LS.saveStats = function () { localStorage.setItem('lastsurvivor_stats', JSON.stringify(LS.stats)); };
+
+// ---------- Tipos de munição ----------
+LS.AMMO_TYPES = {
+  light:  { name: 'Munição leve',   color: 0xf5d142, pickup: 30, baseMax: 120 },
+  rifle:  { name: 'Munição de rifle', color: 0x6fd15a, pickup: 30, baseMax: 120 },
+  sniper: { name: 'Munição de sniper', color: 0x4aa3ff, pickup: 10, baseMax: 30 },
+  shell:  { name: 'Cartuchos',      color: 0xff5a4a, pickup: 10, baseMax: 40 }
+};
+
+// ---------- Armas ----------
+// dmg por projétil, rate = tiros/segundo, recoil = graus de subida por tiro, spread = dispersão (rad)
+LS.WEAPONS = {
+  m1911:  { name: 'M1911',      cat: 'Pistola',  ammo: 'light',  dmg: 22, rate: 4,   mag: 12, reload: 1.3, recoil: 1.6, spread: 0.018, range: 120, pellets: 1, auto: false, zoom: 1.15, color: 0x333333, len: 0.35, snd: { freq: 900,  dur: 0.12, body: 180, vol: 0.55 }, rarity: 1 },
+  deagle: { name: 'Desert Eagle', cat: 'Pistola', ammo: 'light', dmg: 48, rate: 2,   mag: 7,  reload: 1.6, recoil: 4.5, spread: 0.02,  range: 150, pellets: 1, auto: false, zoom: 1.2,  color: 0x9a9a9a, len: 0.42, snd: { freq: 600,  dur: 0.22, body: 110, vol: 0.8 }, rarity: 2 },
+  mp5:    { name: 'MP5',        cat: 'SMG',      ammo: 'light',  dmg: 17, rate: 13,  mag: 30, reload: 2.0, recoil: 0.9, spread: 0.035, range: 110, pellets: 1, auto: true,  zoom: 1.2,  color: 0x222222, len: 0.6, snd: { freq: 1300, dur: 0.08, body: 220, vol: 0.45 }, rarity: 1 },
+  ump:    { name: 'UMP',        cat: 'SMG',      ammo: 'light',  dmg: 21, rate: 10,  mag: 25, reload: 2.2, recoil: 1.1, spread: 0.03,  range: 120, pellets: 1, auto: true,  zoom: 1.25, color: 0x3a3a2a, len: 0.62, snd: { freq: 1100, dur: 0.09, body: 190, vol: 0.5 }, rarity: 2 },
+  ak47:   { name: 'AK-47',      cat: 'Rifle',    ammo: 'rifle',  dmg: 32, rate: 9,   mag: 30, reload: 2.5, recoil: 1.8, spread: 0.025, range: 250, pellets: 1, auto: true,  zoom: 1.5,  color: 0x6b4423, len: 0.85, snd: { freq: 700,  dur: 0.14, body: 130, vol: 0.7 }, rarity: 2 },
+  m4a1:   { name: 'M4A1',       cat: 'Rifle',    ammo: 'rifle',  dmg: 27, rate: 11,  mag: 30, reload: 2.2, recoil: 1.2, spread: 0.02,  range: 250, pellets: 1, auto: true,  zoom: 1.6,  color: 0x2d2d2d, len: 0.8, snd: { freq: 850,  dur: 0.12, body: 150, vol: 0.62 }, rarity: 2 },
+  awm:    { name: 'AWM',        cat: 'Sniper',   ammo: 'sniper', dmg: 105, rate: 0.75, mag: 5, reload: 3.4, recoil: 7,   spread: 0.002, range: 600, pellets: 1, auto: false, zoom: 4.5,  color: 0x3f5a2a, len: 1.15, scope: true, snd: { freq: 400, dur: 0.4, body: 70, vol: 1.0 }, rarity: 3 },
+  kar98:  { name: 'Kar98k',     cat: 'Sniper',   ammo: 'sniper', dmg: 80,  rate: 1,   mag: 5,  reload: 3.0, recoil: 6,   spread: 0.003, range: 550, pellets: 1, auto: false, zoom: 4,    color: 0x5a3a1f, len: 1.1, scope: true, snd: { freq: 480, dur: 0.35, body: 85, vol: 0.9 }, rarity: 3 },
+  m1887:  { name: 'M1887',      cat: 'Escopeta', ammo: 'shell',  dmg: 15, rate: 1.1, mag: 2,  reload: 2.0, recoil: 6,   spread: 0.09,  range: 40,  pellets: 9, auto: false, zoom: 1.1,  color: 0x4a2a14, len: 0.9, snd: { freq: 300,  dur: 0.3, body: 60, vol: 1.0 }, rarity: 2 },
+  spas12: { name: 'SPAS-12',    cat: 'Escopeta', ammo: 'shell',  dmg: 12, rate: 1.6, mag: 6,  reload: 3.0, recoil: 4.5, spread: 0.1,   range: 35,  pellets: 8, auto: false, zoom: 1.1,  color: 0x1c1c1c, len: 0.95, snd: { freq: 340, dur: 0.26, body: 70, vol: 0.9 }, rarity: 2 }
+};
+LS.WEAPON_IDS = Object.keys(LS.WEAPONS);
+
+// Pesos de spawn (armas de raridade maior aparecem menos)
+LS.weaponSpawnTable = LS.WEAPON_IDS.map(id => ({ id, w: LS.WEAPONS[id].rarity === 1 ? 5 : LS.WEAPONS[id].rarity === 2 ? 3 : 1.2 }));
+
+// ---------- Equipamentos ----------
+LS.GEAR = {
+  vest:   { name: 'Colete', levels: [null, { dur: 60, red: 0.3 }, { dur: 90, red: 0.4 }, { dur: 120, red: 0.5 }] },
+  helmet: { name: 'Capacete', levels: [null, { dur: 40, red: 0.3 }, { dur: 70, red: 0.4 }, { dur: 100, red: 0.5 }] },
+  bag:    { name: 'Mochila', levels: [1, 1.5, 2, 2.6] } // multiplicador de capacidade
+};
+LS.LEVEL_COLORS = [0xffffff, 0x9fd0ff, 0xc08cff, 0xffc531];
+
+LS.MEDS = {
+  medkit:  { name: 'Kit médico', heal: 75, time: 4.0, baseMax: 3, color: 0xff3355 },
+  bandage: { name: 'Bandagem', heal: 20, time: 1.8, baseMax: 6, color: 0xf2f2f2 }
+};
+
+// ---------- Utilitários ----------
+LS.util = {
+  clamp: (v, a, b) => v < a ? a : v > b ? b : v,
+  lerp: (a, b, t) => a + (b - a) * t,
+  rand: (a, b) => a + Math.random() * (b - a),
+  randInt: (a, b) => Math.floor(a + Math.random() * (b - a + 1)),
+  pick: arr => arr[Math.floor(Math.random() * arr.length)],
+  weighted(table) {
+    let total = 0; for (const t of table) total += t.w;
+    let r = Math.random() * total;
+    for (const t of table) { r -= t.w; if (r <= 0) return t.id; }
+    return table[table.length - 1].id;
+  },
+  dist2D: (ax, az, bx, bz) => Math.hypot(ax - bx, az - bz),
+  angleDiff(a, b) { let d = b - a; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return d; },
+  fmtTime(s) { s = Math.max(0, Math.floor(s)); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); },
+  // ruído determinístico (value noise) para o terreno
+  hash(x, z) { const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453; return s - Math.floor(s); },
+  noise(x, z) {
+    const xi = Math.floor(x), zi = Math.floor(z), xf = x - xi, zf = z - zi;
+    const h = LS.util.hash;
+    const a = h(xi, zi), b = h(xi + 1, zi), c = h(xi, zi + 1), d = h(xi + 1, zi + 1);
+    const u = xf * xf * (3 - 2 * xf), v = zf * zf * (3 - 2 * zf);
+    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+  }
+};
+
+LS.BOT_NAMES = ['Viper', 'Shadow', 'Falcon', 'Ghost', 'Blaze', 'Raven', 'Storm', 'Titan', 'Nova', 'Hunter', 'Cobra', 'Wolf', 'Phantom', 'Reaper', 'Ace',
+  'Tiger', 'Sniper_BR', 'Rex', 'Lince', 'Jaguar', 'Trovão', 'Fênix', 'Sombra', 'Zé_Bala', 'Kaiser', 'Onça', 'Dragão', 'Bravo', 'Raio', 'Furacão', 'Mamba', 'Orion'];

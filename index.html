@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LAST SURVIVOR</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="game-container"></div>
+
+<!-- MENU PRINCIPAL -->
+<div id="menu-main" class="screen active">
+  <div class="menu-bg"></div>
+  <div class="menu-content">
+    <h1 class="logo">LAST<span>SURVIVOR</span></h1>
+    <p class="tagline">30 jogadores. Uma ilha. Apenas um sobrevive.</p>
+    <div class="menu-buttons">
+      <button class="btn btn-primary" data-action="play">JOGAR</button>
+      <button class="btn" data-action="settings">CONFIGURAÇÕES</button>
+      <button class="btn" data-action="controls">CONTROLES</button>
+      <button class="btn" data-action="credits">CRÉDITOS</button>
+    </div>
+    <div class="menu-stats" id="menu-stats"></div>
+  </div>
+</div>
+
+<!-- CONFIGURAÇÕES -->
+<div id="panel-settings" class="screen panel-screen">
+  <div class="panel">
+    <h2>CONFIGURAÇÕES</h2>
+    <div class="setting">
+      <label>Sensibilidade do mouse <span id="val-sens"></span></label>
+      <input type="range" id="set-sens" min="0.1" max="3" step="0.05">
+    </div>
+    <div class="setting">
+      <label>Qualidade gráfica</label>
+      <select id="set-quality">
+        <option value="low">Baixa</option>
+        <option value="medium">Média</option>
+        <option value="high">Alta</option>
+      </select>
+    </div>
+    <div class="setting">
+      <label>Volume <span id="val-vol"></span></label>
+      <input type="range" id="set-vol" min="0" max="1" step="0.01">
+    </div>
+    <div class="setting">
+      <label>Distância de renderização <span id="val-dist"></span></label>
+      <input type="range" id="set-dist" min="150" max="700" step="10">
+    </div>
+    <div class="setting">
+      <label>Tela cheia</label>
+      <label class="switch"><input type="checkbox" id="set-fullscreen"><span></span></label>
+    </div>
+    <div class="setting">
+      <label>Mostrar FPS</label>
+      <label class="switch"><input type="checkbox" id="set-fps"><span></span></label>
+    </div>
+    <div class="panel-buttons">
+      <button class="btn" data-action="settings-reset">PADRÃO</button>
+      <button class="btn btn-primary" data-action="back">VOLTAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONTROLES -->
+<div id="panel-controls" class="screen panel-screen">
+  <div class="panel">
+    <h2>CONTROLES</h2>
+    <div class="controls-grid">
+      <div><kbd>W A S D</kbd> Movimentação</div>
+      <div><kbd>Mouse</kbd> Câmera</div>
+      <div><kbd>Botão esq.</kbd> Atirar</div>
+      <div><kbd>Botão dir.</kbd> Mirar</div>
+      <div><kbd>Espaço</kbd> Pular / Saltar do avião</div>
+      <div><kbd>Shift</kbd> Correr</div>
+      <div><kbd>R</kbd> Recarregar</div>
+      <div><kbd>C</kbd> Agachar</div>
+      <div><kbd>Tab</kbd> Inventário</div>
+      <div><kbd>E</kbd> Pegar / trocar arma</div>
+      <div><kbd>1 / 2</kbd> Trocar arma</div>
+      <div><kbd>Roda do mouse</kbd> Trocar arma</div>
+      <div><kbd>H</kbd> Usar kit médico</div>
+      <div><kbd>G</kbd> Usar bandagem</div>
+      <div><kbd>M</kbd> Mapa ampliado</div>
+      <div><kbd>Esc</kbd> Pausar</div>
+    </div>
+    <div class="panel-buttons">
+      <button class="btn btn-primary" data-action="back">VOLTAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- CRÉDITOS -->
+<div id="panel-credits" class="screen panel-screen">
+  <div class="panel">
+    <h2>CRÉDITOS</h2>
+    <div class="credits">
+      <p><b>LAST SURVIVOR</b></p>
+      <p>Jogo Battle Royale desenvolvido em HTML5, CSS3 e JavaScript.</p>
+      <p>Renderização 3D: <b>Three.js</b> (MIT License)</p>
+      <p>Todos os modelos, texturas e sons são gerados proceduralmente por código.</p>
+      <p>Desenvolvimento: Duckix03 &amp; Claude</p>
+      <p class="small">Obrigado por jogar!</p>
+    </div>
+    <div class="panel-buttons">
+      <button class="btn btn-primary" data-action="back">VOLTAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- CARREGANDO -->
+<div id="loading" class="screen">
+  <div class="loading-box">
+    <h2>GERANDO ILHA...</h2>
+    <div class="loading-bar"><div id="loading-fill"></div></div>
+    <p id="loading-tip">Dica: fique dentro da zona segura!</p>
+  </div>
+</div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div id="top-left">
+    <div class="pill"><span class="ico">👤</span><span id="alive">31</span> VIVOS</div>
+    <div class="pill"><span class="ico">💀</span><span id="kills">0</span> ABATES</div>
+    <div class="pill"><span class="ico">⏱</span><span id="timer">00:00</span></div>
+  </div>
+  <div id="fps" class="hidden">0 FPS</div>
+  <div id="zone-info"><div id="zone-text">Zona segura</div><div id="zone-dist"></div></div>
+  <div id="minimap-wrap"><canvas id="minimap" width="200" height="200"></canvas></div>
+  <div id="killfeed"></div>
+
+  <div id="crosshair"><i></i><i></i><i></i><i></i></div>
+  <div id="hitmarker"></div>
+  <div id="scope"><div class="scope-ring"></div></div>
+  <div id="damage-vignette"></div>
+  <div id="zone-vignette"></div>
+  <div id="dmg-indicators"></div>
+
+  <div id="center-msg"></div>
+  <div id="prompt"></div>
+  <div id="heal-progress" class="hidden"><div id="heal-fill"></div><span id="heal-label">Curando...</span></div>
+
+  <div id="bottom-left">
+    <div id="gear">
+      <div class="gear-item" id="gear-vest">🦺 <span>-</span></div>
+      <div class="gear-item" id="gear-helmet">⛑ <span>-</span></div>
+      <div class="gear-item" id="gear-bag">🎒 <span>-</span></div>
+    </div>
+    <div class="bar-wrap"><div class="bar-label">COLETE</div><div class="bar armor"><div id="armor-fill"></div></div></div>
+    <div class="bar-wrap"><div class="bar-label">VIDA <span id="hp-num">100</span></div><div class="bar health"><div id="health-fill"></div></div></div>
+    <div id="meds">💊 <span id="med-count">0</span> [H] &nbsp; 🩹 <span id="band-count">0</span> [G]</div>
+  </div>
+
+  <div id="bottom-right">
+    <div id="weapon-slots">
+      <div class="slot" id="slot-0"><span class="key">1</span><span class="name">VAZIO</span></div>
+      <div class="slot" id="slot-1"><span class="key">2</span><span class="name">VAZIO</span></div>
+    </div>
+    <div id="ammo-box">
+      <div id="weapon-name">DESARMADO</div>
+      <div id="ammo"><span id="ammo-mag">0</span><span class="sep">/</span><span id="ammo-res">0</span></div>
+      <div id="reload-text" class="hidden">RECARREGANDO...</div>
+    </div>
+  </div>
+
+  <div id="bigmap" class="hidden"><canvas id="bigmap-canvas" width="600" height="600"></canvas><p>Pressione M para fechar</p></div>
+</div>
+
+<!-- INVENTÁRIO -->
+<div id="inventory" class="hidden">
+  <div class="inv-panel">
+    <h2>INVENTÁRIO <small>[Tab] fechar</small></h2>
+    <div class="inv-cols">
+      <div class="inv-col">
+        <h3>ARMAS</h3>
+        <div id="inv-weapons"></div>
+      </div>
+      <div class="inv-col">
+        <h3>MUNIÇÃO</h3>
+        <div id="inv-ammo"></div>
+        <h3>EQUIPAMENTO</h3>
+        <div id="inv-gear"></div>
+      </div>
+      <div class="inv-col">
+        <h3>CURA</h3>
+        <div id="inv-meds"></div>
+        <h3>CAPACIDADE</h3>
+        <div id="inv-cap"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAUSA -->
+<div id="pause" class="screen panel-screen">
+  <div class="panel">
+    <h2>PAUSADO</h2>
+    <div class="menu-buttons">
+      <button class="btn btn-primary" data-action="resume">CONTINUAR</button>
+      <button class="btn" data-action="settings">CONFIGURAÇÕES</button>
+      <button class="btn" data-action="controls">CONTROLES</button>
+      <button class="btn" data-action="quit">SAIR PARA O MENU</button>
+    </div>
+  </div>
+</div>
+
+<!-- FIM DE JOGO -->
+<div id="endscreen" class="screen panel-screen">
+  <div class="panel end-panel">
+    <h1 id="end-title">VITÓRIA!</h1>
+    <p id="end-sub"></p>
+    <div class="end-stats">
+      <div><b id="end-place">#1</b><span>COLOCAÇÃO</span></div>
+      <div><b id="end-kills">0</b><span>ABATES</span></div>
+      <div><b id="end-dmg">0</b><span>DANO</span></div>
+      <div><b id="end-time">00:00</b><span>TEMPO</span></div>
+    </div>
+    <div class="menu-buttons">
+      <button class="btn btn-primary" data-action="play">JOGAR NOVAMENTE</button>
+      <button class="btn" data-action="quit">MENU PRINCIPAL</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/input.js"></script>
+<script src="js/world.js"></script>
+<script src="js/worldbuild.js"></script>
+<script src="js/character.js"></script>
+<script src="js/effects.js"></script>
+<script src="js/loot.js"></script>
+<script src="js/combat.js"></script>
+<script src="js/player.js"></script>
+<script src="js/bot.js"></script>
+<script src="js/zone.js"></script>
+<script src="js/hud.js"></script>
+<script src="js/game.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
