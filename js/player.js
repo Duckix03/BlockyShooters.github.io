@@ -137,7 +137,14 @@ LS.Player = class extends LS.Fighter {
       const jump = I.wasPressed('Space') && !this.crouch;
       if (I.wasPressed('Space') && this.crouch) this.crouch = false;
       this.physics(dt, { x: wx, z: wz }, { speed, jump });
-      this.yaw = this.camYaw;
+      // estilo Free Fire: o corpo só trava na direção da câmera atirando, mirando ou correndo;
+      // andando, vira para onde está andando; parado, fica virado como estava (a câmera gira livre)
+      const attacking = !LS.Game.inventoryOpen && (I.mouse.left || this.fireCd > 0 && !!this.wdef());
+      const lock = this.running || this.aiming || attacking;
+      const face = lock ? this.camYaw : wl > 0 ? Math.atan2(wx, wz) : this.yaw;
+      if (!LS.Game.inventoryOpen && I.mouse.leftPressed) this.yaw = this.camYaw; // primeiro tiro/soco já sai pra frente
+      else this.yaw += LS.util.angleDiff(this.yaw, face) * (1 - Math.exp(-(lock ? 22 : 10) * dt));
+      this.yaw = Math.atan2(Math.sin(this.yaw), Math.cos(this.yaw)); // mantém entre -180° e 180°
       // passos
       const hs = Math.hypot(this.vel.x, this.vel.z);
       if (this.onGround && hs > 1) { this.stepT -= dt * hs; if (this.stepT <= 0) { this.stepT = 2.6; LS.Audio.footstep(this.crouch ? 0.4 : this.running ? 1.3 : 0.8); } }
