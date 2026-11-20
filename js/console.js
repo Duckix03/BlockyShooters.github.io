@@ -194,6 +194,29 @@ LS.Console = {
       const rows = Object.entries(this.cmds).map(([k, c]) => '<b>' + k + '</b> <u>' + this.esc(c.use || '') + '</u> — ' + c.desc);
       this.print('<div class="dc-help">' + rows.join('<br>') + '</div>', 'sys');
     } },
+    anim: { use: '<list | load url [nome] | play nome [once] [full|upper|lower] | stop | bones>', desc: 'animações externas (.glb/.fbx) no seu personagem', args: () => ['list', 'load', 'play', 'stop', 'bones', ...Object.keys(LS.Anim.clips)], fn(a) {
+      const A = LS.Anim, sub = (a[0] || 'list').toLowerCase(), m = A.target();
+      if (!m) throw new Error('Nenhum personagem na tela.');
+      if (sub === 'list') {
+        const names = [...new Set([...Object.keys(A.clips), ...A.LIBRARY.map(e => e.name)])];
+        return names.length ? 'Animações: ' + names.map(n => '<b>' + this.esc(n) + '</b>' + (A.clips[n] ? ' (' + A.clips[n].duration.toFixed(1) + 's)' : '')).join(', ') : 'Nenhuma animação. Use <b>anim load url</b> ou arraste um .glb/.fbx para a janela.';
+      }
+      if (sub === 'load') {
+        if (!a[1]) throw new Error('Use: anim load anims/arquivo.glb [nome]');
+        this.print('Carregando ' + this.esc(a[1]) + '…', 'sys');
+        A.load(a[1], a[2]).then(n => { A.player(m).play(A.clips[n[0]]); this.print('Carregado: <b>' + n.join(', ') + '</b> (tocando ' + this.esc(n[0]) + ')', 'ok'); }).catch(e => this.print(e.message, 'error'));
+        return;
+      }
+      if (sub === 'play') {
+        if (!a[1]) throw new Error('Use: anim play nome [once] [full|upper|lower]');
+        const opts = {}; for (const x of a.slice(2)) { if (x === 'once') opts.loop = false; else if (x === 'loop') opts.loop = true; else if (A.MASKS[x]) opts.mask = x; }
+        A.play(m, a[1], opts).then(() => this.print('Tocando <b>' + this.esc(a[1]) + '</b>', 'ok')).catch(e => this.print(e.message, 'error'));
+        return;
+      }
+      if (sub === 'stop') { if (m.anim) m.anim.stop(); return 'Animação parada'; }
+      if (sub === 'bones') return 'Esqueleto ' + (A.toggleBones(m) ? 'visível' : 'escondido');
+      throw new Error('Use: anim list · anim load url [nome] · anim play nome · anim stop · anim bones');
+    } },
     clear: { desc: 'limpa o console', fn() { this.lines = []; this.redraw(); } },
     fps: { desc: 'liga/desliga o contador de FPS', fn() { LS.settings.showFps = !LS.settings.showFps; LS.saveSettings(); return 'FPS ' + (LS.settings.showFps ? 'ligado' : 'desligado'); } },
     stats: { desc: 'desempenho e posição', fn() {

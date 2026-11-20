@@ -34,20 +34,24 @@ LS.CharacterModel = class {
     this.mat = new THREE.MeshLambertMaterial({ map: this.tex });
     const M = c => LS.lambert(c);
     this.root = new THREE.Group();
-    this.hips = new THREE.Group(); this.hipsY = 12 * S; this.hips.position.y = this.hipsY; this.root.add(this.hips);
-    this.torso = new THREE.Group(); this.hips.add(this.torso);
+    this.hips = new THREE.Bone(); this.hips.name = 'Hips'; this.hipsY = 12 * S; this.hips.position.y = this.hipsY; this.root.add(this.hips);
+    this.torso = new THREE.Bone(); this.torso.name = 'Spine'; this.hips.add(this.torso);
     this.torso.add(new THREE.Mesh(K.geometry('body', 'bottom'), this.mat));
     this.vestMesh = new THREE.Mesh(LS.boxGeo(8.8 * S, 8 * S, 4.8 * S, 4 * S), M(0x4a5a3a)); this.vestMesh.position.y = 3.6 * S; this.vestMesh.visible = false; this.torso.add(this.vestMesh);
     this.bagMesh = new THREE.Mesh(LS.boxGeo(6 * S, 8 * S, 3 * S, 4 * S), M(0x5a4a2a)); this.bagMesh.position.set(0, 3 * S, -3.5 * S); this.bagMesh.visible = false; this.torso.add(this.bagMesh);
-    this.headG = new THREE.Group(); this.headG.position.y = 12 * S; this.torso.add(this.headG);
+    this.headG = new THREE.Bone(); this.headG.name = 'Head'; this.headG.position.y = 12 * S; this.torso.add(this.headG);
     this.headG.add(new THREE.Mesh(K.geometry('head', 'bottom'), this.mat));
     this.helmetMesh = new THREE.Mesh(LS.boxGeo(9 * S, 4 * S, 9 * S, 2 * S), M(0x3a4a2a)); this.helmetMesh.position.y = 5.5 * S; this.helmetMesh.visible = false; this.headG.add(this.helmetMesh);
     this.brim = new THREE.Mesh(LS.boxGeo(8 * S, 0.8 * S, 3 * S), M(0x333333)); this.brim.position.set(0, 6.4 * S, 5.4 * S); this.headG.add(this.brim);
     this.accG = new THREE.Group(); this.headG.add(this.accG);
-    const mkArm = side => { const g = new THREE.Group(); g.position.set(side * 6 * S, 12 * S, 0); g.add(new THREE.Mesh(K.geometry('arm', 'top'), this.mat)); this.torso.add(g); return g; };
+    const mkArm = side => { const g = new THREE.Bone(); g.name = side < 0 ? 'RightArm' : 'LeftArm'; g.position.set(side * 6 * S, 12 * S, 0); g.add(new THREE.Mesh(K.geometry('arm', 'top'), this.mat)); this.torso.add(g); return g; };
     this.armR = mkArm(-1); this.armL = mkArm(1);
-    const mkLeg = side => { const g = new THREE.Group(); g.position.set(side * 2 * S, 0, 0); g.add(new THREE.Mesh(K.geometry('leg', 'top'), this.mat)); this.hips.add(g); return g; };
+    const mkLeg = side => { const g = new THREE.Bone(); g.name = side < 0 ? 'RightUpLeg' : 'LeftUpLeg'; g.position.set(side * 2 * S, 0, 0); g.add(new THREE.Mesh(K.geometry('leg', 'top'), this.mat)); this.hips.add(g); return g; };
     this.legR = mkLeg(-1); this.legL = mkLeg(1);
+    // esqueleto: os 7 ossos têm nomes padrão (os mesmos do Mixamo) para receber animações de fora (js/animlib.js)
+    this.bones = { Hips: this.hips, Spine: this.torso, Head: this.headG, RightArm: this.armR, LeftArm: this.armL, RightUpLeg: this.legR, LeftUpLeg: this.legL };
+    this.skeleton = new THREE.Skeleton(Object.values(this.bones));
+    this.anim = null; // LS.AnimPlayer, criado quando tocar a primeira animação externa
     this.gunHolder = new THREE.Group(); this.gunHolder.position.set(0, -11 * S, 0.5 * S); this.armR.add(this.gunHolder);
     this.gun = null; this.gunId = null;
     // paraquedas
@@ -163,9 +167,17 @@ LS.CharacterModel = class {
     this.armR.rotation.set(L(-0.3 * buck, up, fall), 0, L(0.1, 0.55, fall)); this.armL.rotation.set(L(-0.2 * buck, up + 0.25, fall), 0, L(-0.1, -0.6, fall));
     this.headG.rotation.set(-0.25 * this.deadDir * fall, 0.3 * this.deadRoll, 0);
   }
+  // animação do código + (se estiver tocando) a animação externa por cima
+  animate(s) {
+    // zera o que o código não controla, para uma animação externa que acabou não deixar o osso torto
+    this.hips.position.x = 0; this.hips.position.z = 0; this.hips.rotation.y = 0;
+    this.legR.rotation.y = 0; this.legL.rotation.y = 0;
+    this.animateBase(s);
+    if (this.anim) this.anim.apply(s.dt || 0, s);
+  }
   // s: {speed, running, crouch, air, chute, fall, dive, steer, vy, aimPitch, armed, armedAim, dead, dt, idle,
   //     reload (0..1 ou -1), heal ('medkit'|'bandage'|null)}
-  animate(s) {
+  animateBase(s) {
     const dt = s.dt, L = LS.util.lerp, cl = LS.util.clamp, ss = x => { x = cl(x, 0, 1); return x * x * (3 - 2 * x); };
     const E = (cur, tgt, r) => cur + (tgt - cur) * (1 - Math.exp(-r * dt)); // suavização independente do FPS
     const ease = 1 - Math.exp(-8 * dt); // fator de suavização da queda/paraquedas (faltava: travava o jogo ao saltar)
