@@ -295,7 +295,7 @@ kbd { font-family: var(--display); font-weight: 400; letter-spacing: 0.5px; bord
 .inv-panel { width: min(980px, 94vw); }
 
 /* ==========================================================================
-   CONSOLE DE DESENVOLVEDOR (tecla Insert)
+   CONSOLE DE DESENVOLVEDOR (tecla ' ou F2)
    ========================================================================== */
 #devconsole { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); width: min(960px, 96vw); height: min(46vh, 440px); z-index: 9999;
   display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; font-family: var(--body); color: #e7ecff;

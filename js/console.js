@@ -1,4 +1,4 @@
-// Console de desenvolvedor: abre/fecha com a tecla Insert.
+// Console de desenvolvedor: abre/fecha com a tecla ' (a que fica à esquerda do 1) ou F2.
 // Mostra os logs do jogo (console.log/warn/error e erros não tratados) e aceita comandos (digite "help").
 'use strict';
 LS.Console = {
@@ -14,7 +14,7 @@ LS.Console = {
         <span class="dc-filters">
           <button data-f="all" class="on">Tudo</button><button data-f="warn">Avisos</button><button data-f="error">Erros</button>
         </span>
-        <button class="dc-x" title="Fechar (Insert)">✕</button>
+        <button class="dc-x" title="Fechar (' ou F2)">✕</button>
       </div>
       <div class="dc-log" id="dc-log"></div>
       <div class="dc-hint" id="dc-hint"></div>
@@ -36,9 +36,9 @@ LS.Console = {
     window.addEventListener('error', e => this.print((e.message || 'Erro') + (e.filename ? '  (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : ''), 'error'));
     window.addEventListener('unhandledrejection', e => this.print('Promise rejeitada: ' + this.fmt(e.reason), 'error'));
 
-    // Insert abre/fecha em qualquer tela (capture: chega antes do jogo)
+    // tecla ' (à esquerda do 1, no teclado ABNT2 e no americano) ou F2 abre/fecha em qualquer tela (capture: chega antes do jogo)
     window.addEventListener('keydown', e => {
-      if (e.code === 'Insert') { e.preventDefault(); e.stopPropagation(); this.toggle(); return; }
+      if (e.code === 'Backquote' || e.code === 'F2' || e.code === 'Insert') { e.preventDefault(); e.stopPropagation(); this.toggle(); return; }
       if (!this.open) return;
       if (e.code === 'Escape') { e.preventDefault(); e.stopPropagation(); this.toggle(false); }
     }, true);
