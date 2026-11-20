@@ -15,7 +15,7 @@ LS.Game = {
     // logarithmicDepthBuffer foi avaliado e ficou desligado: anula o polygonOffset (marcas de bala, vidro) e custa desempenho.
     this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.25, 1000);
     LS.Input.init(this.renderer.domElement);
-    LS.Input.onUnlock = () => { if (this.state === 'playing' && !this.inventoryOpen) this.pause(); };
+    LS.Input.onUnlock = () => { if (this.state === 'playing' && !this.inventoryOpen && !LS.Console.open) this.pause(); };
     LS.HUD.init();
     window.addEventListener('resize', () => {
       this.camera.aspect = window.innerWidth / window.innerHeight; this.camera.updateProjectionMatrix();
@@ -131,6 +131,7 @@ LS.Game = {
 
   // ---------- Teclas globais ----------
   onKey(e) {
+    if (LS.Console.open) return; // digitando no console
     if (this.state !== 'playing') {
       if (e.code === 'Escape' && this.state === 'paused' && !LS.UI.subPanelOpen()) this.resume();
       return;
@@ -214,7 +215,7 @@ LS.Game = {
   // ---------- Loop ----------
   loop() {
     requestAnimationFrame(this.loop);
-    const dt = Math.min(this.clock.getDelta(), 0.05);
+    const dt = Math.min(this.clock.getDelta(), 0.05) * LS.Console.timeScale;
     this.fpsAcc += dt; this.fpsFrames++;
     if (this.fpsAcc >= 0.5) { document.getElementById('fps').textContent = Math.round(this.fpsFrames / this.fpsAcc) + ' FPS'; this.fpsAcc = 0; this.fpsFrames = 0; }
     if (this.state === 'lobby' || (this.state === 'menu' && LS.Lobby.built)) { LS.Lobby.update(dt); this.renderer.render(LS.Lobby.scene, LS.Lobby.camera); LS.Input.endFrame(); return; }

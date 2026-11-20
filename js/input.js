@@ -8,6 +8,7 @@ LS.Input = {
     this.canvas = canvasEl;
     window.addEventListener('keydown', e => {
       if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
+      if (LS.Console && LS.Console.open) return;
       if (e.code === 'Tab' || e.code === 'Space') e.preventDefault();
       if (!this.keys[e.code]) this.pressed[e.code] = true;
       this.keys[e.code] = true;
@@ -20,7 +21,7 @@ LS.Input = {
       this.mouse.dy += e.movementY || 0;
     });
     document.addEventListener('mousedown', e => {
-      if (!this.enabled) return;
+      if (!this.enabled || (LS.Console && LS.Console.open)) return;
       if (!this.locked) { this.lock(); return; }
       if (e.button === 0) { this.mouse.left = true; this.mouse.leftPressed = true; }
       if (e.button === 2) this.mouse.right = true;
