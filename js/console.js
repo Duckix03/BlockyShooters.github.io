@@ -2,7 +2,7 @@
 // Mostra os logs do jogo (console.log/warn/error e erros não tratados) e aceita comandos (digite "help").
 'use strict';
 LS.Console = {
-  open: false, lines: [], max: 400, history: [], hIdx: -1, god: false, speedMul: 1, timeScale: 1,
+  open: false, lines: [], max: 400, history: [], hIdx: -1, god: false, speedMul: 1, timeScale: 1, fly: false, silent: null,
 
   init() {
     const el = document.createElement('div');
@@ -170,6 +170,23 @@ LS.Console = {
     const r = P.pickup(it, true);
     return r ? r : LS.Loot.label(it) + ' (no chão, sem espaço)';
   },
+  // silent aim: troca a direção do tiro pela do inimigo visível mais perto da mira (dentro do cone e do alcance)
+  silentDir(P, origin) {
+    const S = this.silent; if (!S) return null;
+    const d = P.wdef(); if (!d) return null;
+    let best = null, bestA = S.fov * Math.PI / 180;
+    const to = new THREE.Vector3(), aim = P.aimDir;
+    for (const f of LS.Game.fighters) {
+      if (f === P || !f.alive || f.state === 'plane') continue;
+      const hy = S.head ? f.headY() : (f.crouch ? 0.6 : 0.9);
+      to.set(f.pos.x - origin.x, f.pos.y + hy - origin.y, f.pos.z - origin.z);
+      const dist = to.length(); if (dist > d.range * 1.5) continue;
+      const a = aim.angleTo(to); if (a > bestA) continue;
+      if (!LS.World.hasLOS(origin, new THREE.Vector3(f.pos.x, f.pos.y + hy, f.pos.z))) continue;
+      bestA = a; best = to.clone().divideScalar(dist);
+    }
+    return best;
+  },
   itemArgs() { return [...LS.WEAPON_IDS, ...Object.keys(LS.AMMO_TYPES), ...Object.keys(LS.MEDS), 'vest', 'helmet', 'bag', 'kit']; },
 
   cmds: {
@@ -226,6 +243,19 @@ LS.Console = {
     } },
     speed: { use: '<multiplicador>', desc: 'velocidade de corrida (1 = normal)', fn(a) { const v = +a[0]; if (!(v > 0 && v <= 10)) throw new Error('Use um valor entre 0.1 e 10.'); this.speedMul = v; return 'Velocidade ×' + v; } },
     timescale: { use: '<valor>', desc: 'câmera lenta / acelerado (1 = normal)', fn(a) { const v = +a[0]; if (!(v > 0 && v <= 5)) throw new Error('Use um valor entre 0.05 e 5.'); this.timeScale = v; return 'Tempo ×' + v; } },
+    fly: { desc: 'voo livre: ESPAÇO sobe, C desce, SHIFT acelera, atravessa tudo (liga/desliga)', fn() {
+      const P = this.P(); this.fly = !this.fly;
+      if (P.state === 'plane') LS.Game.jumpFromPlane(P);
+      if (!this.fly) { P.vel.set(0, 0, 0); P.flyAnim = false; }
+      LS.Audio.stopLoop('wind'); LS.Audio.stopLoop('chute'); LS.Audio.stopLoop('plane');
+      return 'Voo ' + (this.fly ? '<b>ligado</b> — ESPAÇO sobe, C desce, SHIFT acelera' : 'desligado (sem dano de queda até pousar)');
+    } },
+    silentaim: { use: '[fov] [head]', desc: 'tiros vão sozinhos no inimigo visível mais perto da mira (fov em graus, padrão 25; "head" mira na cabeça)', args: () => ['head', 'off'], fn(a) {
+      if (a[0] === 'off' || (this.silent && !a.length)) { this.silent = null; return 'Silent aim desligado'; }
+      const fov = LS.util.clamp(+a.find(x => !isNaN(+x)) || 25, 2, 180), head = a.includes('head');
+      this.silent = { fov, head };
+      return 'Silent aim <b>ligado</b> · cone de ' + fov + '°' + (head ? ' · na cabeça' : ' · no peito');
+    } },
     jump: { desc: 'salta do avião agora', fn() { const P = this.P(); if (P.state !== 'plane') throw new Error('Você não está no avião.'); LS.Game.jumpFromPlane(P); return 'Saltou!'; } },
     bots: { desc: 'quantos bots estão vivos e o mais perto', fn() {
       const P = this.P(), alive = LS.Game.bots.filter(b => b.alive);

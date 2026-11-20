@@ -227,8 +227,7 @@ LS.CharacterModel = class {
       if (aiming) { aR = [aimBase, 0, 0.1]; aL = pistol ? [aimBase + 0.04, 0, -0.42] : [aimBase + 0.1, 0, -0.55]; }
       else { aR = [-0.9 - tX, 0, 0.1]; aL = [-0.8 - tX, 0, -0.5]; } // arma em guarda correndo
     } else {
-      const idle = s.idle ? Math.sin(now * 2) * 0.05 : 0;
-      aR = [-sw * 0.9 - tX * 0.5, 0, 0.05 + idle]; aL = [sw * 0.9 - tX * 0.5, 0, -0.05 - idle];
+      aR = [-sw * 0.9 - tX * 0.5, 0, 0.07]; aL = [sw * 0.9 - tX * 0.5, 0, -0.07];
     }
     const mix = (a, b, k) => [L(a[0], b[0], k), L(a[1], b[1], k), L(a[2], b[2], k)];
     const parts = this.gun ? this.gun.userData.parts : {};
@@ -300,20 +299,67 @@ LS.CharacterModel = class {
       if (side > 0) { aR = mix(aR, hitArm, ext); aL = mix(aL, guardArm, guard); } else { aL = mix(aL, hitArm, ext); aR = mix(aR, guardArm, guard); }
       tY += side * 0.38 * ext;
     }
-    // ---- pulo: subida com joelho à frente, descida com pernas esticadas e braços abertos ----
-    this.airK = E(this.airK || 0, s.air ? 1 : 0, s.air ? 14 : 18);
+    // ---- parado: respiração, peso trocando de perna, olhar em volta e, de vez em quando, uma "mexida" ----
+    const still = !s.air && this.moveK < 0.08 && ck < 0.3 && !(s.reload >= 0) && !s.heal && !(this.punchT > 0) && !(this.swapK < 1);
+    this.idleK = E(this.idleK || 0, still ? 1 : 0, still ? 2.5 : 10);
+    this.idleT = still ? (this.idleT || 0) + dt : 0;
+    if (this.idleK > 0.01) {
+      const ik = this.idleK, t = now + this.seed * 3.7;
+      const breath = Math.sin(t * 2.1) * 0.5 + 0.5;                       // inspira/expira (~3 s)
+      const shift = Math.sin(t * 0.55) ;                                  // troca o peso de perna devagar
+      this.hips.position.y += (breath * 0.012 - Math.abs(shift) * 0.018) * ik;
+      this.idleSway = shift * 0.035 * ik;                                 // quadril cai pro lado do apoio
+      const relaxR = Math.max(0, shift) * 0.14, relaxL = Math.max(0, -shift) * 0.14; // a perna sem peso dobra um pouco
+      this.legR.rotation.x += relaxR * ik; this.legL.rotation.x += relaxL * ik;
+      this.legR.rotation.z = 0.04 * ik; this.legL.rotation.z = -0.04 * ik;
+      tX += (breath * 0.035 - 0.01) * ik;                                 // peito sobe e desce
+      // olha em volta: vira a cabeça para um lado, segura, volta (por personagem, cada um no seu ritmo)
+      const look = Math.sin(t * 0.37) * Math.sin(t * 0.23 + 1.3);
+      this.idleLook = look * 0.55 * ik;
+      // armado e sem atirar/mirar há ~1 s: abaixa a arma (posição de guarda baixa) em vez de ficar apontando pro nada
+      this.lowK = E(this.lowK || 0, s.armed && !s.armedAim && this.idleT > 1 ? 1 : 0, s.armedAim ? 14 : 3);
+      if (this.lowK > 0.01) { const lk = this.lowK * ik;
+        aR = mix(aR, [-0.75 + breath * 0.04, 0, 0.32], lk); aL = mix(aL, pistol ? [-0.7, 0, -0.45] : [-0.95 + breath * 0.04, 0, -0.62], lk);
+        roll -= 0.15 * lk; headX += 0.08 * lk; }
+      if (!aiming || this.lowK > 0.5) {
+        if (s.armed) { aR = mix(aR, [aR[0] + breath * 0.05, 0, aR[2]], ik); aL = mix(aL, [aL[0] + breath * 0.06, 0, aL[2]], ik); }
+        else { aR = mix(aR, [-0.06 - breath * 0.05, 0, 0.1 + breath * 0.04], ik); aL = mix(aL, [-0.06 - breath * 0.05, 0, -0.1 - breath * 0.04], ik); }
+      }
+      // depois de uns segundos parado: alonga (sem arma) ou confere a arma (armado), a cada ~9 s
+      const cyc = 9 + (this.seed % 1) * 3, f = this.idleT > 4 ? (this.idleT - 4) % cyc : -1, fk = f >= 0 && f < 2.2 ? bell(f / 2.2) * ik : 0;
+      if (fk > 0.001 && (!aiming || this.lowK > 0.5)) {
+        if (s.armed) { aR = mix(aR, [-1.15, 0, 0.35], fk); aL = mix(aL, [-1.0, 0, -0.2], fk); roll += 0.9 * fk; headX += 0.3 * fk; this.idleLook *= 1 - fk; }
+        else { const up = ss(fk * 1.6); aR = mix(aR, [-2.9 * up, 0, 1.5 - 1.1 * up], fk); aL = mix(aL, [-2.9 * up, 0, -1.5 + 1.1 * up], fk); tX -= 0.12 * fk; headX -= 0.2 * fk; }
+      }
+    } else { this.idleLook = 0; this.idleSway = 0; }
+    // ---- pulo em 4 fases: impulso (encolhe e estica), subida (joelhos pra cima, braços jogados), topo e descida (pernas se preparam, braços abrem) ----
+    this.airK = E(this.airK || 0, s.air ? 1 : 0, s.air ? 16 : 20);
+    if (s.air && !this.wasAir) this.jumpT = 0;                           // acabou de sair do chão
+    this.wasAir = !!s.air;
+    this.jumpT = (this.jumpT === undefined ? 9 : this.jumpT) + dt;
     if (this.airK > 0.01) {
-      const vy = s.vy || 0, up = cl((vy + 2) / 6, 0, 1), a = this.airK;
-      this.legR.rotation.x = L(this.legR.rotation.x, L(-0.35, -1.05, up), a); this.legL.rotation.x = L(this.legL.rotation.x, L(-0.12, 0.4, up), a);
-      this.legR.rotation.z = 0.12 * a; this.legL.rotation.z = -0.12 * a;
-      tX = L(tX, L(0.12, -0.1, up), a);
-      if (!aiming && !(this.punchT > 0)) { const az = L(1.15, 0.7, up), ax = L(-0.25, -0.55, up); aR = mix(aR, [ax, 0, az], a); aL = mix(aL, [ax, 0, -az], a); }
-    } else { this.legR.rotation.z = 0; this.legL.rotation.z = 0; }
+      const vy = s.vy || 0, a = this.airK;
+      const rise = cl(vy / 8, 0, 1), fallK = cl(-vy / 9, 0, 1), apex = 1 - Math.max(rise, fallK);
+      const kick = this.jumpT < 0.18 ? bell(this.jumpT / 0.18) : 0;     // estica o corpo logo no impulso
+      // pernas: subindo = joelho direito alto e esquerdo puxado; topo = as duas encolhidas; caindo = esticam pra baixo, uma à frente
+      const lR = -0.25 * kick + L(L(-0.95, -1.15, rise), -0.35, fallK), lL = 0.35 * kick + L(L(-0.55, 0.15, rise), -0.1, fallK);
+      this.legR.rotation.x = L(this.legR.rotation.x, lR, a); this.legL.rotation.x = L(this.legL.rotation.x, lL, a);
+      this.legR.rotation.z = L(0.04, 0.16, fallK) * a; this.legL.rotation.z = -L(0.04, 0.16, fallK) * a;
+      this.hips.position.y += (0.05 * apex - 0.03 * kick) * a;           // encolhe no topo
+      tX = L(tX, -0.12 * kick + 0.18 * apex + L(0.05, -0.08, fallK), a);  // tronco: arqueia no impulso, curva no topo
+      headX += (-0.12 * kick + 0.12 * fallK) * a;                         // olha pro chão chegando
+      if (!aiming && !(this.punchT > 0)) {
+        const up = [-2.75 + 0.5 * apex, 0, 0.55], side = [-0.25, 0, 1.45], tuck = [-1.5, 0, 0.75];
+        const pose = mix(mix(up, tuck, apex), side, fallK);
+        if (s.armed) { aL = mix(aL, [pose[0] * 0.4, 0, -pose[2] * 0.6], a * 0.6); }
+        else { aR = mix(aR, pose, a); aL = mix(aL, [pose[0] - 0.1, 0, -pose[2]], a); }
+      }
+    } else if (!(this.idleK > 0.01)) { this.legR.rotation.z = 0; this.legL.rotation.z = 0; }
     // ---- aplica suavizando (sem saltos entre poses) ----
     this._aR = this._aR || [0, 0, 0]; this._aL = this._aL || [0, 0, 0]; this._t = this._t || [0, 0];
     for (let i = 0; i < 3; i++) { this._aR[i] = E(this._aR[i], aR[i], 16); this._aL[i] = E(this._aL[i], aL[i], 16); }
     this._t[0] = E(this._t[0], tX, 12); this._t[1] = E(this._t[1], tY, 14);
-    this.hips.rotation.z = E(this.hips.rotation.z, this.leanK, 10);
+    this.hips.rotation.z = E(this.hips.rotation.z, this.leanK + (this.idleSway || 0), 10);
     // aditivos rápidos (não suavizados): recuo e reação a dano
     this.recoilT = Math.max(0, this.recoilT - dt * 8);
     this.hitT = Math.max(0, (this.hitT || 0) - dt * 4);
@@ -321,7 +367,8 @@ LS.CharacterModel = class {
     this.armR.rotation.set(this._aR[0] - (aiming ? rk * 0.22 : 0) + hk * 0.25, this._aR[1], this._aR[2]);
     this.armL.rotation.set(this._aL[0] - (aiming ? rk * 0.18 : 0) + hk * 0.2, this._aL[1], this._aL[2]);
     this.torso.rotation.set(this._t[0] - hk * 0.28, this._t[1], (this.hitSide || 0) * 0.14 * hk);
-    this.headG.rotation.set(-pitch * 0.6 - this.torso.rotation.x * 0.6 + headX + hk * 0.35, -this._t[1] * 0.6, 0);
+    this._look = E(this._look || 0, this.idleLook || 0, 4);
+    this.headG.rotation.set(-pitch * 0.6 - this.torso.rotation.x * 0.6 + headX + hk * 0.35, -this._t[1] * 0.6 + this._look, 0);
     // arma: recuo visual (chute pra trás e cano sobe) e giro durante recarga/troca
     if (this.gun) { this.gun.position.set(0, rk * 0.045, 0); this.gun.rotation.set(Math.PI / 2 - rk * 0.12, 0, 0); }
     this.gunHolder.rotation.y = E(this.gunHolder.rotation.y, roll, 12);

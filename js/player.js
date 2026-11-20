@@ -14,8 +14,11 @@ LS.Fighter.prototype.physics = function (dt, wish, opts) {
     const term = this.state === 'fall' ? (dive ? -62 : -38) : -7;
     v.y = Math.max(term, v.y - LS.GRAVITY * dt);
     if (this.state === 'chute') v.y = LS.util.lerp(v.y, term, Math.min(1, dt * 3));
-    p.addScaledVector(v, dt);
-    const g = W.groundAt(p.x, p.z, p.y, R);
+    const oy = p.y;
+    { const hx = v.x * dt, hz = v.z * dt, steps = Math.min(40, Math.max(1, Math.ceil(Math.hypot(hx, hz) / 0.15))), pv = this._prev || (this._prev = { x: 0, z: 0 });
+      p.y += v.y * dt;
+      for (let i = 0; i < steps; i++) { pv.x = p.x; pv.z = p.z; p.x += hx / steps; p.z += hz / steps; W.collideCircle(p, R, 1.8, pv); } }
+    const g = W.groundAt(p.x, p.z, oy, R); // procura o chão a partir de onde estava: mergulho rápido não atravessa telhado
     if (this.state === 'fall' && (p.y - g < 90 || opts.openChute)) { this.state = 'chute'; if (this.isPlayer) { LS.Audio.stopLoop('wind'); LS.Audio.startLoop('chute', 'wind'); } }
     if (p.y <= Math.max(g, LS.WATER_LEVEL - 1.2)) {
       p.y = Math.max(g, LS.WATER_LEVEL - 1.2); v.set(0, 0, 0);
@@ -38,16 +41,22 @@ LS.Fighter.prototype.physics = function (dt, wish, opts) {
   v.y -= LS.GRAVITY * dt;
   const oldY = p.y, prev = this._prev || (this._prev = { x: 0, z: 0 });
   prev.x = p.x; prev.z = p.z;
-  p.x += v.x * dt; p.z += v.z * dt; p.y += v.y * dt;
-  this.blocked = W.collideCircle(p, R, this.crouch ? 1.2 : 1.8, prev);
+  // anda em passos de no máximo 0,15 m, testando a colisão em cada um: rápido demais (speed, lag) não atravessa parede
+  const hx = v.x * dt, hz = v.z * dt, steps = Math.min(40, Math.max(1, Math.ceil(Math.hypot(hx, hz) / 0.15)));
+  this.blocked = false; p.y += v.y * dt;
+  for (let i = 0; i < steps; i++) {
+    prev.x = p.x; prev.z = p.z;
+    p.x += hx / steps; p.z += hz / steps;
+    if (W.collideCircle(p, R, this.crouch ? 1.2 : 1.8, prev)) this.blocked = true;
+  }
   this.clampToIsland();
   let g = W.groundAt(p.x, p.z, Math.max(oldY, p.y), R);
   if (swimming) g = Math.max(g, LS.WATER_LEVEL - 1.3);
   if (p.y <= g) {
     if (!this.onGround && v.y < -14 && this.isPlayer) LS.Audio.land();
     if (!this.onGround && v.y < -5) this.model.landT = Math.min(0.3, -v.y * 0.018);
-    if (!this.onGround && v.y < -20) this.takeDamage((-v.y - 20) * 3, null, false, 'Queda', true);
-    p.y = g; v.y = 0; this.onGround = true;
+    if (!this.onGround && v.y < -20 && !this.safeLand) this.takeDamage((-v.y - 20) * 3, null, false, 'Queda', true);
+    p.y = g; v.y = 0; this.onGround = true; this.safeLand = false;
   } else if (this.onGround && p.y - g < 0.6 && v.y <= 0) { p.y = g; v.y = 0; } // desce rampas sem "voar"
   else this.onGround = false;
   // escalar pedras: andando contra uma pedra, sobe por ela até o topo (como no Roblox)
@@ -97,7 +106,19 @@ LS.Player = class extends LS.Fighter {
     let wx = sy * fz + cy * fx, wz = cy * fz - sy * fx;
     const wl = Math.hypot(wx, wz); if (wl > 0) { wx /= wl; wz /= wl; }
 
-    if (this.state === 'plane') {
+    if (LS.Console.fly && this.state !== 'plane') {
+      // voo livre (comando "fly"): segue a câmera, ESPAÇO sobe, C/CTRL desce, SHIFT acelera; atravessa tudo
+      this.state = 'ground'; this.onGround = false; this.safeLand = true; this.crouch = false;
+      const cp = Math.cos(this.camPitch), sp = Math.sin(this.camPitch), up = (k.Space ? 1 : 0) - (k.KeyC || k.ControlLeft ? 1 : 0);
+      let mx = sy * cp * fz + cy * fx, my = sp * fz + up, mz = cy * cp * fz - sy * fx;
+      const ml = Math.hypot(mx, my, mz), spd = (k.ShiftLeft ? 40 : 14) * LS.Console.speedMul;
+      if (ml > 0) { mx /= ml; my /= ml; mz /= ml; }
+      this.vel.set(mx * spd, my * spd, mz * spd);
+      this.pos.addScaledVector(this.vel, dt); this.clampToIsland();
+      this.pos.y = Math.max(this.pos.y, LS.World.heightAt(this.pos.x, this.pos.z));
+      this.yaw = this.camYaw; this.running = !!k.ShiftLeft; this.aiming = I.mouse.right && !!this.weapon();
+      this.flyAnim = true;
+    } else if (this.state === 'plane') {
       if (I.wasPressed('Space') && LS.Game.plane.canJump()) LS.Game.jumpFromPlane(this);
     } else if (this.state !== 'ground') {
       this.physics(dt, { x: wx, z: wz }, { openChute: I.wasPressed('Space'), dive: !!k.KeyW });
@@ -133,8 +154,8 @@ LS.Player = class extends LS.Fighter {
         if (!d && I.mouse.leftPressed) this.tryPunch(); // sem arma: soco
         if (d && (d.auto ? I.mouse.left : I.mouse.leftPressed)) {
           if (this.running) this.running = false;
-          const origin = this.shotOrigin();
-          if (this.tryFire(origin, this.aimDir)) {
+          const origin = this.shotOrigin(), sd = LS.Console.silentDir(this, origin);
+          if (this.tryFire(origin, sd || this.aimDir, sd ? 0.15 : 1)) {
             this.camPitch += d.recoil * 0.012 * (this.crouch ? 0.7 : 1) * (this.aiming ? 0.8 : 1);
             this.camYaw += (Math.random() - 0.5) * d.recoil * 0.006;
           }

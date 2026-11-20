@@ -168,8 +168,11 @@ LS.HouseKit = {
       onDoor(-half + 0.05, half - 0.05, -0.6, -0.06, h2 + 0.02, h2 + P - 0.05, 0x5a4a3a, false, false); // saia por baixo
       onDoor(-half - 0.15, half + 0.15, 2.55, 2.67, h2 - 0.02, h2 + P + 0.15, roofCol); // cobertura
       const posts = Math.max(2, Math.round(half * 2 / 2.4) + 1);
-      for (let i = 0; i < posts; i++) { const u = -half + 0.1 + i * (half * 2 - 0.2) / (posts - 1); if (Math.abs(u - doorPos) < 0.98) continue; onDoor(u - 0.08, u + 0.08, 0.04, 2.55, h2 + P - 0.2, h2 + P - 0.04, trimCol, true); }
-      rail(-half + 0.18, doorPos - 0.9); rail(doorPos + 0.9, half - 0.18);
+      const post = u => onDoor(u - 0.08, u + 0.08, 0.04, 2.55, h2 + P - 0.2, h2 + P - 0.04, trimCol, true);
+      for (let i = 0; i < posts; i++) { const u = -half + 0.1 + i * (half * 2 - 0.2) / (posts - 1); if (Math.abs(u - doorPos) < 1.4) continue; post(u); }
+      // o guarda-corpo termina num poste dos dois lados da passagem (antes a ponta ficava solta no ar)
+      if (doorPos - 0.9 > -half + 0.5) { rail(-half + 0.18, doorPos - 0.9); post(doorPos - 0.9); }
+      if (doorPos + 0.9 < half - 0.5) { rail(doorPos + 0.9, half - 0.18); post(doorPos + 0.9); }
       for (const e of [-1, 1]) { // guarda-corpo das laterais
         const u = e * (half - 0.1);
         onDoor(u - 0.04, u + 0.04, 0.82, 0.92, h2 + 0.02, h2 + P - 0.2, trimCol, true); onDoor(u - 0.03, u + 0.03, 0.32, 0.38, h2 + 0.02, h2 + P - 0.2, trimCol);
