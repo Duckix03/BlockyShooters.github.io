@@ -173,6 +173,7 @@ LS.CharacterModel = class {
     this.hips.position.x = 0; this.hips.position.z = 0; this.hips.rotation.y = 0;
     this.legR.rotation.y = 0; this.legL.rotation.y = 0;
     this.animateBase(s);
+    if (LS.Anim) LS.Anim.loco(this, s); // corrida oficial (run_f)
     if (this.anim) this.anim.apply(s.dt || 0, s);
   }
   // s: {speed, running, crouch, air, chute, fall, dive, steer, vy, aimPitch, armed, armedAim, dead, dt, idle,
