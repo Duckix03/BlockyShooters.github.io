@@ -111,7 +111,7 @@ LS.Tex = {
   get(name) {
     if (this.cache[name]) return this.cache[name];
     const S = this.S, c = document.createElement('canvas'); c.width = c.height = S;
-    const g = c.getContext('2d'), R = this.rng(name.length * 7919 + name.charCodeAt(0) * 31);
+    const g = c.getContext('2d', { willReadFrequently: true }), R = this.rng(name.length * 7919 + name.charCodeAt(0) * 31);
     this.GEN[name](g, R, this);
     const p = g.getImageData(0, 0, S, S).data; let sum = 0;
     for (let i = 0; i < p.length; i += 4) sum += (p[i] * 0.3 + p[i + 1] * 0.59 + p[i + 2] * 0.11) / 255;

@@ -168,6 +168,7 @@ LS.CharacterModel = class {
   animate(s) {
     const dt = s.dt, L = LS.util.lerp, cl = LS.util.clamp, ss = x => { x = cl(x, 0, 1); return x * x * (3 - 2 * x); };
     const E = (cur, tgt, r) => cur + (tgt - cur) * (1 - Math.exp(-r * dt)); // suavização independente do FPS
+    const ease = 1 - Math.exp(-8 * dt); // fator de suavização da queda/paraquedas (faltava: travava o jogo ao saltar)
     if (s.dead) { this.showHandMag(false); this.animDeath(dt); return; }
     if (this.deadT) { this.deadT = 0; this.root.rotation.x = 0; this.root.rotation.z = 0; }
     const now = performance.now() * 0.001;
