@@ -26,6 +26,7 @@ LS.Anim = {
     { name: 'walk_f', url: 'anims/locomocao.json' }, { name: 'walk_b', url: 'anims/locomocao.json' },
     { name: 'walk_l', url: 'anims/locomocao.json' }, { name: 'walk_r', url: 'anims/locomocao.json' },
     { name: 'run_f', url: 'anims/locomocao.json' }, { name: 'stand_idle', url: 'anims/locomocao.json' },
+    { name: 'dash_run_f', url: 'anims/locomocao.json' }, // corrida oficial
   ],
 
   // ---------- nomes de ossos ----------
@@ -213,11 +214,11 @@ LS.Anim = {
     return out;
   },
 
-  // ---------- corrida oficial: run_f quando o personagem corre (player e bots) ----------
+  // ---------- corrida oficial: dash_run_f quando o personagem corre (player e bots) ----------
   // sem arma: corpo inteiro da run_f. Com arma: pernas, quadril e um pouco do tronco da run_f; braços e cabeça
   // continuam no código (arma em guarda / mira / recarga) e são compensados para a arma não balançar com o tronco.
-  RUN_CLIP: 'run_f', RUN_SPEED: 7.6,
-  initLoco() { this.ensure(this.RUN_CLIP).catch(e => console.warn('Corrida (run_f): ' + e.message)); },
+  RUN_CLIP: 'dash_run_f', RUN_SPEED: 7.6,
+  initLoco() { this.ensure(this.RUN_CLIP).catch(e => console.warn('Corrida (' + this.RUN_CLIP + '): ' + e.message)); },
   loco(m, s) {
     const c = this.clips[this.RUN_CLIP]; if (!c) return;
     const cl = LS.util.clamp, dt = s.dt || 0, spd = s.speed || 0;

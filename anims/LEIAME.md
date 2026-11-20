@@ -28,10 +28,10 @@ Os nomes são os mesmos do Mixamo, mas o jogo também reconhece outros padrões
 
 ## Já incluídas
 
-`locomocao.json`: andar pra frente, pra trás e pros lados (`walk_f`, `walk_b`, `walk_l`, `walk_r`), correr (`run_f`) e parado (`stand_idle`). Animações feitas pelo Duckix03.
+`locomocao.json`: andar pra frente, pra trás e pros lados (`walk_f`, `walk_b`, `walk_l`, `walk_r`), correr (`run_f` e `dash_run_f`) e parado (`stand_idle`). Animações feitas pelo Duckix03.
 
-**Corrida oficial:** a `run_f` toca sozinha quando alguém corre (você e os bots). Sem arma é a animação inteira;
-com arma, as pernas e parte do tronco vêm da `run_f` e os braços seguram a arma atravessada no peito
+**Corrida oficial:** a `dash_run_f` toca sozinha quando alguém corre (você e os bots). Sem arma é a animação inteira;
+com arma, as pernas e parte do tronco vêm da `dash_run_f` e os braços seguram a arma atravessada no peito
 (ajuste em `LS.Anim.CARRY`, no `js/animlib.js`). Mirar, recarregar ou curar correndo volta os braços pro normal.
 
 ## Salvar só o movimento (.json)
