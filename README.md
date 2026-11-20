@@ -109,6 +109,16 @@ Seu visual fica salvo para as próximas partidas.
 
 ---
 
+## 🦴 Esqueleto e Animações Externas
+
+- O personagem tem **7 ossos** com nomes padrão (Hips, Spine, Head, braços e pernas)
+- Aceita animações de fora em **.glb**, **.gltf** e **.fbx** (Mixamo, Quaternius, Kenney…)
+- Converte automaticamente qualquer esqueleto humanoide para o boneco de blocos
+- Mistura com as animações do jogo, de corpo inteiro ou só da cintura pra cima/baixo
+- Arraste o arquivo para a janela ou use o comando `anim` no console. Veja [anims/LEIAME.md](anims/LEIAME.md)
+
+---
+
 ## 📊 Interface
 
 - ❤️ Barra de **vida** e 🛡️ barra de **colete**

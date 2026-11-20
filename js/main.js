@@ -84,6 +84,7 @@ window.addEventListener('load', () => {
   }
   LS.Game.init();
   LS.Lobby.build();
+  LS.Anim.initDrop(); // arrastar .glb/.fbx para a janela toca a animação no personagem
   LS.Menu.init();
   document.getElementById('arsenal-list').addEventListener('click', e => { const b = e.target.closest('[data-wpn]'); if (b) { LS.Audio.init(); LS.Audio.click(); LS.Menu.pickLobbyWeapon(b.dataset.wpn); } });
   LS.UI.bindSettings();

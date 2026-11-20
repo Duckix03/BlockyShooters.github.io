@@ -1,0 +1,256 @@
+// Animações externas no boneco de blocos: carrega .glb/.gltf/.fbx (Mixamo, Quaternius, Kenney...),
+// converte ("retarget") para os 7 ossos do personagem e toca por cima das animações do código.
+//
+// Como funciona o retarget: para cada osso, pega quanto o osso do modelo de fora girou em relação à pose
+// de descanso dele (T-pose / A-pose), no espaço do mundo, e aplica esse mesmo giro no nosso osso a partir
+// de uma pose de descanso equivalente. Assim não importa a escala, o eixo ou a pose base do arquivo.
+//
+// Uso rápido (console, tecla '):  anim load anims/danca.glb danca  ·  anim play danca  ·  anim stop
+// Ou arraste um arquivo .glb/.fbx para a janela do jogo.
+'use strict';
+LS.Anim = {
+  BONES: ['Hips', 'Spine', 'Head', 'RightArm', 'LeftArm', 'RightUpLeg', 'LeftUpLeg'],
+  PARENT: { Hips: null, Spine: 'Hips', Head: 'Spine', RightArm: 'Spine', LeftArm: 'Spine', RightUpLeg: 'Hips', LeftUpLeg: 'Hips' },
+  // máscaras: quais ossos a animação controla (o resto continua com a animação do código)
+  MASKS: {
+    full: ['Hips', 'Spine', 'Head', 'RightArm', 'LeftArm', 'RightUpLeg', 'LeftUpLeg'],
+    upper: ['Spine', 'Head', 'RightArm', 'LeftArm'],
+    lower: ['RightUpLeg', 'LeftUpLeg'],
+  },
+  FPS: 30,
+  clips: {},  // nome -> clipe já convertido
+  // biblioteca opcional: animações que ficam no repositório e carregam quando forem usadas
+  // exemplo: { name: 'danca', url: 'anims/danca.glb' }
+  LIBRARY: [],
+
+  // ---------- nomes de ossos ----------
+  norm(n) {
+    return String(n || '').toLowerCase().replace(/^.*:/, '').replace(/mixamorig/g, '').replace(/^bip0*1/, '').replace(/[^a-z0-9]/g, '');
+  },
+  _sided(bases, side) {
+    const s = side === 'R' ? ['right', 'r'] : ['left', 'l'], out = [];
+    for (const b of bases) for (const p of s) out.push(p + b, b + p);
+    return out;
+  },
+  aliases() {
+    if (this._al) return this._al;
+    const S = (b, side) => this._sided(b, side);
+    const ARM = ['arm', 'upperarm'], FORE = ['forearm', 'lowerarm', 'elbow'], UPLEG = ['upleg', 'thigh', 'upperleg'], LEG = ['leg', 'lowerleg', 'calf', 'shin', 'knee'], FOOT = ['foot', 'ankle'];
+    this._al = {
+      Hips: ['hips', 'pelvis', 'hip'],
+      Spine: ['spine2', 'chest', 'upperchest', 'spine1', 'spine02', 'spine03', 'spine'],
+      Head: ['head'],
+      RightArm: S(ARM, 'R'), LeftArm: S(ARM, 'L'),
+      RightUpLeg: S(UPLEG, 'R'), LeftUpLeg: S(UPLEG, 'L'),
+      // pontas: servem para saber para onde cada osso aponta na pose de descanso
+      _Spine: ['neck', 'neck1', 'head'], _Head: ['headtopend', 'headend', 'headtop'],
+      _RightArm: S(FORE, 'R'), _LeftArm: S(FORE, 'L'),
+      _RightUpLeg: S(LEG, 'R'), _LeftUpLeg: S(LEG, 'L'),
+      _RightFoot: S(FOOT, 'R'), _LeftFoot: S(FOOT, 'L'),
+    };
+    return this._al;
+  },
+  findBones(root) {
+    const byName = {};
+    root.traverse(o => { const k = this.norm(o.name); if (k && (!byName[k] || (o.isBone && !byName[k].isBone))) byName[k] = o; });
+    const al = this.aliases(), out = {};
+    for (const key in al) for (const a of al[key]) if (byName[a]) { out[key] = byName[a]; break; }
+    return out;
+  },
+
+  // ---------- carregar arquivos ----------
+  CDN: 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/',
+  _scripts: {},
+  _script(path) {
+    if (!this._scripts[path]) this._scripts[path] = new Promise((ok, fail) => {
+      const s = document.createElement('script'); s.src = this.CDN + path; s.onload = ok;
+      s.onerror = () => fail(new Error('Não consegui baixar ' + path)); document.head.appendChild(s);
+    });
+    return this._scripts[path];
+  },
+  async _loader(ext) {
+    if (ext === 'fbx') {
+      await this._script('libs/fflate.min.js'); await this._script('loaders/FBXLoader.js');
+      return new THREE.FBXLoader();
+    }
+    await this._script('loaders/GLTFLoader.js');
+    return new THREE.GLTFLoader();
+  },
+  // src: URL (string) ou File (arrastado / escolhido). name: nome do clipe (opcional)
+  async load(src, name) {
+    const isFile = typeof src !== 'string', fname = isFile ? src.name : src.split('?')[0];
+    const ext = (fname.split('.').pop() || '').toLowerCase();
+    if (!['glb', 'gltf', 'fbx'].includes(ext)) throw new Error('Formato não suportado: .' + ext + ' (use .glb, .gltf ou .fbx)');
+    const loader = await this._loader(ext);
+    const url = isFile ? URL.createObjectURL(src) : src;
+    let root, clips;
+    try {
+      const res = await new Promise((ok, fail) => loader.load(url, ok, undefined, e => fail(new Error('Erro ao carregar ' + fname + (e && e.message ? ': ' + e.message : '')))));
+      root = res.scene || res; clips = res.animations || (res.scene && res.scene.animations) || [];
+    } finally { if (isFile) URL.revokeObjectURL(url); }
+    clips = clips.filter(c => c.duration > 0 && c.tracks.length);
+    if (!clips.length) throw new Error(fname + ' não tem animações.');
+    const base = name || fname.split('/').pop().replace(/\.[^.]+$/, '').toLowerCase().replace(/\s+/g, '_');
+    const names = [];
+    clips.forEach((c, i) => {
+      const n = clips.length === 1 ? base : base + '_' + (this.norm(c.name) || i);
+      this.clips[n] = this.retarget(root, c, n);
+      names.push(n);
+    });
+    return names;
+  },
+  async ensure(name) {
+    if (this.clips[name]) return this.clips[name];
+    const e = this.LIBRARY.find(x => x.name === name);
+    if (!e) throw new Error('Animação "' + name + '" não carregada. Carregadas: ' + (Object.keys(this.clips).join(', ') || 'nenhuma'));
+    await this.load(e.url, e.name);
+    if (e.loop === false || e.mask) Object.assign(this.clips[name], { loop: e.loop !== false, mask: e.mask || 'full' });
+    return this.clips[name];
+  },
+
+  // ---------- retarget (converte o clipe para os nossos ossos) ----------
+  retarget(root, clip, name) {
+    const V = THREE.Vector3, Q = THREE.Quaternion, M = THREE.Matrix4;
+    root.updateMatrixWorld(true);
+    const src = this.findBones(root);
+    for (const b of ['Hips', 'Spine', 'RightArm', 'LeftArm', 'RightUpLeg', 'LeftUpLeg'])
+      if (!src[b]) throw new Error('Osso "' + b + '" não encontrado no arquivo (o modelo precisa ter um esqueleto humanoide).');
+
+    // pose de descanso de cada osso, no mundo: pelo bind do SkinnedMesh se existir, senão a pose atual do nó
+    const bind = new Map();
+    root.traverse(o => {
+      if (!o.isSkinnedMesh || !o.skeleton) return;
+      o.skeleton.bones.forEach((bn, i) => { if (!bind.has(bn)) bind.set(bn, o.bindMatrix.clone().multiply(new M().copy(o.skeleton.boneInverses[i]).invert())); });
+    });
+    const rest = {};
+    for (const k in src) {
+      const m = bind.get(src[k]) || src[k].matrixWorld.clone(), p = new V(), q = new Q(), s = new V();
+      m.decompose(p, q, s); rest[k] = { p, q };
+    }
+    // base do personagem de fora (esquerda, cima, frente) -> C leva para a nossa (+X, +Y, +Z)
+    const left = rest.LeftUpLeg.p.clone().sub(rest.RightUpLeg.p).add(rest.LeftArm.p.clone().sub(rest.RightArm.p)).normalize();
+    const up = rest.Spine.p.clone().sub(rest.Hips.p);
+    up.sub(left.clone().multiplyScalar(up.dot(left))).normalize();
+    const fwd = new V().crossVectors(left, up).normalize();
+    const C = new Q().setFromRotationMatrix(new M().makeBasis(left, up, fwd)).invert(), Ci = C.clone().invert();
+
+    // pose de descanso equivalente nos nossos ossos (ex.: braços abertos se o arquivo está em T-pose)
+    const DOWN = new V(0, -1, 0), UP = new V(0, 1, 0), DIR = { Spine: UP, Head: UP, RightArm: DOWN, LeftArm: DOWN, RightUpLeg: DOWN, LeftUpLeg: DOWN };
+    const R = { Hips: new Q() };
+    for (const b of this.BONES) {
+      if (b === 'Hips') continue;
+      const tip = rest['_' + b];
+      if (!rest[b] || !tip) { R[b] = new Q(); continue; }
+      const d = tip.p.clone().sub(rest[b].p).applyQuaternion(C);
+      R[b] = d.lengthSq() > 1e-10 ? new Q().setFromUnitVectors(DIR[b], d.normalize()) : new Q();
+    }
+    // altura do quadril para escalar o movimento do corpo (pula, agacha...)
+    const hipY = rest.Hips.p.clone().applyQuaternion(C).y;
+    const foot = rest._RightFoot || rest._LeftFoot, footY = foot ? foot.p.clone().applyQuaternion(C).y : hipY - (rest.Hips.p.y || 1);
+    const scale = (12 * LS.Skin.PX) / Math.max(1e-4, hipY - footY);
+
+    // amostra o clipe quadro a quadro
+    const mixer = new THREE.AnimationMixer(root), action = mixer.clipAction(clip);
+    action.play();
+    const fps = this.FPS, n = Math.max(2, Math.ceil(clip.duration * fps) + 1);
+    const out = { name, fps, duration: clip.duration, frames: n, q: {}, p: new Float32Array(n * 3), loop: true, mask: 'full' };
+    const has = this.BONES.filter(b => src[b]);
+    has.forEach(b => out.q[b] = new Float32Array(n * 4));
+    const W = {}, wq = new Q(), d = new Q(), lq = new Q(), pw = new V();
+    const restQi = {}; has.forEach(b => restQi[b] = rest[b].q.clone().invert());
+    for (let f = 0; f < n; f++) {
+      mixer.setTime(Math.min(clip.duration, f / fps));
+      root.updateMatrixWorld(true);
+      for (const b of this.BONES) {
+        if (!src[b]) { W[b] = (W[this.PARENT[b]] || new Q()).clone(); continue; } // sem cabeça no arquivo: segue o tronco
+        src[b].getWorldQuaternion(wq);
+        d.copy(C).multiply(wq).multiply(restQi[b]).multiply(Ci);  // giro desde o descanso, na nossa base
+        W[b] = d.clone().multiply(R[b]);
+        const par = this.PARENT[b];
+        lq.copy(par ? W[par] : new Q()).invert().multiply(W[b]);
+        if (out.q[b]) lq.toArray(out.q[b], f * 4);
+      }
+      src.Hips.getWorldPosition(pw);
+      pw.sub(rest.Hips.p).applyQuaternion(C).multiplyScalar(scale);
+      pw.toArray(out.p, f * 3);
+    }
+    mixer.stopAllAction(); mixer.uncacheRoot(root);
+    // sem andar sozinho pelo mapa: tira o deslocamento horizontal (fica só o sobe/desce e o balanço)
+    const x0 = out.p[0], z0 = out.p[2];
+    for (let f = 0; f < n; f++) { out.p[f * 3] -= x0 + (out.p[(n - 1) * 3] - x0) * f / (n - 1); out.p[f * 3 + 2] -= z0 + (out.p[(n - 1) * 3 + 2] - z0) * f / (n - 1); }
+    return out;
+  },
+
+  // ---------- ajudantes ----------
+  player(model) { return model.anim || (model.anim = new LS.AnimPlayer(model)); },
+  async play(model, name, opts) { const c = await this.ensure(name); this.player(model).play(c, opts); return c; },
+  // modelo que os comandos controlam: o seu na partida, senão o do lobby
+  target() {
+    const G = LS.Game;
+    if (G && G.player && G.built && G.state !== 'menu' && G.state !== 'lobby' && G.player.model) return G.player.model;
+    return LS.Lobby && LS.Lobby.model;
+  },
+  toggleBones(model) {
+    if (model._skelHelper) { model._skelHelper.parent && model._skelHelper.parent.remove(model._skelHelper); model._skelHelper = null; return false; }
+    const scene = model.root.parent; if (!scene) return false;
+    const h = new THREE.SkeletonHelper(model.root); h.material.depthTest = false; h.material.linewidth = 2; h.renderOrder = 999;
+    scene.add(h); model._skelHelper = h; return true;
+  },
+  // arrastar um arquivo para a janela: carrega e toca no personagem
+  initDrop() {
+    window.addEventListener('dragover', e => { if (e.dataTransfer && [...e.dataTransfer.items].some(i => i.kind === 'file')) e.preventDefault(); });
+    window.addEventListener('drop', async e => {
+      const f = e.dataTransfer && e.dataTransfer.files[0]; if (!f || !/\.(glb|gltf|fbx)$/i.test(f.name)) return;
+      e.preventDefault();
+      try {
+        const names = await this.load(f);
+        const m = this.target(); if (m) this.player(m).play(this.clips[names[0]]);
+        console.log('Animação carregada: ' + names.join(', ') + ' (tocando ' + names[0] + ')');
+      } catch (err) { console.error(err.message); }
+    });
+  },
+};
+
+// Toca um clipe convertido por cima da animação do código, com transição suave
+LS.AnimPlayer = class {
+  constructor(model) {
+    this.m = model; this.clip = null; this.t = 0; this.w = 0; this.on = false;
+    this.bones = { Hips: model.hips, Spine: model.torso, Head: model.headG, RightArm: model.armR, LeftArm: model.armL, RightUpLeg: model.legR, LeftUpLeg: model.legL };
+    this._a = new THREE.Quaternion(); this._b = new THREE.Quaternion();
+  }
+  // opts: { loop, mask: 'full'|'upper'|'lower', fade (s), speed }
+  play(clip, opts = {}) {
+    this.clip = clip; this.t = 0; this.on = true;
+    this.loop = opts.loop !== undefined ? opts.loop : clip.loop;
+    this.mask = LS.Anim.MASKS[opts.mask || clip.mask] || LS.Anim.MASKS.full;
+    this.fade = opts.fade !== undefined ? opts.fade : 0.25; this.speed = opts.speed || 1;
+    if (this.w < 0.01) this.w = 0;
+  }
+  stop(fade) { this.on = false; if (fade !== undefined) this.fade = fade; }
+  get playing() { return this.on && !!this.clip; }
+  apply(dt, s) {
+    const c = this.clip; if (!c) return;
+    const blocked = s.dead || s.fall || s.chute;
+    const goal = this.on && !blocked ? 1 : 0, step = this.fade > 0 ? dt / this.fade : 1;
+    this.w = goal > this.w ? Math.min(goal, this.w + step) : Math.max(goal, this.w - step);
+    if (this.w <= 0) { if (!this.on) this.clip = null; return; }
+    this.t += dt * this.speed;
+    if (this.t >= c.duration) {
+      if (this.loop) this.t = c.duration > 0 ? this.t % c.duration : 0;
+      else { this.t = c.duration; this.on = false; }
+    }
+    const fr = Math.min(c.frames - 1, this.t * c.fps), i0 = Math.floor(fr), i1 = Math.min(c.frames - 1, i0 + 1), a = fr - i0;
+    const w = this.w * this.w * (3 - 2 * this.w); // transição suave
+    for (const b of this.mask) {
+      const arr = c.q[b]; if (!arr) continue;
+      this._a.fromArray(arr, i0 * 4); this._b.fromArray(arr, i1 * 4); this._a.slerp(this._b, a);
+      this.bones[b].quaternion.slerp(this._a, w);
+    }
+    if (this.mask.includes('Hips')) {
+      const p = c.p, h = this.m.hips.position, k0 = i0 * 3, k1 = i1 * 3, L = LS.util.lerp;
+      h.x = L(h.x, L(p[k0], p[k1], a), w);
+      h.y = L(h.y, this.m.hipsY + L(p[k0 + 1], p[k1 + 1], a), w);
+      h.z = L(h.z, L(p[k0 + 2], p[k1 + 2], a), w);
+    }
+  }
+};
