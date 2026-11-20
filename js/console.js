@@ -9,7 +9,7 @@ LS.Console = {
     el.id = 'devconsole'; el.className = 'hidden';
     el.innerHTML = `
       <div class="dc-head">
-        <span class="dc-title"><b>&gt;_</b> CONSOLE</span>
+        <span class="dc-title"><b>&gt;_</b> CONSOLE <small>v${LS.VERSION}</small></span>
         <span class="dc-stats" id="dc-stats"></span>
         <span class="dc-filters">
           <button data-f="all" class="on">Tudo</button><button data-f="warn">Avisos</button><button data-f="error">Erros</button>
@@ -45,7 +45,8 @@ LS.Console = {
     this.input.addEventListener('keydown', e => this.onInputKey(e));
     this.input.addEventListener('input', () => this.updateHint());
 
-    this.print('Console pronto. Digite <b>help</b> para ver os comandos.', 'sys');
+    this.print('Console pronto (versão ' + LS.VERSION + '). Digite <b>help</b> para ver os comandos.', 'sys');
+    LS.Perf.init();
     setInterval(() => { if (this.open) this.updateStats(); }, 500);
   },
 
@@ -247,7 +248,60 @@ LS.Console = {
     render: { use: '<distância>', desc: 'distância de visão (100-800)', fn(a) { const v = +a[0]; if (!(v >= 100 && v <= 800)) throw new Error('Use entre 100 e 800.'); LS.settings.renderDistance = v; LS.saveSettings(); LS.Game.applySettings(); return 'Distância de visão: ' + v + ' m'; } },
     shadows: { desc: 'liga/desliga o cálculo de sombra', fn() { const r = LS.Game.renderer; r.shadowMap.autoUpdate = !r.shadowMap.autoUpdate; r.shadowMap.needsUpdate = true; return 'Sombras ' + (r.shadowMap.autoUpdate ? 'atualizando' : 'congeladas'); } },
     hud: { desc: 'esconde/mostra o HUD (para prints)', fn() { const h = document.getElementById('hud'); h.style.visibility = h.style.visibility === 'hidden' ? '' : 'hidden'; return 'HUD ' + (h.style.visibility ? 'escondido' : 'visível'); } },
+    perf: { desc: 'onde o tempo de cada quadro está indo (últimos 3 s) e as travadas', fn() { return LS.Perf.report(); } },
     js: { use: '<código>', desc: 'roda JavaScript (avançado)', fn(a) { const r = (0, eval)(a.join(' ')); this.print(this.fmt(r), 'log'); } }
+  }
+};
+
+// ---------- Medidor de travadas ----------
+// Mede quanto cada parte do jogo gasta por quadro. Quadro acima de 70 ms vira um aviso no console
+// dizendo o que pesou (ou "fora do JS" = placa de vídeo / navegador). Shader novo compilado no meio da partida também avisa.
+LS.Perf = {
+  acc: {}, hist: [], hitches: [], last: 0, progs: 0,
+  init() {
+    const tryWrap = () => {
+      const G = LS.Game; if (!G || !G.renderer || !G.player || !G.zone || !LS.Bot) return setTimeout(tryWrap, 500);
+      const W = (obj, name, label) => { const f = obj && obj[name]; if (!f || f._perf) return;
+        const w = function (...a) { const t = performance.now(); try { return f.apply(this, a); } finally { const A = LS.Perf.acc; A[label] = (A[label] || 0) + performance.now() - t; } };
+        w._perf = true; obj[name] = w; };
+      W(G.renderer, 'render', 'render'); W(G.player, 'update', 'jogador'); W(LS.Bot.prototype, 'update', 'bots');
+      W(G.zone, 'update', 'zona'); W(G.plane, 'update', 'avião'); W(LS.Loot, 'update', 'loot'); W(LS.Effects, 'update', 'efeitos');
+      W(LS.World, 'updateSky', 'céu'); W(LS.HUD, 'update', 'HUD'); W(LS.HUD, 'renderInventory', 'inventário');
+      if (LS.Lobby) W(LS.Lobby, 'update', 'lobby');
+      requestAnimationFrame(t => this.tick(t));
+    };
+    tryWrap();
+  },
+  tick(now) {
+    requestAnimationFrame(t => this.tick(t));
+    const G = LS.Game, gap = this.last ? now - this.last : 16; this.last = now;
+    const A = this.acc; this.acc = {};
+    let js = 0; for (const k in A) js += A[k];
+    const fr = { t: now, gap, js, parts: A, st: G.state, ps: G.player && G.player.state };
+    this.hist.push(fr); while (this.hist.length && now - this.hist[0].t > 3000) this.hist.shift();
+    const progs = G.renderer.info.programs ? G.renderer.info.programs.length : 0;
+    if (G.state === 'playing' && this.progs && progs > this.progs) console.warn('Shader novo compilado no meio da partida (' + this.progs + ' → ' + progs + '). Isso trava um instante.');
+    this.progs = progs;
+    if (gap > 70 && G.state === 'playing' && !document.hidden) {
+      const top = Object.entries(A).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => k + ' ' + v.toFixed(0) + 'ms').join(', ');
+      const out = Math.max(0, gap - js);
+      const msg = 'Travada de ' + gap.toFixed(0) + ' ms [' + (fr.ps || fr.st) + '] · JS: ' + (top || '—') + ' · fora do JS (placa/navegador): ' + out.toFixed(0) + 'ms · ' + Math.round(G.renderer.info.render.triangles / 1000) + 'k tri, ' + G.renderer.info.render.calls + ' draws';
+      this.hitches.push(msg); if (this.hitches.length > 30) this.hitches.shift();
+      console.warn(msg);
+    }
+  },
+  report() {
+    const H = this.hist; if (!H.length) return 'Sem dados ainda.';
+    const n = H.length, sum = {}; let gap = 0, js = 0, worst = H[0];
+    for (const f of H) { gap += f.gap; js += f.js; if (f.gap > worst.gap) worst = f; for (const k in f.parts) sum[k] = (sum[k] || 0) + f.parts[k]; }
+    const rows = Object.entries(sum).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + ' <b>' + (v / n).toFixed(1) + '</b>').join(' · ');
+    const G = LS.Game, i = G.renderer.info;
+    return 'Média por quadro: <b>' + (gap / n).toFixed(1) + ' ms</b> (' + Math.round(1000 / (gap / n)) + ' FPS) · JS <b>' + (js / n).toFixed(1) + ' ms</b> · fora do JS (placa/navegador) <b>' + Math.max(0, (gap - js) / n).toFixed(1) + ' ms</b><br>' +
+      rows + '<br>pior quadro: <b>' + worst.gap.toFixed(0) + ' ms</b> · ' + i.render.triangles.toLocaleString() + ' tri · ' + i.render.calls + ' draws · resolução ' + G.renderer.domElement.width + '×' + G.renderer.domElement.height +
+      ' · placa: ' + LS.Perf.gpu() + (this.hitches.length ? '<br>travadas registradas: <b>' + this.hitches.length + '</b> (veja no filtro Avisos)' : '');
+  },
+  gpu() {
+    try { const gl = LS.Game.renderer.getContext(), e = gl.getExtension('WEBGL_debug_renderer_info'); return e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : '?'; } catch (e) { return '?'; }
   }
 };
 if (document.body) LS.Console.init(); else window.addEventListener('DOMContentLoaded', () => LS.Console.init());

@@ -309,6 +309,7 @@ kbd { font-family: var(--display); font-weight: 400; letter-spacing: 0.5px; bord
 @keyframes dcOut { to { opacity: 0; transform: translate(-50%, -18px) scale(0.98); } }
 .dc-head { display: flex; align-items: center; gap: 14px; padding: 9px 12px 9px 16px; background: rgba(255, 255, 255, 0.035); border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
 .dc-title { font-family: var(--display); font-size: 18px; letter-spacing: 1.5px; }
+.dc-title small { font: 600 11px var(--body); color: #6f7bb0; letter-spacing: 0.5px; margin-left: 4px; }
 .dc-title b { font-weight: 400; background: var(--grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; margin-right: 4px; }
 .dc-stats { flex: 1; font: 600 12px var(--body); color: #8f9bc7; letter-spacing: 0.3px; }
 .dc-filters { display: flex; gap: 4px; background: rgba(0, 0, 0, 0.3); padding: 3px; border-radius: 10px; }
