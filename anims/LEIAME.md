@@ -1,6 +1,6 @@
 # 🦴 Animações externas
 
-Coloque aqui arquivos **.glb**, **.gltf** ou **.fbx** com animações de personagem humanoide
+Coloque aqui arquivos **.glb**, **.gltf**, **.fbx** ou **.json** (convertido pelo jogo) com animações de personagem humanoide
 (Mixamo, Quaternius, Kenney…). O jogo converte a animação para os 7 ossos do boneco de blocos.
 
 ## Ossos do personagem
@@ -24,7 +24,17 @@ Os nomes são os mesmos do Mixamo, mas o jogo também reconhece outros padrões
 - Ou use o console (tecla `'` ou F2):
   - `anim load anims/danca.glb danca` carrega e toca
   - `anim play danca` · `anim play danca once` (uma vez só) · `anim play danca upper` (só da cintura pra cima)
-  - `anim stop` para · `anim list` lista · `anim bones` mostra o esqueleto
+  - `anim stop` para · `anim list` lista · `anim bones` mostra o esqueleto · `anim save` baixa o .json
+
+## Já incluídas
+
+`locomocao.json`: andar pra frente, pra trás e pros lados (`walk_f`, `walk_b`, `walk_l`, `walk_r`), correr (`run_f`) e parado (`stand_idle`). Animações feitas pelo Duckix03.
+
+## Salvar só o movimento (.json)
+
+Se o seu .fbx/.glb vem com o modelo 3D de algum personagem (de outro jogo, por exemplo), **não suba o arquivo original**.
+Carregue no jogo e use `anim save` (ou `anim save nome1 nome2`) no console: baixa um `animacoes.json` só com o movimento
+já convertido para os 7 ossos, bem menor e sem nenhum modelo junto. Coloque esse .json aqui em `anims/`.
 
 ## Deixar fixa no jogo
 

@@ -21,11 +21,16 @@ LS.Anim = {
   clips: {},  // nome -> clipe já convertido
   // biblioteca opcional: animações que ficam no repositório e carregam quando forem usadas
   // exemplo: { name: 'danca', url: 'anims/danca.glb' }
-  LIBRARY: [],
+  LIBRARY: [
+    // movimentação (feitas pelo Duckix03): andar pra frente/trás/lados, correr e parado
+    { name: 'walk_f', url: 'anims/locomocao.json' }, { name: 'walk_b', url: 'anims/locomocao.json' },
+    { name: 'walk_l', url: 'anims/locomocao.json' }, { name: 'walk_r', url: 'anims/locomocao.json' },
+    { name: 'run_f', url: 'anims/locomocao.json' }, { name: 'stand_idle', url: 'anims/locomocao.json' },
+  ],
 
   // ---------- nomes de ossos ----------
   norm(n) {
-    return String(n || '').toLowerCase().replace(/^.*:/, '').replace(/mixamorig/g, '').replace(/^bip0*1/, '').replace(/[^a-z0-9]/g, '');
+    return String(n || '').toLowerCase().replace(/^.*:/, '').replace(/mixamorig/g, '').replace(/^bip0*1/, '').replace(/[^a-z0-9]/g, '').replace(/^(bone|bn|def|jnt|joint)(?=[a-z])/, '');
   },
   _sided(bases, side) {
     const s = side === 'R' ? ['right', 'r'] : ['left', 'l'], out = [];
@@ -35,7 +40,7 @@ LS.Anim = {
   aliases() {
     if (this._al) return this._al;
     const S = (b, side) => this._sided(b, side);
-    const ARM = ['arm', 'upperarm'], FORE = ['forearm', 'lowerarm', 'elbow'], UPLEG = ['upleg', 'thigh', 'upperleg'], LEG = ['leg', 'lowerleg', 'calf', 'shin', 'knee'], FOOT = ['foot', 'ankle'];
+    const ARM = ['arm', 'upperarm', 'armupper'], FORE = ['forearm', 'lowerarm', 'armlower', 'elbow'], UPLEG = ['upleg', 'thigh', 'upperleg', 'legupper'], LEG = ['leg', 'lowerleg', 'leglower', 'calf', 'shin', 'knee'], FOOT = ['foot', 'ankle'];
     this._al = {
       Hips: ['hips', 'pelvis', 'hip'],
       Spine: ['spine2', 'chest', 'upperchest', 'spine1', 'spine02', 'spine03', 'spine'],
@@ -80,7 +85,8 @@ LS.Anim = {
   async load(src, name) {
     const isFile = typeof src !== 'string', fname = isFile ? src.name : src.split('?')[0];
     const ext = (fname.split('.').pop() || '').toLowerCase();
-    if (!['glb', 'gltf', 'fbx'].includes(ext)) throw new Error('Formato não suportado: .' + ext + ' (use .glb, .gltf ou .fbx)');
+    if (!['glb', 'gltf', 'fbx', 'json'].includes(ext)) throw new Error('Formato não suportado: .' + ext + ' (use .glb, .gltf, .fbx ou .json)');
+    if (ext === 'json') return this.fromJSON(JSON.parse(isFile ? await src.text() : await (await fetch(src)).text()), name);
     const loader = await this._loader(ext);
     const url = isFile ? URL.createObjectURL(src) : src;
     let root, clips;
@@ -104,8 +110,34 @@ LS.Anim = {
     const e = this.LIBRARY.find(x => x.name === name);
     if (!e) throw new Error('Animação "' + name + '" não carregada. Carregadas: ' + (Object.keys(this.clips).join(', ') || 'nenhuma'));
     await this.load(e.url, e.name);
+    if (!this.clips[name]) throw new Error('Animação "' + name + '" não está em ' + e.url);
     if (e.loop === false || e.mask) Object.assign(this.clips[name], { loop: e.loop !== false, mask: e.mask || 'full' });
     return this.clips[name];
+  },
+
+  // ---------- .json: clipes já convertidos (só o movimento dos 7 ossos, sem modelo 3D) ----------
+  toJSON(names) {
+    names = names && names.length ? names : Object.keys(this.clips);
+    const r = a => Array.from(a, x => Math.round(x * 1e4) / 1e4);
+    return { format: 'lastsurvivor-anim', version: 1, clips: names.map(n => {
+      const c = this.clips[n]; if (!c) throw new Error('Animação "' + n + '" não carregada.');
+      const q = {}; for (const b in c.q) q[b] = r(c.q[b]);
+      return { name: c.name, fps: c.fps, duration: c.duration, frames: c.frames, loop: c.loop, mask: c.mask, q, p: r(c.p) };
+    }) };
+  },
+  fromJSON(j, name) {
+    if (!j || j.format !== 'lastsurvivor-anim' || !Array.isArray(j.clips)) throw new Error('Arquivo .json não é de animação do Last Survivor.');
+    return j.clips.map(c => {
+      const n = j.clips.length === 1 && name ? name : c.name, q = {};
+      for (const b in c.q) q[b] = Float32Array.from(c.q[b]);
+      this.clips[n] = { name: n, fps: c.fps, duration: c.duration, frames: c.frames, loop: c.loop !== false, mask: c.mask || 'full', q, p: Float32Array.from(c.p) };
+      return n;
+    });
+  },
+  // baixa os clipes convertidos como .json (para colocar em anims/ sem levar o modelo 3D junto)
+  download(names, file) {
+    const blob = new Blob([JSON.stringify(this.toJSON(names))], { type: 'application/json' }), a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = file || 'animacoes.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   },
 
   // ---------- retarget (converte o clipe para os nossos ossos) ----------
@@ -200,7 +232,7 @@ LS.Anim = {
   initDrop() {
     window.addEventListener('dragover', e => { if (e.dataTransfer && [...e.dataTransfer.items].some(i => i.kind === 'file')) e.preventDefault(); });
     window.addEventListener('drop', async e => {
-      const f = e.dataTransfer && e.dataTransfer.files[0]; if (!f || !/\.(glb|gltf|fbx)$/i.test(f.name)) return;
+      const f = e.dataTransfer && e.dataTransfer.files[0]; if (!f || !/\.(glb|gltf|fbx|json)$/i.test(f.name)) return;
       e.preventDefault();
       try {
         const names = await this.load(f);

@@ -194,7 +194,7 @@ LS.Console = {
       const rows = Object.entries(this.cmds).map(([k, c]) => '<b>' + k + '</b> <u>' + this.esc(c.use || '') + '</u> — ' + c.desc);
       this.print('<div class="dc-help">' + rows.join('<br>') + '</div>', 'sys');
     } },
-    anim: { use: '<list | load url [nome] | play nome [once] [full|upper|lower] | stop | bones>', desc: 'animações externas (.glb/.fbx) no seu personagem', args: () => ['list', 'load', 'play', 'stop', 'bones', ...Object.keys(LS.Anim.clips)], fn(a) {
+    anim: { use: '<list | load url [nome] | play nome [once] [full|upper|lower] | stop | save [nomes] | bones>', desc: 'animações externas (.glb/.fbx) no seu personagem', args: () => ['list', 'load', 'play', 'stop', 'save', 'bones', ...Object.keys(LS.Anim.clips)], fn(a) {
       const A = LS.Anim, sub = (a[0] || 'list').toLowerCase(), m = A.target();
       if (!m) throw new Error('Nenhum personagem na tela.');
       if (sub === 'list') {
@@ -213,6 +213,7 @@ LS.Console = {
         A.play(m, a[1], opts).then(() => this.print('Tocando <b>' + this.esc(a[1]) + '</b>', 'ok')).catch(e => this.print(e.message, 'error'));
         return;
       }
+      if (sub === 'save') { A.download(a.slice(1)); return 'Baixando animacoes.json (só o movimento, sem o modelo 3D). Coloque em anims/.'; }
       if (sub === 'stop') { if (m.anim) m.anim.stop(); return 'Animação parada'; }
       if (sub === 'bones') return 'Esqueleto ' + (A.toggleBones(m) ? 'visível' : 'escondido');
       throw new Error('Use: anim list · anim load url [nome] · anim play nome · anim stop · anim bones');
