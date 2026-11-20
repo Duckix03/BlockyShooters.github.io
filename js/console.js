@@ -280,9 +280,9 @@ LS.Perf = {
     const fr = { t: now, gap, js, parts: A, st: G.state, ps: G.player && G.player.state };
     this.hist.push(fr); while (this.hist.length && now - this.hist[0].t > 3000) this.hist.shift();
     const progs = G.renderer.info.programs ? G.renderer.info.programs.length : 0;
-    if (G.state === 'playing' && this.progs && progs > this.progs) console.warn('Shader novo compilado no meio da partida (' + this.progs + ' → ' + progs + '). Isso trava um instante.');
+    if (G.state === 'playing' && G.time > 3 && this.progs && progs > this.progs) console.warn('Shader novo compilado no meio da partida (' + this.progs + ' → ' + progs + '). Isso trava um instante.');
     this.progs = progs;
-    if (gap > 70 && G.state === 'playing' && !document.hidden) {
+    if (gap > 70 && G.state === 'playing' && G.time > 1.5 && !document.hidden) {
       const top = Object.entries(A).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => k + ' ' + v.toFixed(0) + 'ms').join(', ');
       const out = Math.max(0, gap - js);
       const msg = 'Travada de ' + gap.toFixed(0) + ' ms [' + (fr.ps || fr.st) + '] · JS: ' + (top || '—') + ' · fora do JS (placa/navegador): ' + out.toFixed(0) + 'ms · ' + Math.round(G.renderer.info.render.triangles / 1000) + 'k tri, ' + G.renderer.info.render.calls + ' draws';

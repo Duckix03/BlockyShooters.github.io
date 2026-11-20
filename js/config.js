@@ -1,7 +1,19 @@
 // LAST SURVIVOR - configuração global, dados de armas/itens e utilitários
 'use strict';
 const LS = window.LS = {};
-LS.VERSION = '18'; // muda a cada atualização (também usado no ?v= do index.html para furar o cache)
+LS.VERSION = '19'; // muda a cada atualização (também no ?v= do index.html e no version.json)
+// a página inicial pode ficar guardada no navegador por ~10 min (GitHub Pages): confere a versão no servidor
+// e, se esta estiver velha, recarrega num endereço novo (?v=...) que o navegador ainda não guardou
+(function () {
+  try {
+    fetch('version.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.json()).then(j => {
+      if (!j || !j.v || j.v === LS.VERSION) return;
+      const k = 'ls_reload_' + j.v; if (sessionStorage.getItem(k)) return; // no máximo 1 tentativa por versão
+      sessionStorage.setItem(k, '1');
+      const u = new URL(location.href); u.searchParams.set('v', j.v); location.replace(u.toString());
+    }).catch(() => {});
+  } catch (e) { /* sem rede / file:// */ }
+})();
 
 LS.MAP_SIZE = 800;          // tamanho do terreno (metros)
 LS.ISLAND_RADIUS = 340;     // raio útil da ilha
