@@ -7,7 +7,7 @@ LS.Lobby = {
     if (this.built) return;
     this.built = true;
     const sc = this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 120);
+    this.camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 420); // enxerga o céu e a cidade ao longe
     LS.LobbyScene.build(sc, this);
     // personagem do jogador (segura a arma escolhida no Arsenal)
     this.model = new LS.CharacterModel({ look: LS.playerProfile.look });
@@ -15,8 +15,8 @@ LS.Lobby = {
     sc.add(this.model.root);
     // dois sobreviventes conversando no fundo
     this.extras = [];
-    [[-3.4, -6.5, 0.6], [-2.4, -6.9, -2.4]].forEach(([x, z, ry]) => {
-      const m = new LS.CharacterModel({}); m.root.position.set(x, 0, z); m.root.rotation.y = ry;
+    [[-2.2, -1.9, 0.35], [2.2, -1.9, -0.35]].forEach(([x, z, ry]) => {
+      const m = new LS.CharacterModel({}); m.root.position.set(x, 0, z); m.root.rotation.y = ry; m.setGun(ry > 0 ? 'm4a1' : 'ak47'); m.setGear(2, 1, 1);
       sc.add(m.root); this.extras.push(m);
     });
     // rotação com o mouse
@@ -96,15 +96,14 @@ LS.Lobby = {
     const t = performance.now() * 0.001;
     const menuNow = LS.Game.state === 'menu';
     if (!this.dragging) { if (menuNow) this.rotY = LS.util.lerp(this.rotY, Math.sin(t * 0.4) * 0.25, Math.min(1, dt * 2)); else this.rotY += dt * 0.25; }
-    this.model.root.rotation.y = this.rotY; this.model.root.position.y = 0.3; // em cima do pedestal
+    this.model.root.rotation.y = this.rotY; this.model.root.position.y = 0;
     const armed = !!this.model.gunId;
     this.model.animate({ dt, speed: 0, aimPitch: 0, armed, running: armed, armedAim: false, idle: true });
-    this.extras.forEach((m, i) => {
-      m.animate({ dt, speed: 0, aimPitch: 0, armed: false, idle: true });
-      m.headG.rotation.y = Math.sin(t * 0.7 + i * 2) * 0.35;
-      if (i === 0) m.armR.rotation.x = -0.3 + Math.sin(t * 2) * 0.25; // gesticulando
+    this.extras.forEach((m, i) => { // colegas de squad nas laterais, parados e olhando em volta
+      m.animate({ dt, speed: 0, aimPitch: 0, armed: !!m.gunId, running: !!m.gunId, armedAim: false, idle: true });
+      m.headG.rotation.y = Math.sin(t * 0.5 + i * 2.3) * 0.3;
     });
-    this.ring.material.color.setHSL(0.07, 1, 0.5 + Math.sin(t * 3) * 0.1);
+    this.ring.material.opacity = 0.45 + Math.sin(t * 2) * 0.15;
     LS.LobbyScene.update(this, dt, t);
     // câmera: personagem à direita do painel
     const aspect = window.innerWidth / window.innerHeight;

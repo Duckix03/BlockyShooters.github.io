@@ -25,14 +25,14 @@ Object.assign(LS.World, {
         'uniform vec3 topColor; uniform vec3 horizonColor; uniform vec3 groundColor; uniform vec3 sunDir; uniform vec3 sunColor; uniform float sunSize; uniform float time; uniform vec3 cirrus;',
         'float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }',
         'float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y); }',
-        'float fbm(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { v += a * vnoise(p); p = p * 2.03 + 7.1; a *= 0.5; } return v; }',
+        'float fbm(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 4; i++) { v += a * vnoise(p); p = p * 2.03 + 7.1; a *= 0.5; } return v; }',
         'varying vec3 vDir;',
         'void main(){',
         '  vec3 d = normalize(vDir); float h = d.y;',
         '  vec3 col = h > 0.0 ? mix(horizonColor, topColor, pow(h, 0.55)) : mix(horizonColor, groundColor, min(1.0, -h * 4.0));',
         '  if (h > 0.0) {',                                       // nuvens finas (cirros) passando lá no alto
         '    vec2 uv = d.xz / (h + 0.18) * 1.4 + vec2(time * 0.010, time * 0.004);',
-        '    float n = fbm(uv) * 0.75 + fbm(uv * 3.1 - time * 0.006) * 0.25;',
+        '    float n = fbm(uv) + (vnoise(uv * 6.0 - time * 0.02) - 0.5) * 0.12;',            // 1 fbm só (mais leve)
         '    float c = smoothstep(0.52, 0.8, n) * smoothstep(0.02, 0.3, h);',
         '    col = mix(col, cirrus, c * 0.6);',
         '  }',
@@ -86,7 +86,7 @@ Object.assign(LS.World, {
       const s = new THREE.Sprite(m);
       const sc = LS.util.rand(70, 140);
       s.scale.set(sc, sc * 0.5, 1);
-      s.userData = { x: LS.util.rand(-350, 350), z: LS.util.rand(-350, 350), y: LS.util.rand(150, 200), sc, ph: Math.random() * 6.28 };
+      s.userData = { x: LS.util.rand(-350, 350), z: LS.util.rand(-350, 350), y: LS.util.rand(245, 295), sc, ph: Math.random() * 6.28 }; // acima da rota do avião (190 m)
       s.renderOrder = -8;
       scene.add(s); this.clouds.push(s);
     }
@@ -169,7 +169,9 @@ Object.assign(LS.World, {
       let rx = ((u.x - cam.x) % span + span * 1.5) % span - span / 2, rz = ((u.z - cam.z) % span + span * 1.5) % span - span / 2;
       c.position.set(cam.x + rx, u.y, cam.z + rz);
       const dist = Math.hypot(rx, rz, u.y - cam.y);
-      c.material.opacity = 0.9 * LS.util.clamp((far * 0.95 - dist) / (far * 0.3), 0, 1);
+      // some de longe (fog) e também de PERTO: nuvem colada na câmera cobria a tela e travava a placa de vídeo
+      c.material.opacity = 0.9 * LS.util.clamp((far * 0.95 - dist) / (far * 0.3), 0, 1) * LS.util.clamp((dist - 50) / 90, 0, 1);
+      c.visible = c.material.opacity > 0.01;
       c.material.color.copy(tint);
       const br = 1 + Math.sin(this.skyTime * 0.25 + u.ph) * 0.04; c.scale.set(u.sc * br, u.sc * 0.5 * (2 - br), 1); // nuvem "respirando"
     }

@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LAST SURVIVOR</title>
+<link rel="preload" href="fonts/lilita-one-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/ui.css">
 <link rel="icon" href="data:,">
 </head>
 <body>
@@ -18,13 +20,13 @@
       <div class="lb-avatar" id="lb-avatar">J</div>
       <div class="lb-pinfo"><b id="lb-name">Jogador</b><div class="lb-lvl">NV. <span id="lb-level">1</span><div class="lb-xp"><div id="lb-xp"></div></div></div></div>
     </div>
-    <div class="lb-currency" title="Moedas ganhas nas partidas">💰 <span id="lb-coins">0</span></div>
-    <div class="lb-currency" title="Vitórias">🏆 <span id="lb-wins">0</span></div>
+    <div class="lb-currency coin" title="Moedas ganhas nas partidas"><i data-icon="coin"></i><span id="lb-coins">0</span></div>
+    <div class="lb-currency trophy" title="Vitórias"><i data-icon="trophy"></i><span id="lb-wins">0</span></div>
     <div class="lb-logo">LAST<span>SURVIVOR</span></div>
     <div class="lb-top-icons">
-      <button class="lb-icon" data-action="mute" id="lb-mute" title="Som">🔊</button>
-      <button class="lb-icon" data-action="fullscreen" title="Tela cheia">⛶</button>
-      <button class="lb-icon" data-action="settings" title="Configurações">⚙️</button>
+      <button class="lb-icon" data-action="mute" id="lb-mute" title="Som"><i data-icon="sound"></i></button>
+      <button class="lb-icon" data-action="fullscreen" title="Tela cheia"><i data-icon="full"></i></button>
+      <button class="lb-icon" data-action="settings" title="Configurações"><i data-icon="gear"></i></button>
     </div>
   </div>
   <div class="lb-news" data-action="news">
@@ -33,15 +35,15 @@
     <div class="lb-news-sub">Toque para ver tudo o que mudou</div>
   </div>
   <div class="lb-menu">
-    <button class="lb-item" data-action="customize"><span>🧍</span>PERSONAGEM</button>
-    <button class="lb-item" data-action="arsenal"><span>🔫</span>ARSENAL</button>
-    <button class="lb-item" data-action="stats"><span>📊</span>PERFIL</button>
-    <button class="lb-item" data-action="news"><span>📰</span>NOVIDADES</button>
+    <button class="lb-item" data-action="customize"><span><i data-icon="user"></i></span>PERSONAGEM</button>
+    <button class="lb-item" data-action="arsenal"><span><i data-icon="gun"></i></span>ARSENAL</button>
+    <button class="lb-item" data-action="stats"><span><i data-icon="chart"></i></span>PERFIL</button>
+    <button class="lb-item" data-action="news"><span><i data-icon="news"></i></span>NOVIDADES</button>
   </div>
   <div class="lb-side">
-    <button class="lb-icon" data-action="stats" title="Perfil">🏅</button>
-    <button class="lb-icon" data-action="controls" title="Controles">⌨️</button>
-    <button class="lb-icon" data-action="credits" title="Créditos">ℹ️</button>
+    <button class="lb-icon" data-action="stats" title="Perfil"><i data-icon="medal"></i></button>
+    <button class="lb-icon" data-action="controls" title="Controles"><i data-icon="keys"></i></button>
+    <button class="lb-icon" data-action="credits" title="Créditos"><i data-icon="info"></i></button>
   </div>
   <div class="menu-player"><div id="menu-player-name">Jogador</div><div class="menu-player-sub">Arraste para girar</div></div>
   <div class="lb-play">
@@ -78,12 +80,12 @@
   <div class="panel">
     <h2>NOVIDADES</h2>
     <div class="news-list">
-      <div><b>🏠 Casas refeitas</b><span>Telhados fechados, sobrados com escada, móveis e terreno aplainado.</span></div>
-      <div><b>🔭 Luneta de verdade</b><span>Snipers com retículo, zoom na roda do mouse e SHIFT para prender a respiração.</span></div>
-      <div><b>🌅 Céu dinâmico</b><span>Nuvens que se movem, pôr do sol e estrelas no fim da partida.</span></div>
-      <div><b>🪂 Queda do avião</b><span>Mergulho com W, paraquedas que balança e aterrissagem com impacto.</span></div>
-      <div><b>🔊 Sons e efeitos</b><span>Tiros com eco, cápsulas, traçantes, marcas de bala e números de dano.</span></div>
-      <div><b>🧢 Acessórios</b><span>Barbas, óculos, máscaras, chapéus, roupas e trajes prontos.</span></div>
+      <div><b>Casas refeitas</b><span>Telhados fechados, sobrados com escada, móveis e terreno aplainado.</span></div>
+      <div><b>Luneta de verdade</b><span>Snipers com retículo, zoom na roda do mouse e SHIFT para prender a respiração.</span></div>
+      <div><b>Céu dinâmico</b><span>Nuvens que se movem, pôr do sol e estrelas no fim da partida.</span></div>
+      <div><b>Queda do avião</b><span>Mergulho com W, paraquedas que balança e aterrissagem com impacto.</span></div>
+      <div><b>Sons e efeitos</b><span>Tiros com eco, cápsulas, traçantes, marcas de bala e números de dano.</span></div>
+      <div><b>Acessórios</b><span>Barbas, óculos, máscaras, chapéus, roupas e trajes prontos.</span></div>
     </div>
     <div class="panel-buttons"><button class="btn btn-primary" data-action="back">VOLTAR</button></div>
   </div>
@@ -102,7 +104,7 @@
     <input id="lobby-name" maxlength="16" spellcheck="false" autocomplete="off">
     <div id="lobby-options"></div>
     <div class="lobby-row-btns">
-      <button class="btn small" data-action="lobby-random">🎲 ALEATÓRIO</button>
+      <button class="btn small" data-action="lobby-random"><i data-icon="dice"></i> ALEATÓRIO</button>
       <button class="btn small" data-action="lobby-reset">PADRÃO</button>
     </div>
   </div>
@@ -227,9 +229,9 @@
 <!-- HUD -->
 <div id="hud" class="hidden">
   <div id="top-left">
-    <div class="pill"><span class="ico">👤</span><span id="alive">31</span> VIVOS</div>
-    <div class="pill"><span class="ico">💀</span><span id="kills">0</span> ABATES</div>
-    <div class="pill"><span class="ico">⏱</span><span id="timer">00:00</span></div>
+    <div class="pill"><i data-icon="alive"></i><span id="alive">31</span> VIVOS</div>
+    <div class="pill"><i data-icon="skull"></i><span id="kills">0</span> ABATES</div>
+    <div class="pill"><i data-icon="clock"></i><span id="timer">00:00</span></div>
   </div>
   <div id="fps" class="hidden">0 FPS</div>
   <div id="zone-info"><div id="zone-text">Zona segura</div><div id="zone-dist"></div></div>
@@ -332,6 +334,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="js/config.js"></script>
+<script src="js/icons.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/gunsound.js"></script>
 <script src="js/input.js"></script>

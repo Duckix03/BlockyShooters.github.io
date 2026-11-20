@@ -39,7 +39,7 @@ LS.Menu = {
     document.getElementById('lb-coins').textContent = (s.coins || 0).toLocaleString('pt-BR');
     document.getElementById('lb-wins').textContent = s.wins || 0;
     document.getElementById('lb-diff').textContent = this.diff().label;
-    document.getElementById('lb-mute').textContent = LS.settings.muted ? '🔇' : '🔊';
+    document.getElementById('lb-mute').innerHTML = LS.icon(LS.settings.muted ? 'mute' : 'sound');
     document.getElementById('menu-player-name').textContent = name;
   },
   cycleDifficulty() {
