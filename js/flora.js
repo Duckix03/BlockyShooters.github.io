@@ -37,9 +37,9 @@ LS.Flora = {
     geo.computeVertexNormals(); geo.computeBoundingSphere();
     return geo;
   },
-  ico: r => new THREE.IcosahedronGeometry(r, 1),
-  cone: (r, h) => new THREE.ConeGeometry(r, h, 8),
-  cyl: (a, b, h) => new THREE.CylinderGeometry(a, b, h, 7),
+  ico: r => new THREE.IcosahedronGeometry(r, 0), // 20 triângulos (antes 80): low-poly de verdade e 4x mais leve
+  cone: (r, h) => new THREE.ConeGeometry(r, h, 7),
+  cyl: (a, b, h) => new THREE.CylinderGeometry(a, b, h, 5),
   // espécies: tronco + copa (mesma matriz de instância); alturas em metros para escala 1
   SPECIES: {
     pinheiro: F => ({
@@ -86,18 +86,25 @@ LS.Flora = {
   // escolhe a espécie de uma árvore / arbusto
   pickTree() { const r = Math.random(); return r < 0.27 ? 'pinheiro' : r < 0.5 ? 'abeto' : r < 0.78 ? 'redonda' : r < 0.9 ? 'oval' : 'outono'; },
   pickBush() { const r = Math.random(); return r < 0.6 ? 'arbusto' : r < 0.82 ? 'frutinhas' : 'florido'; },
-  // list: [{ kind, x, y, z, s, rot }] -> InstancedMesh por espécie (tronco e copa)
+  // list: [{ kind, x, y, z, s, rot }] -> InstancedMesh por espécie e por PEDAÇO do mapa (130 m):
+  // cada pedaço tem sua própria esfera de recorte, então só é desenhado o que a câmera (e a sombra) enxerga.
+  CHUNK: 130,
   instance(scene, list, shadow = true) {
-    const by = {};
-    for (const it of list) (by[it.kind] || (by[it.kind] = [])).push(it);
+    const groups = {}, C = this.CHUNK;
+    for (const it of list) { const k = it.kind + '|' + Math.floor(it.x / C) + '|' + Math.floor(it.z / C); (groups[k] || (groups[k] = [])).push(it); }
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
-    for (const kind in by) {
-      const sp = this.spec(kind), arr = by[kind];
+    for (const k in groups) {
+      const arr = groups[k], sp = this.spec(arr[0].kind);
+      // esfera que envolve todas as instâncias do pedaço
+      let cx = 0, cy = 0, cz = 0; for (const it of arr) { cx += it.x; cy += it.y; cz += it.z; } cx /= arr.length; cy /= arr.length; cz /= arr.length;
+      let r = 0; for (const it of arr) r = Math.max(r, Math.hypot(it.x - cx, it.y - cy, it.z - cz) + (sp.height || 2) * it.s * 1.2 + 2);
       const parts = [[sp.crown, this.material('leaves')]]; if (sp.trunk) parts.push([sp.trunk, this.material('bark')]);
       for (const [geo, mat] of parts) {
-        const im = new THREE.InstancedMesh(geo, mat, arr.length);
+        const g = new THREE.BufferGeometry(); for (const a in geo.attributes) g.setAttribute(a, geo.attributes[a]); // mesmos dados, esfera própria
+        g.boundingSphere = new THREE.Sphere(new THREE.Vector3(cx, cy + (sp.height || 1) * 0.5, cz), r);
+        const im = new THREE.InstancedMesh(g, mat, arr.length);
         arr.forEach((it, i) => { q.setFromAxisAngle(up, it.rot); m.compose(new THREE.Vector3(it.x, it.y, it.z), q, new THREE.Vector3(it.s, it.s * (it.sy || 1), it.s)); im.setMatrixAt(i, m); });
-        im.frustumCulled = false; im.castShadow = shadow; im.receiveShadow = true; scene.add(im);
+        im.frustumCulled = true; im.castShadow = shadow; im.receiveShadow = true; scene.add(im);
       }
     }
   }

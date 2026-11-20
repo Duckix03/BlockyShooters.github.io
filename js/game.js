@@ -233,6 +233,10 @@ LS.Game = {
     LS.Loot.update(dt, focus);
     LS.Effects.update(dt);
     LS.World.updateSky(this.time / 430, this.scene, focus, dt);
+    // lá do alto (avião/queda) a névoa e o limite de visão acompanham a altura: senão o chão inteiro fica dentro da névoa
+    const fd = LS.effDist(), ch = Math.max(0, this.camera.position.y - LS.World.heightAt(this.camera.position.x, this.camera.position.z) - 25);
+    this.scene.fog.near = fd * 0.3 + ch * 1.1; this.scene.fog.far = fd + ch * 0.9;
+    const cf = fd + 100 + ch; if (Math.abs(this.camera.far - cf) > 2) { this.camera.far = cf; this.camera.updateProjectionMatrix(); }
     if (this.inventoryOpen && Math.floor(this.time * 4) !== Math.floor((this.time - dt) * 4)) LS.HUD.renderInventory();
     LS.HUD.update(dt, this);
     if (this.endTimer > 0) {

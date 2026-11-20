@@ -14,7 +14,7 @@ LS.Zone = class {
     const geo = new THREE.CylinderGeometry(1, 1, 400, 64, 1, true);
     // parede de gás com shader próprio: animada (faixas e ondas subindo) e NUNCA cortada pelo limite de distância da câmera
     // (antes a parte de trás do cilindro passava do "far" e aparecia cortada numa linha reta)
-    this.wallU = { time: { value: 0 }, radius: { value: 430 }, color: { value: new THREE.Color(0x5a5cff) } }; // azul-arroxeado: contrasta com o céu
+    this.wallU = { time: { value: 0 }, camY: { value: 0 }, radius: { value: 430 }, color: { value: new THREE.Color(0x5a5cff) } }; // azul-arroxeado: contrasta com o céu
     this.wall = new THREE.Mesh(geo, new THREE.ShaderMaterial({
       uniforms: this.wallU, transparent: true, side: THREE.DoubleSide, depthWrite: false, fog: false,
       vertexShader: `varying vec2 vUv; varying float vY; varying float vDist;
@@ -24,7 +24,7 @@ LS.Zone = class {
           if (p.w > 0.0) p.z = min(p.z, p.w * 0.99999); // prende no fundo em vez de cortar
           gl_Position = p;
         }`,
-      fragmentShader: `uniform float time; uniform float radius; uniform vec3 color; varying vec2 vUv; varying float vY; varying float vDist;
+      fragmentShader: `uniform float time; uniform float camY; uniform float radius; uniform vec3 color; varying vec2 vUv; varying float vY; varying float vDist;
         void main() {
           float u = vUv.x * 6.2832 * radius / 12.0;                      // uma faixa a cada ~12 m
           float near = 1.0 - smoothstep(40.0, 350.0, vDist);              // detalhe só de perto; de longe fica um véu liso
@@ -33,6 +33,7 @@ LS.Zone = class {
           float ground = exp(-max(vY, 0.0) * 0.04);                       // mais forte perto do chão
           float top = 1.0 - smoothstep(140.0, 290.0, vY);                 // some lá em cima
           float a = (0.36 + stripes * 0.2 + waves * 0.08 + ground * 0.25) * top;  // pelo menos tão visível quanto a antiga (0,28)
+          a *= 1.0 - 0.75 * smoothstep(90.0, 170.0, camY);                  // lá do alto (avião) vira só um véu leve
           vec3 c = mix(color * 0.85, vec3(0.7, 0.88, 1.0), stripes * 0.5 + ground * 0.2);
           gl_FragColor = vec4(c, a);
         }`
@@ -102,7 +103,7 @@ LS.Zone = class {
     }
     const r = Math.max(this.radius, 0.5);
     this.wall.position.x = this.center.x; this.wall.position.z = this.center.y;
-    this.wall.scale.set(r, 1, r); this.wallU.radius.value = Math.max(r, 1); this.wallU.time.value += dt;
+    this.wall.scale.set(r, 1, r); this.wallU.radius.value = Math.max(r, 1); this.wallU.time.value += dt; if (LS.Game && LS.Game.camera) this.wallU.camY.value = LS.Game.camera.position.y;
     this.nextRing.visible = !this.finished && !this.shrinking;
     this.nextRing.position.x = this.next.x; this.nextRing.position.z = this.next.y;
     this.nextRing.scale.set(Math.max(this.nextR, 0.5), 1, Math.max(this.nextR, 0.5));
