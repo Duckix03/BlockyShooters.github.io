@@ -1,6 +1,7 @@
 // LAST SURVIVOR - configuração global, dados de armas/itens e utilitários
 'use strict';
 const LS = window.LS = {};
+LS.VERSION = '17'; // muda a cada atualização (também usado no ?v= do index.html para furar o cache)
 
 LS.MAP_SIZE = 800;          // tamanho do terreno (metros)
 LS.ISLAND_RADIUS = 340;     // raio útil da ilha
