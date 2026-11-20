@@ -147,6 +147,7 @@ LS.Bot = class extends LS.Fighter {
       return;
     }
     if (this.state !== 'ground') {
+      if (!this.landing) this.landing = { x: this.pos.x, z: this.pos.z }; // pulou forçado (fim da rota do avião)
       const w = this.goTo(this.landing.x, this.landing.z, dt);
       this.diving = Math.hypot(this.landing.x - this.pos.x, this.landing.z - this.pos.z) > 50;
       this.physics(dt, w, { dive: this.diving });
