@@ -26,13 +26,24 @@ Object.assign(LS.World, {
   },
   finalizeBoxes(scene) {
     if (!this.unitBox) { this.unitBox = new THREE.BoxGeometry(1, 1, 1); this.unitBox.translate(0, 0.5, 0); }
+    // cada cor com muitas caixas é dividida em pedaços de 330 m com esfera de recorte própria:
+    // antes TODAS as casas do mapa eram desenhadas sempre (e de novo no passe de sombra)
+    const C = 330, v = new THREE.Vector3(), sc = new THREE.Vector3(), qq = new THREE.Quaternion();
     for (const k in this.boxBatches) {
       const bt = this.boxBatches[k];
       const mat = bt.color === LS.GLASS ? new THREE.MeshPhongMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.32, shininess: 120, depthWrite: false, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }) : bt.tex ? LS.Tex.material(bt.color, bt.tex) : this.mat(bt.color);
-      const im = new THREE.InstancedMesh(this.unitBox, mat, bt.mats.length);
-      bt.mats.forEach((mm, i) => im.setMatrixAt(i, mm));
-      im.castShadow = bt.shadow; im.receiveShadow = true; im.frustumCulled = false;
-      scene.add(im);
+      const chunks = {};
+      for (const mm of bt.mats) { const ck = bt.mats.length < 400 ? 'all' : Math.floor(mm.elements[12] / C) + '|' + Math.floor(mm.elements[14] / C); (chunks[ck] || (chunks[ck] = [])).push(mm); }
+      for (const ck in chunks) {
+        const list = chunks[ck], box = new THREE.Box3();
+        for (const mm of list) { mm.decompose(v, qq, sc); const r = Math.hypot(sc.x, sc.y, sc.z) * 0.5; box.expandByPoint(new THREE.Vector3(v.x - r, v.y - r, v.z - r)); box.expandByPoint(new THREE.Vector3(v.x + r, v.y + sc.y + r, v.z + r)); }
+        const g = new THREE.BufferGeometry(); g.setIndex(this.unitBox.index); for (const a in this.unitBox.attributes) g.setAttribute(a, this.unitBox.attributes[a]);
+        g.boundingSphere = box.getBoundingSphere(new THREE.Sphere());
+        const im = new THREE.InstancedMesh(g, mat, list.length);
+        list.forEach((mm, i) => im.setMatrixAt(i, mm));
+        im.castShadow = bt.shadow; im.receiveShadow = true; im.frustumCulled = true;
+        scene.add(im);
+      }
     }
     this.boxBatches = {};
   },
@@ -186,7 +197,7 @@ Object.assign(LS.World, {
       const sc = LS.util.rand(0.8, 1.4);
       bushes.push({ kind: LS.Flora.pickBush(), x, y: h - 0.05, z, s: sc, sy: LS.util.rand(0.85, 1.1), rot: Math.random() * Math.PI * 2 });
     }
-    LS.Flora.instance(scene, bushes, false);
+    this.bushMeshes = LS.Flora.instance(scene, bushes, false);
     // ---- pontos de loot na natureza ----
     for (let i = 0; i < 60; i++) {
       const x = LS.util.rand(-300, 300), z = LS.util.rand(-300, 300), h = this.heightAt(x, z);

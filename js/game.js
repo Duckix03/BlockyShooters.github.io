@@ -55,6 +55,15 @@ LS.Game = {
     setTimeout(next, 50);
   },
 
+  // compila todos os shaders ANTES da partida: senão cada coisa que aparece pela 1ª vez
+  // (personagens, itens, efeitos) trava o jogo por um instante enquanto a placa compila
+  precompile() {
+    const hidden = [];
+    this.scene.traverse(o => { if (!o.visible) { hidden.push(o); o.visible = true; } });
+    try { this.renderer.compile(this.scene, this.camera); } catch (e) { console.warn(e); }
+    hidden.forEach(o => { o.visible = false; });
+  },
+
   startMatch() {
     LS.Audio.init();
     LS.UI.showScreen('loading');
@@ -65,6 +74,7 @@ LS.Game = {
       this.player.name = LS.playerProfile.name; this.player.model.applyLook(LS.playerProfile.look);
       this.bots.forEach(b => b.model.applyLook(LS.Skin.randomLook()));
       this.plane.reset(); this.zone.reset();
+      this.precompile();
       this.time = 0; this.endTimer = 0; this.ended = false;
       const df = LS.Menu.diff(); this.botDamageMul = df.dmg; this.bots.forEach(b => { b.skill = LS.util.rand(df.skill[0], df.skill[1]); });
       this.player.camYaw = Math.atan2(this.plane.end.x - this.plane.start.x, this.plane.end.z - this.plane.start.z);
@@ -237,6 +247,15 @@ LS.Game = {
     const fd = LS.effDist(), ch = Math.max(0, this.camera.position.y - LS.World.heightAt(this.camera.position.x, this.camera.position.z) - 25);
     this.scene.fog.near = fd * 0.3 + ch * 1.1; this.scene.fog.far = fd + ch * 0.9;
     const cf = fd + 100 + ch; if (Math.abs(this.camera.far - cf) > 2) { this.camera.far = cf; this.camera.updateProjectionMatrix(); }
+    // lá do alto (avião / queda) a sombra nem aparece e os arbustos viram pontinhos:
+    // pula o passe de sombra e esconde os arbustos (sem recompilar nada)
+    const high = ch > 45;
+    if (high !== this._high) {
+      this._high = high;
+      this.renderer.shadowMap.autoUpdate = !high;
+      if (!high) this.renderer.shadowMap.needsUpdate = true;
+      (LS.World.bushMeshes || []).forEach(m => { m.visible = !high; });
+    }
     if (this.inventoryOpen && Math.floor(this.time * 4) !== Math.floor((this.time - dt) * 4)) LS.HUD.renderInventory();
     LS.HUD.update(dt, this);
     if (this.endTimer > 0) {

@@ -92,7 +92,7 @@ LS.Flora = {
   instance(scene, list, shadow = true) {
     const groups = {}, C = this.CHUNK;
     for (const it of list) { const k = it.kind + '|' + Math.floor(it.x / C) + '|' + Math.floor(it.z / C); (groups[k] || (groups[k] = [])).push(it); }
-    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), out = [];
     for (const k in groups) {
       const arr = groups[k], sp = this.spec(arr[0].kind);
       // esfera que envolve todas as instâncias do pedaço
@@ -104,8 +104,9 @@ LS.Flora = {
         g.boundingSphere = new THREE.Sphere(new THREE.Vector3(cx, cy + (sp.height || 1) * 0.5, cz), r);
         const im = new THREE.InstancedMesh(g, mat, arr.length);
         arr.forEach((it, i) => { q.setFromAxisAngle(up, it.rot); m.compose(new THREE.Vector3(it.x, it.y, it.z), q, new THREE.Vector3(it.s, it.s * (it.sy || 1), it.s)); im.setMatrixAt(i, m); });
-        im.frustumCulled = true; im.castShadow = shadow; im.receiveShadow = true; scene.add(im);
+        im.frustumCulled = true; im.castShadow = shadow; im.receiveShadow = true; scene.add(im); out.push(im);
       }
     }
+    return out;
   }
 };
