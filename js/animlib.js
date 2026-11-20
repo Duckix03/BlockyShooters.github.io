@@ -213,6 +213,54 @@ LS.Anim = {
     return out;
   },
 
+  // ---------- corrida oficial: run_f quando o personagem corre (player e bots) ----------
+  // sem arma: corpo inteiro da run_f. Com arma: pernas, quadril e um pouco do tronco da run_f; braços e cabeça
+  // continuam no código (arma em guarda / mira / recarga) e são compensados para a arma não balançar com o tronco.
+  RUN_CLIP: 'run_f', RUN_SPEED: 7.6,
+  initLoco() { this.ensure(this.RUN_CLIP).catch(e => console.warn('Corrida (run_f): ' + e.message)); },
+  loco(m, s) {
+    const c = this.clips[this.RUN_CLIP]; if (!c) return;
+    const cl = LS.util.clamp, dt = s.dt || 0, spd = s.speed || 0;
+    const st = m._loco || (m._loco = { w: 0, arm: s.armed ? 1 : 0, t: Math.random() * c.duration, q: new THREE.Quaternion(), q2: new THREE.Quaternion(), before: new THREE.Quaternion(), corr: new THREE.Quaternion() });
+    const on = s.running && spd > 2.5 && !s.air && !s.crouch && !s.dead && !s.fall && !s.chute && !(m.anim && m.anim.playing);
+    st.w = cl(st.w + (on ? dt / 0.18 : -dt / 0.15), 0, 1);
+    st.arm = cl(st.arm + (s.armed ? dt / 0.2 : -dt / 0.2), 0, 1);
+    // pose de corrida armada: arma atravessada no peito (sai na hora de mirar, recarregar ou curar)
+    const carryOn = on && s.armed && !s.armedAim && !(s.reload >= 0) && !s.heal;
+    st.carry = cl((st.carry || 0) + (carryOn ? dt / 0.15 : -dt / 0.12), 0, 1);
+    const ck = st.carry * st.carry * (3 - 2 * st.carry);
+    m.gunHolder.rotation.x = this.CARRY.gun * ck;
+    if (st.w <= 0) return;
+    st.t = (st.t + dt * cl(spd / this.RUN_SPEED, 0.6, 1.4)) % c.duration; // passada acompanha a velocidade
+    const fr = st.t * c.fps, i0 = Math.floor(fr) % c.frames, i1 = Math.min(c.frames - 1, i0 + 1), a = fr - Math.floor(fr);
+    const clipQ = b => { const arr = c.q[b]; if (!arr) return null; st.q.fromArray(arr, i0 * 4); st.q2.fromArray(arr, i1 * 4); return st.q.slerp(st.q2, a); };
+    const w = st.w * st.w * (3 - 2 * st.w), arm = st.arm, B = m.bones;
+    const blend = (b, k) => { const q = clipQ(b); if (q && k > 0) B[b].quaternion.slerp(q, k); };
+    st.before.copy(m.hips.quaternion).multiply(m.torso.quaternion);         // tronco antes (em relação ao corpo)
+    // pernas e quadril: sempre da run_f
+    blend('RightUpLeg', w); blend('LeftUpLeg', w);
+    const p = c.p, h = m.hips.position, L = LS.util.lerp;
+    h.y = L(h.y, m.hipsY + L(p[i0 * 3 + 1], p[i1 * 3 + 1], a), w);
+    blend('Hips', w * L(1, 0.45, arm));
+    // tronco: inclinação inteira sem arma; com arma, menos (ainda menos mirando, para a mira não descer)
+    blend('Spine', w * L(1, s.armedAim ? 0.2 : 0.35, arm));
+    // braços e cabeça: com arma, desfaz o giro que o tronco ganhou (arma fica firme); sem arma, braços da run_f
+    st.corr.copy(m.hips.quaternion).multiply(m.torso.quaternion).invert().multiply(st.before);
+    for (const b of ['RightArm', 'LeftArm', 'Head']) {
+      const q = B[b].quaternion;
+      if (arm > 0) { st.q2.copy(st.corr).multiply(q); q.slerp(st.q2, arm * w); }
+      blend(b, w * (1 - arm));
+    }
+    if (ck > 0) {
+      const C = this.CARRY, e = st.e || (st.e = new THREE.Euler());
+      const sw = Math.sin(st.t / c.duration * Math.PI * 2) * C.swing; // balança junto com a passada
+      m.armR.quaternion.slerp(st.q.setFromEuler(e.set(C.R[0] + sw, C.R[1], C.R[2])), ck);
+      m.armL.quaternion.slerp(st.q.setFromEuler(e.set(C.L[0] + sw, C.L[1], C.L[2])), ck);
+    }
+  },
+  // braços (em relação ao tronco) e inclinação da arma na corrida armada
+  CARRY: { R: [-1.2, 0, 0.45], L: [-1.7, 0, -0.6], gun: -0.6, swing: 0.06 },
+
   // ---------- ajudantes ----------
   player(model) { return model.anim || (model.anim = new LS.AnimPlayer(model)); },
   async play(model, name, opts) { const c = await this.ensure(name); this.player(model).play(c, opts); return c; },
