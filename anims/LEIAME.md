@@ -1,20 +1,21 @@
 # 🦴 Animações externas
 
 Coloque aqui arquivos **.glb**, **.gltf**, **.fbx** ou **.json** (convertido pelo jogo) com animações de personagem humanoide
-(Mixamo, Quaternius, Kenney…). O jogo converte a animação para os 7 ossos do boneco de blocos.
+(Mixamo, Quaternius, Kenney…). O jogo converte a animação para os 15 ossos do boneco de blocos.
 
-## Ossos do personagem
+## Ossos do personagem (15, estilo R15)
 
 ```
-Hips (quadril)
- ├─ Spine (tronco)
+Hips (tronco de baixo)
+ ├─ Spine (tronco de cima, gira na cintura)
  │   ├─ Head (cabeça)
- │   ├─ RightArm (braço direito, segura a arma)
- │   └─ LeftArm (braço esquerdo)
- ├─ RightUpLeg (perna direita)
- └─ LeftUpLeg (perna esquerda)
+ │   ├─ RightArm → RightForeArm → RightHand (segura a arma)
+ │   └─ LeftArm → LeftForeArm → LeftHand
+ ├─ RightUpLeg → RightLeg → RightFoot
+ └─ LeftUpLeg → LeftLeg → LeftFoot
 ```
 
+Dedos, clavículas, pescoço e ossos extras do arquivo são ignorados.
 Os nomes são os mesmos do Mixamo, mas o jogo também reconhece outros padrões
 (`UpperArm.R`, `thigh_l`, `Bip01 R UpperArm`, `pelvis`, `chest`...).
 
@@ -38,7 +39,7 @@ com arma, as pernas e parte do tronco vêm da `dash_run_f` e os braços seguram 
 
 Se o seu .fbx/.glb vem com o modelo 3D de algum personagem (de outro jogo, por exemplo), **não suba o arquivo original**.
 Carregue no jogo e use `anim save` (ou `anim save nome1 nome2`) no console: baixa um `animacoes.json` só com o movimento
-já convertido para os 7 ossos, bem menor e sem nenhum modelo junto. Coloque esse .json aqui em `anims/`.
+já convertido para os 15 ossos, bem menor e sem nenhum modelo junto. Coloque esse .json aqui em `anims/`.
 
 ## Deixar fixa no jogo
 
@@ -57,4 +58,4 @@ E no código: `LS.Anim.play(model, 'danca')`.
 
 - No Mixamo, baixe em **FBX Binary**, com **"In Place"** marcado (sem andar pelo mapa).
 - Antes de usar algo do GitHub, veja a licença: **CC0** ou **MIT** pode usar tranquilo.
-- O boneco não tem cotovelo nem joelho, então o braço segue o ombro e a perna segue o quadril.
+- Cotovelos, punhos, joelhos e tornozelos dobram com a animação; as animações do código mantêm essas juntas retas.

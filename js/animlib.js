@@ -1,5 +1,5 @@
 // Animações externas no boneco de blocos: carrega .glb/.gltf/.fbx (Mixamo, Quaternius, Kenney...),
-// converte ("retarget") para os 7 ossos do personagem e toca por cima das animações do código.
+// converte ("retarget") para os 15 ossos do personagem (estilo R15) e toca por cima das animações do código.
 //
 // Como funciona o retarget: para cada osso, pega quanto o osso do modelo de fora girou em relação à pose
 // de descanso dele (T-pose / A-pose), no espaço do mundo, e aplica esse mesmo giro no nosso osso a partir
@@ -9,13 +9,17 @@
 // Ou arraste um arquivo .glb/.fbx para a janela do jogo.
 'use strict';
 LS.Anim = {
-  BONES: ['Hips', 'Spine', 'Head', 'RightArm', 'LeftArm', 'RightUpLeg', 'LeftUpLeg'],
-  PARENT: { Hips: null, Spine: 'Hips', Head: 'Spine', RightArm: 'Spine', LeftArm: 'Spine', RightUpLeg: 'Hips', LeftUpLeg: 'Hips' },
+  // 15 ossos, como o R15 (ordem: sempre o pai antes do filho)
+  BONES: ['Hips', 'Spine', 'Head', 'RightArm', 'RightForeArm', 'RightHand', 'LeftArm', 'LeftForeArm', 'LeftHand',
+    'RightUpLeg', 'RightLeg', 'RightFoot', 'LeftUpLeg', 'LeftLeg', 'LeftFoot'],
+  PARENT: { Hips: null, Spine: 'Hips', Head: 'Spine', RightArm: 'Spine', RightForeArm: 'RightArm', RightHand: 'RightForeArm',
+    LeftArm: 'Spine', LeftForeArm: 'LeftArm', LeftHand: 'LeftForeArm', RightUpLeg: 'Hips', RightLeg: 'RightUpLeg', RightFoot: 'RightLeg',
+    LeftUpLeg: 'Hips', LeftLeg: 'LeftUpLeg', LeftFoot: 'LeftLeg' },
   // máscaras: quais ossos a animação controla (o resto continua com a animação do código)
   MASKS: {
-    full: ['Hips', 'Spine', 'Head', 'RightArm', 'LeftArm', 'RightUpLeg', 'LeftUpLeg'],
-    upper: ['Spine', 'Head', 'RightArm', 'LeftArm'],
-    lower: ['RightUpLeg', 'LeftUpLeg'],
+    full: null, // preenchida abaixo com todos os ossos
+    upper: ['Spine', 'Head', 'RightArm', 'RightForeArm', 'RightHand', 'LeftArm', 'LeftForeArm', 'LeftHand'],
+    lower: ['RightUpLeg', 'RightLeg', 'RightFoot', 'LeftUpLeg', 'LeftLeg', 'LeftFoot'],
   },
   FPS: 30,
   clips: {},  // nome -> clipe já convertido
@@ -41,18 +45,18 @@ LS.Anim = {
   aliases() {
     if (this._al) return this._al;
     const S = (b, side) => this._sided(b, side);
-    const ARM = ['arm', 'upperarm', 'armupper'], FORE = ['forearm', 'lowerarm', 'armlower', 'elbow'], UPLEG = ['upleg', 'thigh', 'upperleg', 'legupper'], LEG = ['leg', 'lowerleg', 'leglower', 'calf', 'shin', 'knee'], FOOT = ['foot', 'ankle'];
+    const ARM = ['arm', 'upperarm', 'armupper'], FORE = ['forearm', 'lowerarm', 'armlower', 'elbow'], HAND = ['hand', 'wrist'], UPLEG = ['upleg', 'thigh', 'upperleg', 'legupper'], LEG = ['leg', 'lowerleg', 'leglower', 'calf', 'shin', 'knee'], FOOT = ['foot', 'ankle'];
+    const FINGER = ['handmiddle1', 'middle1', 'middlefinger1', 'finger21', 'finger2', 'handindex1', 'index1', 'finger11', 'finger1'], TOE = ['toebase', 'toe', 'toes', 'ball'];
     this._al = {
       Hips: ['hips', 'pelvis', 'hip'],
       Spine: ['spine2', 'chest', 'upperchest', 'spine1', 'spine02', 'spine03', 'spine'],
       Head: ['head'],
-      RightArm: S(ARM, 'R'), LeftArm: S(ARM, 'L'),
-      RightUpLeg: S(UPLEG, 'R'), LeftUpLeg: S(UPLEG, 'L'),
+      RightArm: S(ARM, 'R'), LeftArm: S(ARM, 'L'), RightForeArm: S(FORE, 'R'), LeftForeArm: S(FORE, 'L'), RightHand: S(HAND, 'R'), LeftHand: S(HAND, 'L'),
+      RightUpLeg: S(UPLEG, 'R'), LeftUpLeg: S(UPLEG, 'L'), RightLeg: S(LEG, 'R'), LeftLeg: S(LEG, 'L'), RightFoot: S(FOOT, 'R'), LeftFoot: S(FOOT, 'L'),
       // pontas: servem para saber para onde cada osso aponta na pose de descanso
       _Spine: ['neck', 'neck1', 'head'], _Head: ['headtopend', 'headend', 'headtop'],
-      _RightArm: S(FORE, 'R'), _LeftArm: S(FORE, 'L'),
-      _RightUpLeg: S(LEG, 'R'), _LeftUpLeg: S(LEG, 'L'),
-      _RightFoot: S(FOOT, 'R'), _LeftFoot: S(FOOT, 'L'),
+      _RightArm: S(FORE, 'R'), _LeftArm: S(FORE, 'L'), _RightForeArm: S(HAND, 'R'), _LeftForeArm: S(HAND, 'L'), _RightHand: S(FINGER, 'R'), _LeftHand: S(FINGER, 'L'),
+      _RightUpLeg: S(LEG, 'R'), _LeftUpLeg: S(LEG, 'L'), _RightLeg: S(FOOT, 'R'), _LeftLeg: S(FOOT, 'L'), _RightFoot: S(TOE, 'R'), _LeftFoot: S(TOE, 'L'),
     };
     return this._al;
   },
@@ -116,7 +120,7 @@ LS.Anim = {
     return this.clips[name];
   },
 
-  // ---------- .json: clipes já convertidos (só o movimento dos 7 ossos, sem modelo 3D) ----------
+  // ---------- .json: clipes já convertidos (só o movimento dos 15 ossos, sem modelo 3D) ----------
   toJSON(names) {
     names = names && names.length ? names : Object.keys(this.clips);
     const r = a => Array.from(a, x => Math.round(x * 1e4) / 1e4);
@@ -168,18 +172,22 @@ LS.Anim = {
     const C = new Q().setFromRotationMatrix(new M().makeBasis(left, up, fwd)).invert(), Ci = C.clone().invert();
 
     // pose de descanso equivalente nos nossos ossos (ex.: braços abertos se o arquivo está em T-pose)
-    const DOWN = new V(0, -1, 0), UP = new V(0, 1, 0), DIR = { Spine: UP, Head: UP, RightArm: DOWN, LeftArm: DOWN, RightUpLeg: DOWN, LeftUpLeg: DOWN };
+    const DOWN = new V(0, -1, 0), UP = new V(0, 1, 0), FWD = new V(0, 0, 1);
+    const DIR = { Spine: UP, Head: UP, RightFoot: FWD, LeftFoot: FWD }; // o resto (braços e pernas) aponta pra baixo
     const R = { Hips: new Q() };
     for (const b of this.BONES) {
       if (b === 'Hips') continue;
-      const tip = rest['_' + b];
-      if (!rest[b] || !tip) { R[b] = new Q(); continue; }
-      const d = tip.p.clone().sub(rest[b].p).applyQuaternion(C);
-      R[b] = d.lengthSq() > 1e-10 ? new Q().setFromUnitVectors(DIR[b], d.normalize()) : new Q();
+      const dir = DIR[b] || DOWN, par = this.PARENT[b];
+      let from = rest[b], tip = rest['_' + b];
+      // sem a ponta (ex.: arquivo sem dedos): continua na direção do osso pai; pé sem dedão fica reto
+      if (from && !tip && dir !== FWD && par && rest[par]) { tip = from; from = rest[par]; }
+      if (!from || !tip) { R[b] = new Q(); continue; }
+      const d = tip.p.clone().sub(from.p).applyQuaternion(C);
+      R[b] = d.lengthSq() > 1e-10 ? new Q().setFromUnitVectors(dir, d.normalize()) : new Q();
     }
     // altura do quadril para escalar o movimento do corpo (pula, agacha...)
     const hipY = rest.Hips.p.clone().applyQuaternion(C).y;
-    const foot = rest._RightFoot || rest._LeftFoot, footY = foot ? foot.p.clone().applyQuaternion(C).y : hipY - (rest.Hips.p.y || 1);
+    const foot = rest.RightFoot || rest.LeftFoot, footY = foot ? foot.p.clone().applyQuaternion(C).y : hipY - (rest.Hips.p.y || 1);
     const scale = (12 * LS.Skin.PX) / Math.max(1e-4, hipY - footY);
 
     // amostra o clipe quadro a quadro
@@ -239,7 +247,7 @@ LS.Anim = {
     const blend = (b, k) => { const q = clipQ(b); if (q && k > 0) B[b].quaternion.slerp(q, k); };
     st.before.copy(m.hips.quaternion).multiply(m.torso.quaternion);         // tronco antes (em relação ao corpo)
     // pernas e quadril: sempre da run_f
-    blend('RightUpLeg', w); blend('LeftUpLeg', w);
+    for (const b of this.MASKS.lower) blend(b, w);
     const p = c.p, h = m.hips.position, L = LS.util.lerp;
     h.y = L(h.y, m.hipsY + L(p[i0 * 3 + 1], p[i1 * 3 + 1], a), w);
     blend('Hips', w * L(1, 0.45, arm));
@@ -252,6 +260,8 @@ LS.Anim = {
       if (arm > 0) { st.q2.copy(st.corr).multiply(q); q.slerp(st.q2, arm * w); }
       blend(b, w * (1 - arm));
     }
+    // antebraços e mãos: sem arma, da animação; com arma, retos (o código segura a arma)
+    for (const b of ['RightForeArm', 'RightHand', 'LeftForeArm', 'LeftHand']) blend(b, w * (1 - arm));
     if (ck > 0) {
       const C = this.CARRY, e = st.e || (st.e = new THREE.Euler());
       const sw = Math.sin(st.t / c.duration * Math.PI * 2) * C.swing; // balança junto com a passada
@@ -292,11 +302,13 @@ LS.Anim = {
   },
 };
 
+LS.Anim.MASKS.full = LS.Anim.BONES.slice();
+
 // Toca um clipe convertido por cima da animação do código, com transição suave
 LS.AnimPlayer = class {
   constructor(model) {
     this.m = model; this.clip = null; this.t = 0; this.w = 0; this.on = false;
-    this.bones = { Hips: model.hips, Spine: model.torso, Head: model.headG, RightArm: model.armR, LeftArm: model.armL, RightUpLeg: model.legR, LeftUpLeg: model.legL };
+    this.bones = model.bones;
     this._a = new THREE.Quaternion(); this._b = new THREE.Quaternion();
   }
   // opts: { loop, mask: 'full'|'upper'|'lower', fade (s), speed }
