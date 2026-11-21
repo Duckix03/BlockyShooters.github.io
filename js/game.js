@@ -18,7 +18,7 @@ LS.Game = {
     // logarithmicDepthBuffer foi avaliado e ficou desligado: anula o polygonOffset (marcas de bala, vidro) e custa desempenho.
     this.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.25, 1000);
     LS.Input.init(this.renderer.domElement);
-    LS.Input.onUnlock = () => { if (this.state === 'playing' && !this.inventoryOpen && !LS.Console.open) this.pause(); };
+    LS.Input.onUnlock = () => { if (this.state === 'playing' && !this.inventoryOpen && !LS.Console.open && !LS.Duel.shopOpen) this.pause(); };
     LS.HUD.init();
     window.addEventListener('resize', () => {
       this.camera.aspect = window.innerWidth / window.innerHeight; this.camera.updateProjectionMatrix();
@@ -220,6 +220,7 @@ LS.Game = {
       return;
     }
     if (e.repeat) return;
+    if (LS.Duel.shopOpen) return; // loja do duelo aberta
     if (e.code === 'Tab' && this.player.alive) { this.setInventory(!this.inventoryOpen); }
     else if (e.code === 'KeyM' && this.mode !== 'duel') LS.HUD.toggleBigMap();
     else if (e.code === 'Escape' && this.inventoryOpen) { this.setInventory(false); this.pause(); }
