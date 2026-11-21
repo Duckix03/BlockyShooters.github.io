@@ -88,8 +88,28 @@ LS.Lobby = {
     this.searching = true; this.mmCount = 1; this.mmT = 0;
     document.getElementById('lobby-mm').classList.remove('hidden');
     this.updateCount();
+    if (!LS.Net.configured()) return; // sem servidor: busca "de mentira" e partida contra bots (como antes)
+    // online: procura jogadores de verdade por até 30 s; se não achar ninguém, joga contra bots
+    this.online = true;
+    const title = document.querySelector('#lobby-mm h3'), cnt = document.getElementById('mm-count');
+    title.textContent = 'PROCURANDO JOGADORES'; cnt.textContent = 'conectando ao servidor…';
+    LS.Net.find({
+      onQueue: (n, left) => { cnt.textContent = n + (n === 1 ? ' jogador' : ' jogadores') + ' · ' + left + ' s'; },
+      onStart: d => { this.searching = false; this.online = false; document.getElementById('lobby-mm').classList.add('hidden'); LS.Game.startOnline(d); },
+      onFail: why => {
+        if (!this.searching) return;
+        this.online = false;
+        title.textContent = why === 'nomatch' ? 'NINGUÉM ONLINE AGORA' : 'SERVIDOR INDISPONÍVEL';
+        cnt.textContent = 'começando contra bots…';
+        setTimeout(() => { if (!this.searching) return; this.searching = false; document.getElementById('lobby-mm').classList.add('hidden'); title.textContent = 'PROCURANDO PARTIDA'; LS.Game.startMatch(); }, 1400);
+      },
+    });
   },
-  cancelSearch() { this.searching = false; document.getElementById('lobby-mm').classList.add('hidden'); },
+  cancelSearch() {
+    this.searching = false; this.online = false; LS.Net.cancel();
+    document.getElementById('lobby-mm').classList.add('hidden');
+    const t = document.querySelector('#lobby-mm h3'); if (t) t.textContent = 'PROCURANDO PARTIDA';
+  },
   updateCount() { document.getElementById('mm-count').textContent = this.mmCount + ' / ' + (LS.BOT_COUNT + 1) + ' jogadores'; },
 
   update(dt) {
@@ -116,7 +136,7 @@ LS.Lobby = {
     this.camY = LS.util.lerp(this.camY === undefined ? cy : this.camY, cy, k); this.camLY = LS.util.lerp(this.camLY === undefined ? ly : this.camLY, ly, k);
     this.camera.position.set(this.camX + Math.sin(t * 0.3) * 0.08, this.camY, this.camD);
     this.camera.lookAt(this.camX, this.camLY, 0);
-    if (this.searching) {
+    if (this.searching && !this.online) {
       this.mmT -= dt;
       if (this.mmT <= 0) {
         this.mmT = LS.util.rand(0.03, 0.12);

@@ -39,7 +39,7 @@ LS.ESP = {
         x0 = Math.min(x0, s.x); y0 = Math.min(y0, s.y); x1 = Math.max(x1, s.x); y1 = Math.max(y1, s.y);
       }
       if (!ok || x1 < 0 || x0 > W || y1 < 0 || y0 > H) continue;
-      const bot = !f.isPlayer, col = bot ? '#ff4d4d' : '#4dd2ff', dist = Math.round(me.pos.distanceTo(p));
+      const bot = f.netId ? f.netId[0] === 'b' : !f.isPlayer, col = bot ? '#ff4d4d' : '#4dd2ff', dist = Math.round(me.pos.distanceTo(p));
       // tracer: do meio de baixo da tela até os pés
       g.strokeStyle = 'rgba(0,0,0,0.55)'; g.lineWidth = 3; g.beginPath(); g.moveTo(W / 2, H); g.lineTo((x0 + x1) / 2, y1); g.stroke();
       g.strokeStyle = col; g.lineWidth = 1.2; g.beginPath(); g.moveTo(W / 2, H); g.lineTo((x0 + x1) / 2, y1); g.stroke();

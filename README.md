@@ -56,6 +56,14 @@ Espalhado pelas casas, cidades e pela natureza:
 
 ---
 
+## 🌐 Online
+
+- **JOGAR** procura jogadores de verdade por até **30 segundos**. Se achar, a partida é online (os bots completam as vagas); se não achar, começa contra bots
+- O **servidor é a autoridade**: vida, dano, tiros, itens e vencedor são decididos nele (editar o jogo no navegador não dá vantagem)
+- Servidor grátis na Cloudflare: veja [server/LEIAME.md](server/LEIAME.md) pra publicar
+
+---
+
 ## 🤖 Inimigos com IA
 
 Os 30 bots jogam de verdade:

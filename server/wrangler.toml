@@ -1,0 +1,18 @@
+# Servidor online do Last Survivor (Cloudflare Workers + Durable Objects, plano grátis)
+# Publicar: cd server && npx wrangler login && npx wrangler deploy
+name = "lastsurvivor"
+main = "src/worker.js"
+compatibility_date = "2026-01-01"
+
+[[durable_objects.bindings]]
+name = "MATCHMAKER"
+class_name = "Matchmaker"
+
+[[durable_objects.bindings]]
+name = "MATCH"
+class_name = "Match"
+
+# o plano grátis só aceita Durable Objects com SQLite
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Matchmaker", "Match"]

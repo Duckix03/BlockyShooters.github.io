@@ -50,7 +50,7 @@ LS.Loot = {
   },
 
   spawn(type, id, level, amount, x, y, z) {
-    const it = { type, id, level: level || 0, amount: amount || 1, pos: new THREE.Vector3(x, y, z), alive: true };
+    const it = { type, id, level: level || 0, amount: amount || 1, pos: new THREE.Vector3(x, y, z), alive: true, netId: (this.idPfx || 'x') + (this.seq = (this.seq || 0) + 1) };
     if (type === 'weapon' && it.ammoInMag === undefined) it.ammoInMag = LS.WEAPONS[id].mag;
     it.mesh = this.makeMesh(it);
     it.mesh.position.copy(it.pos);
@@ -78,13 +78,15 @@ LS.Loot = {
     }
   },
   spawnAll() {
-    this.clear();
+    this.clear(); this.idPfx = 'w'; this.seq = 0; // ids iguais em todos os computadores (mesma semente)
     for (const s of LS.World.lootSpots) if (Math.random() < 0.85) this.spawnRandomAt(s);
+    this.idPfx = 'x';
   },
   // by = quem pegou: o item é "puxado" até ele, encolhe e some (só o visual; no jogo ele já foi pego)
   remove(it, by) {
     if (!it.alive) return;
     it.alive = false;
+    if (LS.Net && LS.Net.online && by && LS.Net.owns(by)) LS.Net.send({ t: 'pick', id: it.netId, by: by.netId }); // avisa que pegou
     const i = this.items.indexOf(it); if (i >= 0) this.items.splice(i, 1);
     const P = LS.Game && LS.Game.player;
     if (by && it.mesh.visible && P && by.pos.distanceTo(P.pos) < 80) {

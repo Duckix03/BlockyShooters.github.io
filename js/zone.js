@@ -57,11 +57,12 @@ LS.Zone = class {
     this.pickNext();
   }
   pickNext() {
+    const R = this.rng || Math.random; // online: gerador com semente (zona igual pra todos)
     const ph = this.phases[Math.min(this.phase, this.phases.length - 1)];
     this.nextR = ph.r;
     const maxOff = Math.max(0, Math.min(this.radius, 330) - ph.r);
     for (let i = 0; i < 40; i++) {
-      const a = Math.random() * Math.PI * 2, o = Math.sqrt(Math.random()) * maxOff * (this.phase === 0 ? 0.55 : 1);
+      const a = R() * Math.PI * 2, o = Math.sqrt(R()) * maxOff * (this.phase === 0 ? 0.55 : 1);
       const x = this.center.x + Math.cos(a) * o, z = this.center.y + Math.sin(a) * o;
       this.next = new THREE.Vector2(x, z);
       if (LS.World.heightAt(x, z) > 1.5 && Math.hypot(x, z) + ph.r < 380) break;
