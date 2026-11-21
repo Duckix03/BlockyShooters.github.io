@@ -53,15 +53,17 @@ LS.Post = {
             float gx = abs(dE - z) < abs(z - dW) ? dE - z : z - dW, gy = abs(dN - z) < abs(z - dS) ? dN - z : z - dS;
             // ---- oclusão de ambiente: 16 amostras em espiral FIXA (sem ruído/granulado); só conta o que fica NA FRENTE
             //      do plano da superfície e com uma folga que cresce com a distância (dobrinhas do terreno não contam) ----
-            float rad = clamp(0.8 * projScale / z, 3.0, 64.0), occ = 0.0, ang = 0.0;
-            float th0 = 0.06 + z * 0.015, th1 = 0.35 + z * 0.012;
+            // rotação do padrão em 2x2 pixels (4 ângulos): não forma cópias da silhueta e não fica granulado
+            vec2 cell = mod(floor(gl_FragCoord.xy), 2.0);
+            float rad = clamp(0.45 * projScale / z, 2.0, 40.0), occ = 0.0, ang = (cell.x * 2.0 + cell.y) * 1.5708;
+            float th0 = 0.03 + z * 0.012, th1 = 0.18 + z * 0.01;
             for (int i = 0; i < 16; i++) {
               float fi = float(i) + 1.0;
               ang += 2.39996;
               vec2 op = vec2(cos(ang), sin(ang)) * rad * sqrt(fi / 16.0);   // em pixels
               float expect = z + op.x * gx + op.y * gy;                       // onde o próprio plano estaria
               float d = expect - depthAt(vUv + op * px);                      // > 0: algo na frente (canto/fresta)
-              occ += smoothstep(th0, th1, d) * (1.0 - smoothstep(0.8, 2.0, d));
+              occ += smoothstep(th0, th1, d) * (1.0 - smoothstep(0.3, 0.55, d)); // só contato (sem "aura" atrás de quem está na frente)
             }
             float ao = clamp(1.0 - (occ / 16.0) * 0.8 * aoStrength, 0.35, 1.0);
             // ---- contorno suave: bordas de profundidade, só de perto (de longe vira serrilhado no morro) ----

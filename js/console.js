@@ -270,6 +270,9 @@ LS.Console = {
       for (const k of ['vest', 'helmet']) if (P[k].level) P[k].dur = LS.GEAR[k].levels[P[k].level].dur;
       return 'Curado ❤';
     } },
+    esp: { desc: 'caixa, linha, nome, arma, vida e distância de cada jogador (bots com a etiqueta BOT)', fn() {
+      return 'ESP ' + (LS.ESP.toggle() ? 'ligado 👁' : 'desligado');
+    } },
     god: { desc: 'modo invencível (liga/desliga)', fn() {
       const P = this.P(); this.god = !this.god;
       if (!P._td) { P._td = P.takeDamage; P.takeDamage = function (...x) { return LS.Console.god ? 0 : this._td(...x); }; }

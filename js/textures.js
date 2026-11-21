@@ -150,20 +150,43 @@ LS.Tex = {
     return this.mats[k] || (this.mats[k] = this.triplanar(new THREE.MeshLambertMaterial(vertexColors ? { vertexColors: true } : { color }), name));
   },
   // terreno: grama e terra misturadas pelo atributo "tmix" (0 grama, 1 terra/areia/pedra) + variação larga anti-repetição
+  // terreno sem padrão repetido: a mesma textura em 2 escalas e ângulos diferentes, misturadas por ruído;
+  // manchas grandes de cor (grama seca / verde forte), rocha nas encostas projetada de lado (sem esticar) e
+  // camadas de rocha na montanha. As cores base (areia, grama, rocha, neve) vêm das cores dos vértices.
   terrainMaterial() {
     const G = this.get('grass'), D = this.get('dirt'), mat = new THREE.MeshLambertMaterial({ vertexColors: true });
     mat.onBeforeCompile = sh => {
       Object.assign(sh.uniforms, { tGrass: { value: G.tex }, tDirt: { value: D.tex }, tGG: { value: G.gain }, tDG: { value: D.gain } });
-      sh.vertexShader = 'attribute float tmix; varying float vTMix; varying vec2 vTXZ;\n' + sh.vertexShader.replace('#include <begin_vertex>',
-        '#include <begin_vertex>\n vTMix = tmix; vTXZ = (modelMatrix * vec4(transformed, 1.0)).xz;');
-      sh.fragmentShader = 'uniform sampler2D tGrass; uniform sampler2D tDirt; uniform float tGG; uniform float tDG; varying float vTMix; varying vec2 vTXZ;\n' +
-        sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
-          vec3 tg = texture2D(tGrass, vTXZ / ${this.SCALE.grass.toFixed(1)}).rgb * tGG;
-          vec3 td = texture2D(tDirt, vTXZ / ${this.SCALE.dirt.toFixed(1)}).rgb * tDG;
-          float macro = texture2D(tGrass, vTXZ / 37.0 + 0.31).g * tGG;
-          diffuseColor.rgb *= mix(tg, td, smoothstep(0.2, 0.8, vTMix)) * mix(0.9, 1.1, clamp(macro - 0.5, 0.0, 1.0));`);
+      sh.vertexShader = 'attribute float tmix; varying float vTMix; varying vec3 vWP; varying vec3 vWN;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+        '#include <begin_vertex>\n vTMix = tmix; vWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);');
+      sh.fragmentShader = `uniform sampler2D tGrass; uniform sampler2D tDirt; uniform float tGG; uniform float tDG;
+        varying float vTMix; varying vec3 vWP; varying vec3 vWN;
+        float th(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float tn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(th(i), th(i + vec2(1.0, 0.0)), f.x), mix(th(i + vec2(0.0, 1.0)), th(i + vec2(1.0, 1.0)), f.x), f.y); }
+        float tf(vec2 p){ return tn(p) * 0.55 + tn(p * 2.07 + 13.1) * 0.3 + tn(p * 4.3 + 7.7) * 0.15; }
+        ` + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+          vec2 p = vWP.xz;
+          float nBig = tf(p / 55.0), nMid = tf(p / 13.0 + 31.0), nFine = tn(p / 2.3);
+          // grama: 2 amostras (escalas e ângulos diferentes) misturadas por ruído = sem quadradinho repetido
+          const mat2 R1 = mat2(0.8, -0.6, 0.6, 0.8), R2 = mat2(0.28, 0.96, -0.96, 0.28);
+          vec3 gA = texture2D(tGrass, R1 * p / 5.7).rgb, gB = texture2D(tGrass, R2 * p / 3.3 + 0.41).rgb;
+          vec3 tg = mix(gA, gB, smoothstep(0.3, 0.7, nMid)) * tGG;
+          tg = mix(vec3(1.0), tg, 0.55);                                            // tufos mais discretos
+          tg *= mix(vec3(1.07, 1.03, 0.82), vec3(0.86, 1.0, 0.86), smoothstep(0.25, 0.75, nBig)); // seca x verde forte
+          tg *= 0.9 + 0.18 * nFine;
+          // terra (ruas e caminhos), também em 2 escalas
+          vec3 tdA = texture2D(tDirt, R2 * p / 2.9).rgb, tdB = texture2D(tDirt, R1 * p / 1.7 + 0.27).rgb;
+          vec3 td = mix(tdA, tdB, smoothstep(0.35, 0.65, nMid)) * tDG;
+          vec3 ground = mix(tg, td, smoothstep(0.2, 0.8, vTMix));
+          // rocha nas encostas: projetada de lado (não estica) + camadas na altura
+          vec3 an = abs(vWN); an /= (an.x + an.z + 1e-4);
+          vec3 rk = (texture2D(tDirt, vWP.zy / 3.4).rgb * an.x + texture2D(tDirt, vWP.xy / 3.4).rgb * an.z) * tDG;
+          rk = mix(vec3(1.0), rk, 0.7) * (0.86 + 0.16 * sin(vWP.y * 1.3 + nMid * 5.0)) * (0.9 + 0.15 * nFine);
+          float steep = smoothstep(0.32, 0.55, 1.0 - vWN.y);
+          diffuseColor.rgb *= mix(ground, rk, steep);`);
     };
-    mat.customProgramCacheKey = () => 'terrain_tex';
+    mat.customProgramCacheKey = () => 'terrain_tex_v2';
     return mat;
   }
 };
