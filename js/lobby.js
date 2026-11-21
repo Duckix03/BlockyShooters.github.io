@@ -57,6 +57,7 @@ LS.Lobby = {
   },
   changed() {
     LS.saveProfile();
+    if (LS.Profile && LS.Profile.bound) LS.Profile.renderTop(); // foto 3D acompanha o visual
     this.model.applyLook(LS.playerProfile.look);
     this.syncUI();
   },

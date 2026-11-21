@@ -26,7 +26,7 @@ LS.Menu = {
     const s = LS.stats, lvl = this.levelOf(s.xp), a = this.xpFor(lvl), b = this.xpFor(lvl + 1);
     const name = LS.playerProfile.name || 'Jogador';
     document.getElementById('lb-name').textContent = name;
-    document.getElementById('lb-avatar').textContent = name.charAt(0).toUpperCase();
+    if (LS.Profile && LS.Profile.bound) LS.Profile.renderTop(); else document.getElementById('lb-avatar').textContent = name.charAt(0).toUpperCase();
     document.getElementById('lb-level').textContent = lvl;
     document.getElementById('lb-xp').style.width = Math.round(((s.xp || 0) - a) / (b - a) * 100) + '%';
     document.getElementById('lb-coins').textContent = (s.coins || 0).toLocaleString('pt-BR');
@@ -61,18 +61,7 @@ LS.Menu = {
   },
 
   // ---- perfil ----
-  renderStats() {
-    const s = LS.stats, lvl = this.levelOf(s.xp), a = this.xpFor(lvl), b = this.xpFor(lvl + 1), name = LS.playerProfile.name || 'Jogador';
-    const games = s.games || 0, wins = s.wins || 0, deaths = Math.max(1, games - wins);
-    document.getElementById('stats-body').innerHTML =
-      '<div class="stats-head"><div class="lb-avatar">' + name.charAt(0).toUpperCase() + '</div><div><b style="font-size:20px">' + name + '</b>' +
-      '<div class="lb-lvl">NÍVEL ' + lvl + ' · ' + ((s.xp || 0) - a) + ' / ' + (b - a) + ' XP</div><div class="lb-xp"><div style="height:100%;width:' + Math.round(((s.xp || 0) - a) / (b - a) * 100) + '%;background:linear-gradient(90deg,#ff8a1f,#ffc531)"></div></div></div></div>' +
-      '<div class="stats-grid">' +
-      '<div><b>' + games + '</b><span>PARTIDAS</span></div><div><b>' + wins + '</b><span>VITÓRIAS</span></div><div><b>' + (games ? Math.round(wins / games * 100) : 0) + '%</b><span>TAXA DE VITÓRIA</span></div>' +
-      '<div><b>' + (s.kills || 0) + '</b><span>ABATES</span></div><div><b>' + ((s.kills || 0) / deaths).toFixed(2) + '</b><span>ABATES / MORTE</span></div><div><b>' + (s.best ? '#' + s.best : '-') + '</b><span>MELHOR COLOCAÇÃO</span></div>' +
-      '<div><b>' + Math.round(s.dmg || 0).toLocaleString('pt-BR') + '</b><span>DANO TOTAL</span></div><div><b>' + (s.coins || 0).toLocaleString('pt-BR') + '</b><span>MOEDAS</span></div><div><b>' + this.diff().label + '</b><span>DIFICULDADE</span></div>' +
-      '</div>';
-  },
+  renderStats() { LS.Profile.open(); }, // perfil completo em js/profile.js
   resetStats() {
     if (!confirm('Zerar todas as estatísticas, nível e moedas? Isso não pode ser desfeito.')) return;
     Object.keys(LS.stats).forEach(k => { LS.stats[k] = 0; }); LS.saveStats(); this.renderStats(); this.render();

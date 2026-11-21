@@ -174,6 +174,9 @@ LS.defaultProfile = { name: 'Jogador', look: { skin: '#e0ac69', hair: '#1a1a1a',
 LS.playerProfile = JSON.parse(JSON.stringify(LS.defaultProfile));
 try {
   const p = JSON.parse(localStorage.getItem('lastsurvivor_profile') || 'null');
-  if (p && p.look) { LS.playerProfile.name = String(p.name || 'Jogador').slice(0, 16); Object.assign(LS.playerProfile.look, p.look); }
+  if (p && p.look) {
+    const look = Object.assign(LS.playerProfile.look, p.look);
+    Object.assign(LS.playerProfile, p, { look, name: String(p.name || 'Jogador').slice(0, 16) }); // nome, visual, arma do lobby, ID, curtidas, recado, foto...
+  }
 } catch (e) { /* perfil corrompido: usa o padrão */ }
 LS.saveProfile = () => localStorage.setItem('lastsurvivor_profile', JSON.stringify(LS.playerProfile));

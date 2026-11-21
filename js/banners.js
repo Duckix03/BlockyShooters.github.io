@@ -21,31 +21,37 @@ LS.Banners = {
 
   // ---------- foto da cena ----------
   render(id) {
-    const R = LS.Game.renderer, w = this.W * this.SS, h = this.H * this.SS;
     const { scene, camera } = id === 'br' ? this.sceneBR() : this.sceneDuel(id === 'duel2' ? 2 : 1);
-    camera.aspect = this.W / this.H; camera.updateProjectionMatrix();
-    const rt = new THREE.WebGLRenderTarget(w, h);
-    const prev = R.getRenderTarget(), prevAuto = R.shadowMap.autoUpdate;
-    R.shadowMap.needsUpdate = true;
-    R.setRenderTarget(rt); R.clear(); R.render(scene, camera);
-    const px = new Uint8Array(w * h * 4);
-    R.readRenderTargetPixels(rt, 0, 0, w, h, px);
-    R.setRenderTarget(prev); R.shadowMap.autoUpdate = prevAuto;
-    rt.dispose();
-    // a imagem do WebGL vem de cabeça pra baixo
-    const big = document.createElement('canvas'); big.width = w; big.height = h;
-    const bg = big.getContext('2d'), img = bg.createImageData(w, h), row = w * 4;
-    for (let y = 0; y < h; y++) img.data.set(px.subarray((h - 1 - y) * row, (h - y) * row), y * row);
-    bg.putImageData(img, 0, 0);
-    const out = document.createElement('canvas'); out.width = this.W; out.height = this.H;
-    const g = out.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(big, 0, 0, this.W, this.H);
+    const out = this.snap(scene, camera, this.W, this.H, { ss: this.SS });
+    const g = out.getContext('2d');
     // vinheta e um pouco mais de contraste/saturação (igual ao "cores vivas" do jogo)
-    g.globalCompositeOperation = 'source-over';
     const v = g.createRadialGradient(this.W / 2, this.H * 0.45, this.H * 0.35, this.W / 2, this.H * 0.45, this.W * 0.62);
     v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.5)'); g.fillStyle = v; g.fillRect(0, 0, this.W, this.H);
     const f = document.createElement('canvas'); f.width = this.W; f.height = this.H;
     const fg = f.getContext('2d'); fg.filter = 'contrast(1.1) saturate(1.2)'; fg.drawImage(out, 0, 0);
     return f.toDataURL('image/jpeg', 0.9);
+  },
+  // tira a "foto" de uma cena com o renderizador do jogo (numa imagem fora da tela) e devolve um canvas W x H.
+  // opts.ss = supersampling (renderiza maior e reduz: bordas lisas); opts.alpha = fundo transparente (foto de perfil)
+  snap(scene, camera, W, H, opts = {}) {
+    const R = LS.Game.renderer, ss = opts.ss || 2, w = W * ss, h = H * ss;
+    camera.aspect = W / H; camera.updateProjectionMatrix();
+    const rt = new THREE.WebGLRenderTarget(w, h);
+    const prev = R.getRenderTarget(), prevAuto = R.shadowMap.autoUpdate, prevCol = R.getClearColor(new THREE.Color()), prevA = R.getClearAlpha();
+    if (opts.alpha) R.setClearColor(0x000000, 0);
+    R.shadowMap.needsUpdate = true;
+    R.setRenderTarget(rt); R.clear(); R.render(scene, camera);
+    const px = new Uint8Array(w * h * 4);
+    R.readRenderTargetPixels(rt, 0, 0, w, h, px);
+    R.setRenderTarget(prev); R.shadowMap.autoUpdate = prevAuto; R.setClearColor(prevCol, prevA);
+    rt.dispose();
+    const big = document.createElement('canvas'); big.width = w; big.height = h;
+    const bg = big.getContext('2d'), img = bg.createImageData(w, h), row = w * 4;
+    for (let y = 0; y < h; y++) img.data.set(px.subarray((h - 1 - y) * row, (h - y) * row), y * row); // o WebGL vem de cabeça pra baixo
+    bg.putImageData(img, 0, 0);
+    const out = document.createElement('canvas'); out.width = W; out.height = H;
+    const g = out.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(big, 0, 0, W, H);
+    return out;
   },
 
   // ---------- peças ----------

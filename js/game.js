@@ -74,7 +74,7 @@ LS.Game = {
     LS.UI.showScreen('loading');
     document.getElementById('loading-fill').style.width = this.built ? '100%' : '0%';
     this.build(() => {
-      LS.Duel.exit(); this.mode = 'br';
+      LS.Duel.exit(); this.mode = 'br'; this.lastKiller = null;
       LS.Net.leave(); this.zone.rng = null;
       this.bots = this.botPool.slice(); this.fighters = [this.player].concat(this.bots);
       this.bots.forEach(b => { b.netId = null; if (!b.model.root.parent) this.scene.add(b.model.root); }); this.player.netId = null;
@@ -106,7 +106,7 @@ LS.Game = {
     LS.UI.showScreen('loading');
     document.getElementById('loading-fill').style.width = this.built ? '100%' : '0%';
     this.build(() => {
-      LS.Duel.exit(); this.mode = 'br';
+      LS.Duel.exit(); this.mode = 'br'; this.lastKiller = null;
       const N = LS.Net; N.begin(d);
       LS.util.withSeed(d.seed, () => { LS.Loot.spawnAll(); this.plane.reset(); this.zone.reset(); });
       this.zone.rng = LS.util.seeded(d.seed + 7); LS.Effects.clear();
@@ -149,7 +149,7 @@ LS.Game = {
     LS.UI.showScreen('loading');
     document.getElementById('loading-fill').style.width = this.built ? '100%' : '0%';
     this.build(() => {
-      LS.Net.leave(); LS.Duel.exit(); this.mode = 'duel'; this.zone.rng = null;
+      LS.Net.leave(); LS.Duel.exit(); this.mode = 'duel'; this.lastKiller = null; this.zone.rng = null;
       for (const b of this.botPool) { b.reset(); b.netId = null; if (b.model.root.parent) b.model.root.parent.remove(b.model.root); }
       const size = LS.Modes.duelSize, df = LS.BOT_LEVEL, n = size * 2 - 1;
       const names = LS.BOT_NAMES.slice().sort(() => Math.random() - 0.5);
@@ -212,6 +212,7 @@ LS.Game = {
       LS.Audio.kill();
       LS.HUD.centerMsg('ELIMINOU ' + victim.name.toUpperCase(), (head ? 'Tiro na cabeça! · ' : '') + this.player.kills + ' abate(s)', 1.8);
     }
+    if (victim === this.player) this.lastKiller = killer && killer !== victim ? killer : null;
     if (victim === this.player) { this.endTimer = 3; this.pendingWin = false; LS.HUD.centerMsg('VOCÊ FOI ELIMINADO', killer ? 'por ' + killer.name : weapon, 3); }
     else if (this.player.alive && this.aliveCount() === 1) { this.endTimer = 2; this.pendingWin = true; }
     else if (!this.player.alive && this.aliveCount() <= 1) { /* já derrotado */ }
@@ -275,7 +276,12 @@ LS.Game = {
     document.getElementById('end-sub').textContent = duel ? (LS.Duel.size > 1 ? (win ? 'Seu time venceu o 2v2!' : 'Seu time perdeu o 2v2. Tente de novo!') : (win ? 'Você venceu o duelo contra ' : 'Você perdeu o duelo contra ') + LS.Duel.opp.name + '!')
       : win ? 'Você é o último sobrevivente da ilha!' : 'Você foi eliminado. Tente novamente!';
     const rw = LS.Menu.award(P, win);
-    document.getElementById('end-xp').textContent = '+' + rw.xp + ' XP · +' + rw.coins + ' moedas' + (rw.levelUp ? ' · SUBIU PARA O NÍVEL ' + rw.level + '!' : '');
+    const likes = LS.Profile.earnLikes(P, win);
+    document.getElementById('end-xp').textContent = '+' + rw.xp + ' XP · +' + rw.coins + ' moedas' + (likes ? ' · +' + likes + ' curtida' + (likes > 1 ? 's' : '') + ' ♥' : '') + (rw.levelUp ? ' · SUBIU PARA O NÍVEL ' + rw.level + '!' : '');
+    // botão pra ver o perfil do oponente (duelo) ou de quem te eliminou (bot)
+    const foe = duel ? LS.Duel.opp : (this.lastKiller && this.lastKiller instanceof LS.Bot ? this.lastKiller : null), fb = document.getElementById('end-foe');
+    LS.Profile.endFoe = foe; fb.classList.toggle('hidden', !foe);
+    if (foe) fb.textContent = (duel ? 'PERFIL DO OPONENTE: ' : 'PERFIL DE QUEM TE ELIMINOU: ') + foe.name.toUpperCase();
     document.getElementById('end-place').textContent = duel ? sc[0] + ' x ' + sc[1] : '#' + (win ? 1 : P.placement);
     document.getElementById('end-place-l').textContent = duel ? 'PLACAR' : 'COLOCAÇÃO';
     document.getElementById('end-kills').textContent = P.kills;
