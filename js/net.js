@@ -12,13 +12,15 @@ LS.RemoteFighter = class extends LS.Fighter {
     super(name, false, { look: look || undefined });
     this.remote = true; this.tgt = null; this.spd = 0;
   }
-  reset() { super.reset(); this.tgt = null; this.spd = 0; this.netFlags = 0; }
+  reset() { super.reset(); this.tgt = null; this.spd = 0; this.netFlags = 0; this.seenT = 0; this.netHidden = true; }
+  // o servidor só manda quem dá pra ver: quem some do pacote fica escondido (e não leva tiro "fantasma")
   netTarget(s) {
-    if (!this.tgt) { this.pos.set(s[1], s[2], s[3]); this.yaw = s[4]; }
-    this.tgt = s;
+    if (!this.tgt || this.netHidden) { this.pos.set(s[1], s[2], s[3]); this.yaw = s[4]; }
+    this.tgt = s; this.seenT = performance.now(); this.netHidden = false;
   }
   update(dt) {
     const s = this.tgt; if (!s) { this.model.root.visible = false; return; }
+    if (performance.now() - this.seenT > 700) { this.netHidden = true; this.model.root.visible = false; return; }
     const states = ['plane', 'fall', 'chute', 'ground'];
     this.state = states[s[7]] || 'ground';
     const k = 1 - Math.exp(-12 * dt), px = this.pos.x, pz = this.pos.z;
@@ -165,6 +167,7 @@ LS.Net = {
         const v = E(m.v), a = m.a ? E(m.a) : null; if (!v || !v.alive) break;
         const mine = this.owns(v);
         v.hp = 0; v._netApply = true;
+        if (m.p && v.remote && v.netHidden) v.pos.set(m.p[0], m.p[1], m.p[2]); // morreu longe: efeito no lugar certo
         LS.Loot.idPfx = 'k' + m.k + '_'; LS.Loot.seq = 0;
         if (!mine) { v.weapons = [null, null]; for (const t in v.ammo) v.ammo[t] = 0; for (const t in v.meds) v.meds[t] = 0; v.vest = { level: 0, dur: 0 }; v.helmet = { level: 0, dur: 0 }; v.bag = 0; }
         const before = LS.Loot.items.length;
@@ -207,9 +210,14 @@ LS.Net = {
       if (r.netId[0] !== 'b' || !pool.length) continue;
       const b = pool.shift();
       b.reset(); b.name = r.name; b.model.applyLook(r.model.look);
+      const s = r.tgt; // o último pacote é o mais novo (o bot podia estar escondido, sem atualizar o boneco)
+      if (s) { r.pos.set(s[1], s[2], s[3]); r.yaw = s[4]; r.state = ['plane', 'fall', 'chute', 'ground'][s[7]] || 'ground'; }
+      const wid = s ? s[8] : (r.weapons[0] && r.weapons[0].id), g = s ? (s[9] || []) : null;
       b.pos.copy(r.pos); b.yaw = r.yaw; b.state = r.state === 'plane' ? 'fall' : r.state; b.hp = r.hp; b.alive = r.alive;
-      if (r.weapons[0]) { b.weapons[0] = { id: r.weapons[0].id, mag: LS.WEAPONS[r.weapons[0].id].mag }; b.ammo[LS.WEAPONS[r.weapons[0].id].ammo] = 60; b.model.setGun(r.weapons[0].id); }
-      b.vest = Object.assign({}, r.vest); b.helmet = Object.assign({}, r.helmet); b.bag = r.bag; b.model.setGear(b.vest.level, b.helmet.level, b.bag);
+      if (wid && LS.WEAPONS[wid]) { b.weapons[0] = { id: wid, mag: LS.WEAPONS[wid].mag }; b.ammo[LS.WEAPONS[wid].ammo] = 60; b.model.setGun(wid); }
+      if (g) { b.vest = { level: g[0] | 0, dur: g[1] || 0 }; b.helmet = { level: g[2] | 0, dur: g[3] || 0 }; b.bag = g[4] | 0; }
+      else { b.vest = Object.assign({}, r.vest); b.helmet = Object.assign({}, r.helmet); b.bag = r.bag; }
+      b.model.setGear(b.vest.level, b.helmet.level, b.bag);
       b.model.root.visible = r.alive; G.scene.add(b.model.root);
       if (r.model.root.parent) r.model.root.parent.remove(r.model.root);
       const i = G.fighters.indexOf(r); if (i >= 0) G.fighters[i] = b;

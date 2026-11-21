@@ -6,12 +6,18 @@
 //                        Guarda a vida de todos, confere cada tiro (arma, ritmo, distância) e calcula o dano,
 //                        recusa teleporte/velocidade impossível, decide quem pegou cada item, mortes e vencedor.
 //                        Os bots que completam as 31 vagas rodam no navegador do "host" (um dos jogadores).
+//                        Anti-wallhack: cada jogador só recebe a posição de quem ele poderia ver (vis.js).
 'use strict';
+import { viewPoints, bodyPoints, canSee } from './vis.js';
 
 const SEARCH_MS = 30000;   // tempo procurando jogadores
 const MAX_PLAYERS = 31;    // vagas da partida (jogadores + bots)
 const JOIN_MS = 12000;     // tempo pra todos entrarem na sala depois do matchmaking
 const TICK_MS = 1000 / 12; // envio de posições (12 por segundo)
+const VIS_NEAR = 18;       // perto assim sempre aparece (passos, briga de perto)
+const VIS_MAX = 650;       // longe assim nunca aparece (some na neblina de qualquer jeito)
+const VIS_LINGER = 1000;   // depois de visto, continua aparecendo por 1 s (sem "piscar" na quina)
+const HEAR_R = 320;        // até onde um tiro é ouvido
 
 // tabela de armas (igual a js/config.js): o dano é calculado aqui, não no navegador
 const WEAPONS = {
@@ -99,6 +105,7 @@ export class Match {
   reset() {
     this.roster = null; this.ents = new Map(); this.socks = new Map(); this.started = false; this.ended = false;
     this.killSeq = 0; this.taken = new Set(); this.host = null; this.tick = null; this.joinTimer = null; this.botDmg = 0.75; this.t0 = 0;
+    this.vis = new Map();
   }
 
   async fetch(req) {
@@ -123,7 +130,7 @@ export class Match {
     for (const r of this.roster) this.ents.set(r.pid, this.newEnt(r.pid, r.pid, r.name));
     this.joinTimer = setTimeout(() => this.start(), JOIN_MS);
   }
-  newEnt(id, owner, name) { return { id, owner, name, hp: 100, alive: true, st: null, pos: null, lastT: 0, vest: [0, 0], helmet: [0, 0], weapon: null, state: 0, shots: [], envT: 0, envAcc: 0 }; }
+  newEnt(id, owner, name) { return { id, owner, name, hp: 100, alive: true, st: null, pos: null, lastT: 0, vest: [0, 0], helmet: [0, 0], weapon: null, state: 0, shots: [], envT: 0, envAcc: 0, vel: null }; }
 
   start() {
     if (this.started || !this.roster) return;
@@ -144,11 +151,45 @@ export class Match {
     this.tick = setInterval(() => this.broadcastSnap(), TICK_MS);
   }
 
+  // cada jogador recebe só quem ele pode ver; o host recebe todos (os bots dele precisam enxergar os jogadores)
   broadcastSnap() {
-    const e = [];
-    for (const x of this.ents.values()) if (x.st) e.push(x.st);
-    const msg = JSON.stringify({ t: 'snap', e, tm: Date.now() - this.t0 });
-    for (const ws of this.socks.values()) { try { ws.send(msg); } catch (err) { } }
+    const now = Date.now(), tm = now - this.t0;
+    for (const [pid, ws] of this.socks) send(ws, { t: 'snap', e: this.snapFor(pid, now, pid === this.host), tm });
+  }
+  snapFor(pid, now, full) {
+    const me = this.ents.get(pid), e = [];
+    let views = null; const getViews = () => views || (views = viewPoints(me.pos));
+    for (const x of this.ents.values()) {
+      if (!x.st || x.owner === pid) continue;
+      if (full || this.visible(pid, me, x, now, getViews)) e.push(x.st);
+    }
+    return e;
+  }
+  visible(pid, me, x, now, getViews) {
+    if (x.state !== 3) return true;           // no avião/caindo/de paraquedas: dá pra ver no céu
+    if (!me || !me.pos) return false;
+    if (!x.pos) return false;
+    const d = Math.hypot(x.pos[0] - me.pos[0], x.pos[1] - me.pos[1], x.pos[2] - me.pos[2]);
+    if (d < VIS_NEAR) return true;
+    if (d > VIS_MAX) return false;
+    const key = pid + '|' + x.id;
+    let c = this.vis.get(key); if (!c) this.vis.set(key, c = { next: 0, until: 0 });
+    if (now >= c.next) { // confere a linha de visão ~3x por segundo por par
+      c.next = now + 280 + Math.random() * 120;
+      if (canSee(getViews(), bodyPoints(x.pos, x.vel))) c.until = now + VIS_LINGER;
+    }
+    return now < c.until;
+  }
+  // ouve o tiro: perto da origem, perto do caminho da bala, ou já está vendo quem atirou
+  hears(pid, shooter, o, d, range) {
+    if (pid === this.host) return true;
+    const me = this.ents.get(pid); if (!me || !me.pos) return true;
+    const px = me.pos[0] - o[0], py = me.pos[1] - o[1], pz = me.pos[2] - o[2];
+    if (Math.hypot(px, py, pz) < HEAR_R) return true;
+    const t = Math.max(0, Math.min(range * 1.6 + 4, px * d[0] + py * d[1] + pz * d[2]));
+    if (Math.hypot(px - d[0] * t, py - d[1] * t, pz - d[2] * t) < 40) return true;
+    const c = this.vis.get(pid + '|' + shooter.id);
+    return !!c && Date.now() < c.until;
   }
   bcast(obj, exceptPid) { const msg = JSON.stringify(obj); for (const [pid, ws] of this.socks) if (pid !== exceptPid) { try { ws.send(msg); } catch (e) { } } }
   owns(pid, ent) { return ent && ent.owner === pid; }
@@ -171,6 +212,7 @@ export class Match {
             const maxV = state === 3 ? 14 : 75;
             if (dh > maxV * dt + 2.5 && ent.state !== 0) { if (ent.owner === pid) send(this.socks.get(pid), { t: 'fix', i: ent.id, p: ent.pos }); continue; }
           }
+          if (ent.pos && ent.lastT) { const vdt = Math.max(0.05, (now - ent.lastT) / 1000); ent.vel = [(x - ent.pos[0]) / vdt, 0, (z - ent.pos[2]) / vdt]; }
           ent.pos = [x, y, z]; ent.lastT = now; ent.state = state;
           ent.weapon = typeof s[8] === 'string' && WEAPONS[s[8]] ? s[8] : null;
           const g = Array.isArray(s[9]) ? s[9] : [];
@@ -185,7 +227,13 @@ export class Match {
         const now = Date.now(), minGap = 1000 / w.rate * 0.7, last = ent.shots[ent.shots.length - 1];
         if (last && now - last.t < minGap) return; // mais rápido que a arma permite
         ent.shots.push({ t: now, w: m.w, left: w.pellets }); if (ent.shots.length > 6) ent.shots.shift();
-        if (m.w !== 'punch') this.bcast({ t: 'fire', i: ent.id, o: m.o, d: m.d, w: m.w }, pid);
+        if (m.w !== 'punch') {
+          const o = Array.isArray(m.o) && m.o.length === 3 ? m.o.map(v => num(v)) : (ent.pos || [0, 0, 0]);
+          let d = Array.isArray(m.d) && m.d.length === 3 ? m.d.map(v => num(v)) : [0, 0, 1];
+          const dl = Math.hypot(d[0], d[1], d[2]) || 1; d = d.map(v => v / dl);
+          const msg = JSON.stringify({ t: 'fire', i: ent.id, o, d, w: m.w });
+          for (const [rp, ws] of this.socks) if (rp !== pid && this.hears(rp, ent, o, d, w.range)) { try { ws.send(msg); } catch (e) { } }
+        }
         break;
       }
       case 'hit': { // acerto informado por quem atirou: o servidor confere e calcula o dano
@@ -250,7 +298,7 @@ export class Match {
     v.alive = false; v.hp = 0; this.killSeq++;
     if (v.st) v.st[10] = 0;
     const left = this.aliveCount();
-    this.bcast({ t: 'kill', v: v.id, a: a ? a.id : null, w: weapon, h: head ? 1 : 0, k: this.killSeq, pl: left + 1 });
+    this.bcast({ t: 'kill', v: v.id, a: a ? a.id : null, w: weapon, h: head ? 1 : 0, k: this.killSeq, pl: left + 1, p: v.pos });
     if (left <= 1 && !this.ended) {
       this.ended = true;
       let winner = null; for (const e of this.ents.values()) if (e.alive) winner = e.id;
@@ -267,6 +315,8 @@ export class Match {
     // o host saiu: outro jogador assume os bots
     if (pid === this.host && this.socks.size) {
       this.host = this.socks.keys().next().value;
+      // o novo host recebe a posição de todo mundo antes de assumir os bots (não estavam todos no pacote dele)
+      send(this.socks.get(this.host), { t: 'snap', e: this.snapFor(this.host, Date.now(), true), tm: Date.now() - this.t0 });
       for (const e of this.ents.values()) if (e.id[0] === 'b') e.owner = this.host;
       this.bcast({ t: 'host', host: this.host });
     }

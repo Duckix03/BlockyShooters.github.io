@@ -1,10 +1,27 @@
 // Console de desenvolvedor: abre/fecha com a tecla ' (a que fica à esquerda do 1) ou F2.
+// Fica escondido pros jogadores: só abre no "modo dev". Pra ligar, abra o jogo uma vez com ?dev no fim do
+// link (ex.: lastsurvivor.pages.dev/?dev) — fica salvo nesse navegador. Pra desligar: ?dev=0.
+// (No localhost ele sempre abre.) Não é proteção de verdade: o online é protegido pelo servidor.
 // Mostra os logs do jogo (console.log/warn/error e erros não tratados) e aceita comandos (digite "help").
 'use strict';
 LS.Console = {
   open: false, lines: [], max: 400, history: [], hIdx: -1, god: false, speedMul: 1, timeScale: 1, fly: false, silent: null,
 
+  // modo dev: ?dev liga (e salva), ?dev=0 desliga; no localhost está sempre ligado
+  devMode() {
+    try {
+      const q = new URLSearchParams(location.search);
+      if (q.has('dev')) {
+        localStorage.setItem('ls_dev', q.get('dev') === '0' ? '0' : '1');
+        q.delete('dev'); const rest = q.toString(); // tira o ?dev do link (não fica aparecendo nem vai junto se copiar)
+        history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '') + location.hash);
+      }
+      return localStorage.getItem('ls_dev') === '1' || /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+    } catch (e) { return false; }
+  },
+
   init() {
+    this.dev = this.devMode();
     const el = document.createElement('div');
     el.id = 'devconsole'; el.className = 'hidden';
     el.innerHTML = `
@@ -38,7 +55,7 @@ LS.Console = {
 
     // tecla ' (à esquerda do 1, no teclado ABNT2 e no americano) ou F2 abre/fecha em qualquer tela (capture: chega antes do jogo)
     window.addEventListener('keydown', e => {
-      if (e.code === 'Backquote' || e.code === 'F2' || e.code === 'Insert') { e.preventDefault(); e.stopPropagation(); this.toggle(); return; }
+      if (this.dev && (e.code === 'Backquote' || e.code === 'F2' || e.code === 'Insert')) { e.preventDefault(); e.stopPropagation(); this.toggle(); return; }
       if (!this.open) return;
       if (e.code === 'Escape') { e.preventDefault(); e.stopPropagation(); this.toggle(false); }
     }, true);
@@ -90,7 +107,7 @@ LS.Console = {
 
   toggle(force) {
     const open = force === undefined ? !this.open : force;
-    if (open === this.open) return;
+    if (open === this.open || (open && !this.dev)) return;
     this.open = open;
     const G = LS.Game;
     if (open) {
