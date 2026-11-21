@@ -90,6 +90,11 @@ LS.Bot = class extends LS.Fighter {
       this.lastSeenT = G.time; this.targetVisible = seen === this.target;
     } else this.targetVisible = false;
     if (this.target && G.time - this.lastSeenT > 6) this.target = null;
+    // duelo: sempre sabe mais ou menos onde o oponente está (vai caçar em vez de vagar)
+    if (G.mode === 'duel' && !this.targetVisible) {
+      const o = G.fighters.find(f => f !== this && f.alive);
+      if (o) { this.alertPos = o.pos.clone(); this.alertT = 2; if (!this.target) this.target = o; this.lastSeenT = Math.max(this.lastSeenT, G.time - 5); }
+    }
 
     // 2) escolhe arma conforme a distância
     if (this.target && this.reloadT <= 0) {

@@ -69,7 +69,7 @@ LS.HUD = {
   update(dt, G) {
     const P = G.player, E = this.el;
     E.alive.textContent = G.aliveCount();
-    E.kills.textContent = P.kills;
+    E.kills.textContent = G.mode === 'duel' ? LS.Duel.totalKills() : P.kills;
     E.timer.textContent = LS.util.fmtTime(G.time);
     // vida/colete
     E['health-fill'].style.width = P.hp + '%';
@@ -123,12 +123,14 @@ LS.HUD = {
     else if (P.state === 'fall') pr = '<b>ESPAÇO</b> Abrir paraquedas';
     E.prompt.innerHTML = pr || '';
     // zona
-    const Z = G.zone, out = Z.isOutside(P.pos);
+    const Z = G.zone, out = Z.isOutside(P.pos), gas = G.mode === 'duel';
     E['zone-info'].classList.toggle('danger', out);
-    if (Z.finished) E['zone-text'].textContent = 'Zona final';
+    if (Z.finished) E['zone-text'].textContent = gas ? 'Gás fechado' : 'Zona final';
+    else if (gas) E['zone-text'].textContent = (Z.shrinking ? 'Gás fechando: ' : 'Gás fecha em: ') + LS.util.fmtTime(Z.timer);
     else E['zone-text'].textContent = (Z.shrinking ? 'Zona encolhendo: ' : 'Zona encolhe em: ') + LS.util.fmtTime(Z.timer);
     const dn = Math.hypot(P.pos.x - Z.next.x, P.pos.z - Z.next.y) - Z.nextR;
-    E['zone-dist'].textContent = out ? '⚠ FORA DA ZONA! -' + Z.dps + ' HP/s' : (dn > 0 && !Z.finished ? 'Próxima zona a ' + Math.round(dn) + ' m' : 'Você está na área segura');
+    if (gas) E['zone-dist'].textContent = out ? '⚠ NO GÁS! -' + Z.dps + ' HP/s' : 'Fique longe do gás';
+    else E['zone-dist'].textContent = out ? '⚠ FORA DA ZONA! -' + Z.dps + ' HP/s' : (dn > 0 && !Z.finished ? 'Próxima zona a ' + Math.round(dn) + ' m' : 'Você está na área segura');
     E['zone-vignette'].style.opacity = out ? 1 : 0;
     // mensagens
     if (this.centerT > 0) { this.centerT -= dt; if (this.centerT <= 0) E['center-msg'].classList.remove('show'); }
@@ -136,7 +138,7 @@ LS.HUD = {
     E['damage-vignette'].style.opacity = Math.max(this.dmgFlash, P.hp < 30 ? 0.5 + Math.sin(G.time * 5) * 0.2 : 0);
     // fps
     E.fps.classList.toggle('hidden', !LS.settings.showFps);
-    this.drawMinimap(G);
+    if (G.mode !== 'duel') this.drawMinimap(G); // duelo: sem minimapa (o galpão é pequeno)
     if (!E.bigmap.classList.contains('hidden')) this.drawBigMap(G);
   },
 

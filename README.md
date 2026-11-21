@@ -27,6 +27,28 @@
 
 ---
 
+## 🎮 Modos de Jogo
+
+No lobby, toque em **MODOS** pra escolher (o jogo lembra a sua escolha):
+
+| Modo | Como funciona |
+|:---:|:---|
+| 🪂 **Battle Royale** | O clássico: 31 jogadores na ilha, o último em pé vence |
+| ⚔️ **Duelo** | 1 contra 1 num galpão cheio de contêineres. **Primeiro a 5 rounds vence** |
+
+### ⚔️ Duelo
+
+- 🏭 **Galpão** com contêineres, caixas e barris pra se proteger
+- 🗺️ **5 mapas**: Corredores · Cruz · Labirinto · Torres · Pátio. **O mapa muda a cada round**, e os dois lados são sempre iguais (espelhados)
+- 🧍‍♂️🧍 Cada um **nasce num lado, de frente pro outro** (os lados trocam a cada round)
+- ⏱️ Contagem de 3 segundos antes de cada round
+- 🟣 **Gás** que fecha em 3 fases: ficar escondido não adianta
+- 🔫 Os dois recebem as **mesmas armas** a cada round (M4A1 + M1887, AK-47 + Desert Eagle, MP5 + SPAS-12, Kar98k + UMP, AWM + MP5), colete e capacete nível 2 e cura
+- 🔁 Todo mundo **revive** no começo de cada round, até alguém chegar a 5
+- Por enquanto o duelo é contra um bot (offline)
+
+---
+
 ## 🔫 Arsenal
 
 | Categoria | Armas | Estilo |
@@ -66,7 +88,7 @@ Espalhado pelas casas, cidades e pela natureza:
 
 ## 🤖 Inimigos com IA
 
-Os 30 bots jogam de verdade:
+Os 30 bots jogam de verdade, sempre no nível **normal**:
 
 - 🪂 Saltam do avião e escolhem onde pousar
 - 🔍 Procuram armas, munição, cura e equipamentos

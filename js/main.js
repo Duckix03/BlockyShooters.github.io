@@ -1,14 +1,14 @@
 // Menus, painéis de configuração e inicialização
 'use strict';
 LS.UI = {
-  screens: ['menu-main', 'lobby', 'panel-arsenal', 'panel-stats', 'panel-news', 'panel-settings', 'panel-controls', 'panel-credits', 'loading', 'pause', 'endscreen'],
+  screens: ['menu-main', 'lobby', 'panel-modes', 'panel-arsenal', 'panel-stats', 'panel-news', 'panel-settings', 'panel-controls', 'panel-credits', 'loading', 'pause', 'endscreen'],
   current: 'menu-main', backTo: 'menu-main',
 
   showScreen(id) {
     this.screens.forEach(s => document.getElementById(s).classList.toggle('active', s === id));
     this.current = id;
   },
-  subPanelOpen() { return ['panel-settings', 'panel-controls', 'panel-credits', 'panel-arsenal', 'panel-stats', 'panel-news'].includes(this.current); },
+  subPanelOpen() { return ['panel-modes', 'panel-settings', 'panel-controls', 'panel-credits', 'panel-arsenal', 'panel-stats', 'panel-news'].includes(this.current); },
   openPanel(id) { this.backTo = this.current; this.showScreen(id); },
   back() { this.showScreen(this.backTo || 'menu-main'); },
   updateMenuStats() {
@@ -61,7 +61,7 @@ LS.UI = {
       case 'stats': LS.Menu.renderStats(); this.openPanel('panel-stats'); break;
       case 'stats-reset': LS.Menu.resetStats(); break;
       case 'news': this.openPanel('panel-news'); break;
-      case 'difficulty': LS.Menu.cycleDifficulty(); break;
+      case 'modes': LS.Modes.open(); break;
       case 'mute': LS.Menu.toggleMute(); break;
       case 'fullscreen': LS.Menu.toggleFullscreen(); break;
       case 'lobby-start': LS.Lobby.startSearch(); break;
@@ -92,6 +92,7 @@ window.addEventListener('load', () => {
   LS.Lobby.build();
   LS.Anim.initLoco(); // carrega a run_f (anims/locomocao.json) para a corrida
   LS.Anim.initDrop(); // arrastar .glb/.fbx para a janela toca a animação no personagem
+  LS.Modes.init();
   LS.Menu.init();
   document.getElementById('arsenal-list').addEventListener('click', e => { const b = e.target.closest('[data-wpn]'); if (b) { LS.Audio.init(); LS.Audio.click(); LS.Menu.pickLobbyWeapon(b.dataset.wpn); } });
   LS.UI.bindSettings();

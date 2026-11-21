@@ -82,6 +82,7 @@ LS.Fighter.prototype._physics = function (dt, wish, opts) {
   }
 };
 LS.Fighter.prototype.clampToIsland = function () {
+  if (LS.Game.mode === 'duel') return; // o galpão do duelo fica no mar (as paredes seguram)
   const d = Math.hypot(this.pos.x, this.pos.z), M = 360;
   if (d > M) { this.pos.x *= M / d; this.pos.z *= M / d; }
 };
@@ -115,6 +116,8 @@ LS.Player = class extends LS.Fighter {
     const sy = Math.sin(this.camYaw), cy = Math.cos(this.camYaw);
     let wx = sy * fz + cy * fx, wz = cy * fz - sy * fx;
     const wl = Math.hypot(wx, wz); if (wl > 0) { wx /= wl; wz /= wl; }
+    const frozen = LS.Game.frozen; // contagem do duelo: só gira a câmera
+    if (frozen) { wx = 0; wz = 0; }
 
     if (LS.Console.fly && this.state !== 'plane') {
       // voo livre (comando "fly"): segue a câmera, ESPAÇO sobe, C/CTRL desce, SHIFT acelera; atravessa tudo
@@ -144,7 +147,7 @@ LS.Player = class extends LS.Fighter {
       if (this.aiming) speed *= 0.6;
       if (this.healType) speed *= 0.45;
       if (this.reloadT > 0) speed *= 0.85;
-      const jump = I.wasPressed('Space') && !this.crouch;
+      const jump = I.wasPressed('Space') && !this.crouch && !frozen;
       if (I.wasPressed('Space') && this.crouch) this.crouch = false;
       this.physics(dt, { x: wx, z: wz }, { speed, jump });
       // estilo Free Fire: o corpo só trava na direção da câmera atirando, mirando ou correndo;
@@ -159,7 +162,7 @@ LS.Player = class extends LS.Fighter {
       const hs = Math.hypot(this.vel.x, this.vel.z);
       if (this.onGround && hs > 1) { this.stepT -= dt * hs; if (this.stepT <= 0) { this.stepT = 2.6; LS.Audio.footstep(this.crouch ? 0.4 : this.running ? 1.3 : 0.8); } }
 
-      if (!LS.Game.inventoryOpen) {
+      if (!LS.Game.inventoryOpen && !frozen) {
         if (I.wasPressed('Digit1')) this.switchWeapon(0);
         if (I.wasPressed('Digit2')) this.switchWeapon(1);
         if (I.mouse.wheel && this.scopeUp && this.wdef()) { const mz = this.wdef().zoom; this.scopeZoom = LS.util.clamp((this.scopeZoom || mz) - I.mouse.wheel * 0.5, 2, mz); }

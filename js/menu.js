@@ -1,10 +1,5 @@
-// Lobby principal: barra do topo, nível/XP, moedas, dificuldade, arsenal, perfil e dicas
+// Lobby principal: barra do topo, nível/XP, moedas, modo de jogo, arsenal, perfil e dicas
 'use strict';
-LS.DIFFICULTY = {
-  facil: { label: 'FÁCIL', dmg: 0.35, skill: [0.15, 0.55] },
-  normal: { label: 'NORMAL', dmg: 0.55, skill: [0.35, 1] },
-  dificil: { label: 'DIFÍCIL', dmg: 0.8, skill: [0.65, 1] }
-};
 LS.Menu = {
   tips: [
     'Segure W durante a queda livre para mergulhar mais rápido.',
@@ -20,10 +15,8 @@ LS.Menu = {
   tipI: 0,
   xpFor(level) { return 150 * (level - 1) * (level - 1); },
   levelOf(xp) { return Math.floor(Math.sqrt((xp || 0) / 150)) + 1; },
-  diff() { return LS.DIFFICULTY[LS.settings.difficulty] || LS.DIFFICULTY.normal; },
 
   init() {
-    if (!LS.settings.difficulty) LS.settings.difficulty = 'normal';
     this.render();
     this.nextTip();
     setInterval(() => this.nextTip(), 7000);
@@ -38,13 +31,9 @@ LS.Menu = {
     document.getElementById('lb-xp').style.width = Math.round(((s.xp || 0) - a) / (b - a) * 100) + '%';
     document.getElementById('lb-coins').textContent = (s.coins || 0).toLocaleString('pt-BR');
     document.getElementById('lb-wins').textContent = s.wins || 0;
-    document.getElementById('lb-diff').textContent = this.diff().label;
+    if (LS.Modes) LS.Modes.render();
     document.getElementById('lb-mute').innerHTML = LS.icon(LS.settings.muted ? 'mute' : 'sound');
     document.getElementById('menu-player-name').textContent = name;
-  },
-  cycleDifficulty() {
-    const keys = Object.keys(LS.DIFFICULTY), i = keys.indexOf(LS.settings.difficulty);
-    LS.settings.difficulty = keys[(i + 1) % keys.length]; LS.saveSettings(); this.render();
   },
   toggleMute() { LS.settings.muted = !LS.settings.muted; LS.saveSettings(); LS.Game.applySettings(); this.render(); },
   toggleFullscreen() {
@@ -91,12 +80,22 @@ LS.Menu = {
 
   // ---- recompensa no fim da partida ----
   award(P, win) {
+    if (LS.Game.mode === 'duel') return this.awardDuel(P, win);
     const place = win ? 1 : P.placement || 31, s = LS.stats;
     const xp = P.kills * 120 + Math.round((31 - place) * 18) + (win ? 600 : 0) + Math.round(P.damageDealt * 0.5);
     const coins = P.kills * 50 + Math.round((31 - place) * 8) + (win ? 300 : 0);
     const before = this.levelOf(s.xp);
     s.xp = (s.xp || 0) + xp; s.coins = (s.coins || 0) + coins; s.dmg = (s.dmg || 0) + P.damageDealt;
     if (!s.best || place < s.best) s.best = place;
+    LS.saveStats();
+    return { xp, coins, levelUp: this.levelOf(s.xp) > before, level: this.levelOf(s.xp) };
+  },
+  // duelo: XP e moedas por round vencido (+ bônus de vitória)
+  awardDuel(P, win) {
+    const s = LS.stats, rounds = LS.Duel.score[0];
+    const xp = rounds * 90 + (win ? 350 : 0) + Math.round(P.damageDealt * 0.3), coins = rounds * 30 + (win ? 150 : 0);
+    const before = this.levelOf(s.xp);
+    s.xp = (s.xp || 0) + xp; s.coins = (s.coins || 0) + coins; s.dmg = (s.dmg || 0) + P.damageDealt;
     LS.saveStats();
     return { xp, coins, levelUp: this.levelOf(s.xp) > before, level: this.levelOf(s.xp) };
   }

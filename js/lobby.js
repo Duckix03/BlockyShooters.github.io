@@ -88,6 +88,7 @@ LS.Lobby = {
     this.searching = true; this.mmCount = 1; this.mmT = 0;
     document.getElementById('lobby-mm').classList.remove('hidden');
     this.updateCount();
+    if (LS.Modes.id === 'duel') { document.querySelector('#lobby-mm h3').textContent = 'PROCURANDO OPONENTE'; this.mmT = LS.util.rand(1, 1.8); return; } // duelo: 1v1 contra bot (offline por enquanto)
     if (!LS.Net.configured()) return; // sem servidor: busca "de mentira" e partida contra bots (como antes)
     // online: procura jogadores de verdade por até 30 s; se não achar ninguém, joga contra bots
     this.online = true;
@@ -110,7 +111,8 @@ LS.Lobby = {
     document.getElementById('lobby-mm').classList.add('hidden');
     const t = document.querySelector('#lobby-mm h3'); if (t) t.textContent = 'PROCURANDO PARTIDA';
   },
-  updateCount() { document.getElementById('mm-count').textContent = this.mmCount + ' / ' + (LS.BOT_COUNT + 1) + ' jogadores'; },
+  updateCount() { document.getElementById('mm-count').textContent = this.mmCount + ' / ' + LS.Modes.maxPlayers() + ' jogadores'; },
+  launch() { if (LS.Modes.id === 'duel') LS.Game.startDuel(); else LS.Game.startMatch(); },
 
   update(dt) {
     const t = performance.now() * 0.001;
@@ -140,9 +142,11 @@ LS.Lobby = {
       this.mmT -= dt;
       if (this.mmT <= 0) {
         this.mmT = LS.util.rand(0.03, 0.12);
-        this.mmCount = Math.min(LS.BOT_COUNT + 1, this.mmCount + LS.util.randInt(1, 2));
+        const max = LS.Modes.maxPlayers();
+        if (max <= 2) this.mmT = LS.util.rand(0.6, 1.1); // duelo: acha o oponente rapidinho
+        this.mmCount = Math.min(max, this.mmCount + LS.util.randInt(1, 2));
         this.updateCount();
-        if (this.mmCount >= LS.BOT_COUNT + 1) { this.searching = false; setTimeout(() => { document.getElementById('lobby-mm').classList.add('hidden'); LS.Game.startMatch(); }, 500); }
+        if (this.mmCount >= max) { this.searching = false; setTimeout(() => { document.getElementById('lobby-mm').classList.add('hidden'); const t = document.querySelector('#lobby-mm h3'); if (t) t.textContent = 'PROCURANDO PARTIDA'; this.launch(); }, 500); }
       }
     }
   }

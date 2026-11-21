@@ -21,7 +21,8 @@ LS.ICONS = {
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   dice: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h.01M15 15h.01M15 9h.01M9 15h.01M12 12h.01"/>',
   play: '<path d="M7 4l13 8-13 8z" fill="currentColor"/>',
-  back: '<path d="M15 5l-7 7 7 7"/>'
+  back: '<path d="M15 5l-7 7 7 7"/>',
+  modes: '<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><path d="M17 13v8M13 17h8"/>'
 };
 LS.icon = (n, cls) => '<svg class="svgi' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + (LS.ICONS[n] || '') + '</svg>';
 LS.fillIcons = root => (root || document).querySelectorAll('i[data-icon]').forEach(el => { el.outerHTML = LS.icon(el.dataset.icon, el.className); });

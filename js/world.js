@@ -129,7 +129,7 @@ LS.World = {
   _collideOnce(pos, r, height, prev) {
     let hit = false; const stamp = ++this._rockStamp;
     for (const b of this.nearBoxes(pos.x, pos.z, r + 1)) {
-      if (b.roof) continue;
+      if (b.roof || b.floor) continue; // piso (galpão do duelo): só serve de chão, nunca empurra pro lado
       if (b.rock) { // pedra: colide com a superfície de verdade (uma vez por pedra, não por camada)
         if (b.rock.stamp === stamp) continue; b.rock.stamp = stamp;
         if (this.rockPush(pos, r, height, b.rock, prev)) hit = true;
