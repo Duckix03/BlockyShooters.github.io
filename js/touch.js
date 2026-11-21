@@ -21,8 +21,23 @@ LS.Touch = {
     this.build();
     this.fit(); window.addEventListener('resize', () => this.fit());
   },
-  // menus e HUD encolhem em tela pequena (celular deitado tem pouca altura)
-  fit() { document.documentElement.style.setProperty('--uiz', Math.max(0.48, Math.min(1, window.innerHeight / 760)).toFixed(3)); },
+  // Tamanho da interface no celular. Antes tudo encolhia junto com a altura da tela (no celular deitado
+  // ficava ~58% e pequeno demais). Agora os menus e a HUD ficam bem maiores, no estilo Free Fire,
+  // e o layout do celular (css/ui.css) se arruma pra caber. O jogador ainda ajusta em Configurações.
+  //  --uiz: menus · --hz: HUD (vida, mapa, armas) · --tbs / --tbo: tamanho e opacidade dos botões
+  //  --cut-l / --cut-r: área do entalhe/furo da câmera (o app Android manda; no navegador o CSS usa env())
+  fit() {
+    const S = LS.settings, H = window.innerHeight, k = Math.max(0.8, Math.min(1.25, S.uiSize || 1));
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const st = document.documentElement.style;
+    st.setProperty('--uiz', clamp(clamp(H / 560, 0.66, 1) * k, 0.55, 1.2).toFixed(3));
+    st.setProperty('--hz', clamp(clamp(H / 520, 0.7, 1) * k, 0.6, 1.2).toFixed(3));
+    st.setProperty('--tbs', clamp(S.btnSize || 1, 0.7, 1.4).toFixed(2));
+    st.setProperty('--tbo', clamp(S.btnAlpha === undefined ? 0.85 : S.btnAlpha, 0.3, 1).toFixed(2));
+    document.body.classList.toggle('short', H < 520); // celular deitado: layout compacto dos menus
+    const ins = window.__lsInsets; // vem do app Android (MainActivity)
+    if (ins) { st.setProperty('--cut-l', (ins.l || 0) + 'px'); st.setProperty('--cut-r', (ins.r || 0) + 'px'); }
+  },
   btn(id, label, icon, cls) { return '<button class="tb ' + (cls || '') + '" data-tb="' + id + '">' + (icon ? '<svg viewBox="0 0 24 24">' + icon + '</svg>' : '') + (label ? '<span>' + label + '</span>' : '') + '</button>'; },
   build() {
     const ICON = {
@@ -70,7 +85,8 @@ LS.Touch = {
       const joyBusy = [...this.roles.values()].some(r => r.role === 'joy');
       if (!joyBusy && t.clientX < W * 0.42 && t.clientY > H * 0.3) {
         this.roles.set(t.identifier, { role: 'joy', x0: t.clientX, y0: t.clientY });
-        this.joyEl.style.left = t.clientX + 'px'; this.joyEl.style.top = t.clientY + 'px'; this.joyEl.classList.add('on');
+        const o = this.joyEl.parentNode.getBoundingClientRect();
+        this.joyEl.style.left = (t.clientX - o.left) + 'px'; this.joyEl.style.top = (t.clientY - o.top) + 'px'; this.joyEl.classList.add('on');
       } else this.roles.set(t.identifier, { role: 'look', x: t.clientX, y: t.clientY });
     }
   },
@@ -105,7 +121,7 @@ LS.Touch = {
       const r = this.roles.get(t.identifier); if (!r) continue;
       used = true;
       if (r.role === 'joy') {
-        const R = Math.min(window.innerWidth, window.innerHeight) * 0.11;
+        const R = Math.min(window.innerWidth, window.innerHeight) * 0.13 * (LS.settings.btnSize || 1);
         let dx = (t.clientX - r.x0) / R, dy = (t.clientY - r.y0) / R;
         const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; }
         I.axis.x = dx; I.axis.y = dy;
@@ -136,6 +152,9 @@ LS.Touch = {
     if (!this.active) return;
     const G = LS.Game, P = G.player, ui = document.getElementById('touch-ui');
     ui.classList.toggle('air', !!P && P.state !== 'ground');
+    if (P && P.meds) for (const [b, n] of [['med', P.meds.medkit], ['band', P.meds.bandage]]) {
+      const el = ui.querySelector('[data-tb=' + b + ']'); el.dataset.n = n | 0; el.classList.toggle('empty', !n);
+    }
     const use = ui.querySelector('[data-tb=use]');
     use.classList.toggle('hidden', !(P && P.prompt && /\bE\b|<b>E<\/b>/.test(P.prompt)));
     if (P && (!P.alive || P.state !== 'ground' || !P.weapon()) && LS.Input.mouse.right) { LS.Input.mouse.right = false; ui.querySelector('[data-tb=aim]').classList.remove('lit'); }
