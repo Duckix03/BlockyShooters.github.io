@@ -21,7 +21,7 @@ LS.Input = {
       this.mouse.dy += e.movementY || 0;
     });
     document.addEventListener('mousedown', e => {
-      if (!this.enabled || (LS.Console && LS.Console.open)) return;
+      if (!this.enabled || (LS.Console && LS.Console.open) || (LS.Touch && LS.Touch.active)) return; // celular: os botões de toque cuidam disso
       if (!this.locked) { this.lock(); return; }
       if (e.button === 0) { this.mouse.left = true; this.mouse.leftPressed = true; }
       if (e.button === 2) this.mouse.right = true;
@@ -40,6 +40,7 @@ LS.Input = {
   },
 
   lock() {
+    if (LS.Touch && LS.Touch.active) return; // celular não tem mouse preso
     if (this.canvas && this.canvas.requestPointerLock) {
       const p = this.canvas.requestPointerLock();
       if (p && p.catch) p.catch(() => { /* usuário precisa clicar novamente */ });

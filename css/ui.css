@@ -809,3 +809,61 @@ input:disabled#lobby-name { opacity: 0.6; cursor: not-allowed; }
 .fr-guest b { font-family: var(--display); font-weight: 400; font-size: 22px; color: var(--accent2); }
 .fr-guest p { color: var(--mut); margin: 8px 0 14px; }
 #panel-friends .pf-err { margin-top: 8px; }
+
+/* =================== CELULAR =================== */
+#touch-area, #touch-ui, #rotate-msg { display: none; }
+body.mobile { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+body.mobile #touch-area { display: block; position: absolute; inset: 0; z-index: 0; pointer-events: auto; touch-action: none; }
+body.mobile #touch-ui { display: block; position: absolute; inset: 0; pointer-events: none; z-index: 30; }
+#touch-ui .tb { position: absolute; pointer-events: auto; touch-action: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  width: 11vh; height: 11vh; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.55); background: rgba(10, 14, 24, 0.38); color: #fff; padding: 0;
+  font-family: var(--display); font-size: 1.9vh; letter-spacing: 0.5px; transition: transform 0.08s, background 0.08s; backdrop-filter: blur(2px); }
+#touch-ui .tb svg { width: 55%; height: 55%; }
+#touch-ui .tb.down { transform: scale(0.9); background: rgba(255, 170, 40, 0.55); }
+#touch-ui .tb.lit { background: rgba(255, 197, 49, 0.6); border-color: #ffd34d; color: #2a1400; }
+#touch-ui .tb.hidden { display: none; }
+#touch-ui .fire { right: 5vh; bottom: 19vh; width: 21vh; height: 21vh; border-color: rgba(255, 90, 90, 0.85); background: rgba(200, 30, 40, 0.35); }
+#touch-ui .fire2 { left: 3vh; top: 26vh; width: 12vh; height: 12vh; border-color: rgba(255, 90, 90, 0.75); background: rgba(200, 30, 40, 0.3); }
+#touch-ui .aim { right: 29vh; bottom: 33vh; }
+#touch-ui .jump { right: 4vh; bottom: 4vh; width: 12vh; height: 12vh; }
+#touch-ui .crouch { right: 18vh; bottom: 3vh; }
+#touch-ui .reload { right: 28vh; bottom: 18vh; width: 10vh; height: 10vh; }
+#touch-ui .med { right: 31vh; bottom: 3vh; width: 9vh; height: 9vh; }
+#touch-ui .band { right: 41vh; bottom: 3vh; width: 9vh; height: 9vh; }
+#touch-ui .use { right: 31vh; bottom: 46vh; width: auto; height: 8vh; padding: 0 2.4vh; border-radius: 4vh; flex-direction: row; gap: 1vh; background: rgba(255, 170, 40, 0.75); border-color: #ffe09a; color: #2a1400; font-size: 2.4vh; }
+#touch-ui .use svg { width: 4vh; height: 4vh; }
+#touch-ui .bag, #touch-ui .map, #touch-ui .pause { width: 8vh; height: 8vh; border-radius: 2.4vh; }
+#touch-ui .pause { top: 2vh; right: calc(230px * var(--uiz, 1) + 3vh); }
+#touch-ui .bag { top: calc(240px * var(--uiz, 1) + 3vh); right: 2vh; }
+#touch-ui .map { top: calc(240px * var(--uiz, 1) + 3vh); right: 12vh; }
+#touch-ui.air .fire, #touch-ui.air .fire2, #touch-ui.air .aim, #touch-ui.air .crouch, #touch-ui.air .reload, #touch-ui.air .med, #touch-ui.air .band { display: none; }
+#joy { position: absolute; left: 16vh; top: 72vh; width: 24vh; height: 24vh; margin: -12vh 0 0 -12vh; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.35); background: rgba(10, 14, 24, 0.22); opacity: 0.55; pointer-events: none; transition: opacity 0.15s; }
+#joy.on { opacity: 1; transition: none; }
+#joy i { position: absolute; left: 50%; top: 50%; width: 10vh; height: 10vh; margin: -5vh 0 0 -5vh; border-radius: 50%; background: rgba(255, 255, 255, 0.85); box-shadow: 0 0 12px rgba(0, 0, 0, 0.4); }
+/* HUD no celular: barras em cima à esquerda, armas embaixo no meio, tudo menor */
+body.mobile #top-left, body.mobile #zone-info, body.mobile #minimap-wrap, body.mobile #killfeed, body.mobile #duel-score, body.mobile #heal-progress, body.mobile #prompt { zoom: var(--uiz, 1); }
+body.mobile #bottom-left { zoom: calc(var(--uiz, 1) * 0.8); left: 16px; top: 64px; bottom: auto; }
+body.mobile #bottom-right { zoom: calc(var(--uiz, 1) * 0.8); right: auto; left: 50%; transform: translateX(-50%); bottom: 10px; display: flex; align-items: flex-end; gap: 10px; }
+body.mobile #bottom-right #weapon-slots { margin: 0; }
+body.mobile #meds { display: none; }
+body.mobile #slot-0, body.mobile #slot-1 { pointer-events: auto; }
+body.mobile #center-msg { zoom: var(--uiz, 1); }
+body.mobile #duel-count { zoom: var(--uiz, 1); }
+body.mobile #victory .vic-band, body.mobile #victory .vic-sub, body.mobile #victory .vic-back { zoom: var(--uiz, 1); }
+body.mobile #inventory .inv-panel, body.mobile .shop-box { zoom: var(--uiz, 1); }
+body.mobile #bigmap { zoom: var(--uiz, 1); }
+/* menus no celular: tudo encolhe junto (proporcional à altura da tela) */
+body.mobile #menu-main > *:not(.menu-bg), body.mobile .panel, body.mobile #lobby > *, body.mobile .mm-box { zoom: var(--uiz, 1); }
+body.mobile .panel { max-height: calc(96vh / var(--uiz, 1)); overflow-y: auto; }
+body.mobile .wr-panel { width: calc(58vw / var(--uiz, 1)) !important; bottom: auto !important; height: calc(100vh / var(--uiz, 1) - 36px); }
+body.mobile .lb-chat { display: none; }
+body.mobile kbd { display: none; }
+/* celular em pé: pede pra deitar */
+@media (orientation: portrait) {
+  body.mobile #rotate-msg { display: flex; position: fixed; inset: 0; z-index: 999; align-items: center; justify-content: center; text-align: center; background: #0b0f1c; color: #fff; }
+  #rotate-msg div { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px; }
+  #rotate-msg svg { width: 80px; height: 80px; color: var(--accent2); animation: rotPhone 1.8s ease-in-out infinite; }
+  #rotate-msg b { font-family: var(--display); font-weight: 400; font-size: 26px; letter-spacing: 1px; }
+  #rotate-msg span { font-size: 14px; color: var(--mut); }
+}
+@keyframes rotPhone { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
