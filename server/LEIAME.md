@@ -23,7 +23,7 @@ Na partida, o **servidor é a autoridade**:
 
 A IA dos bots roda no navegador de um dos jogadores (o "host"). Se ele sair, outro jogador assume.
 Os comandos de trapaça do console (`give`, `god`, `tp`, `esp`...) ficam desligados no online.
-O console fica escondido pros jogadores: só abre depois de abrir o jogo uma vez com `?dev` no link (`?dev=0` desliga).
+O console fica escondido pros jogadores. Pra ligar: **perfil → ADMIN → Console de dev** (só o owner vê), ou abrir o jogo uma vez com `?dev` no link (`?dev=0` desliga). Depois abre com a tecla `'` ou `F2`.
 
 **Atualizou o servidor (ex.: contas novas)?** Rode `npx wrangler deploy` de novo dentro da pasta `server`. Sem isso, o botão de criar conta dá erro.
 
