@@ -322,8 +322,8 @@ LS.CharacterModel = class {
     const spd = s.speed || 0;
     this.runK = E(this.runK || 0, s.running ? 1 : 0, 6);
     this.moveK = E(this.moveK || 0, cl(spd / 4.5, 0, 1), 8);
-    const stride = L(0.19, 0.3, this.runK) * this.moveK * (1 - ck * 0.35);    // meio passo (m)
-    this.phase += dt * spd / Math.max(0.14, stride);                          // pé de apoio acompanha o chão (sem patinar)
+    const stride = L(0.27, 0.34, this.runK) * this.moveK * (1 - ck * 0.35);   // meio passo (m): passada longa
+    this.phase += dt * spd * L(1.65, 1.3, this.runK);                         // ritmo calmo: ~2,4 passos/s andando
     const amp = this.moveK * L(0.7, 1.0, this.runK) * (1 - ck * 0.4), sw = Math.sin(this.phase) * amp, cph = Math.cos(this.phase);
     const liftH = this.moveK * L(0.07, 0.13, this.runK) * (1 - ck * 0.5);
     // direita vai pra trás quando sw > 0 (o braço direito vai pra frente: passada cruzada)
