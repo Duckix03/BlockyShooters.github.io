@@ -112,6 +112,7 @@ Seu visual fica salvo para as próximas partidas.
 ## 🦴 Esqueleto e Animações Externas
 
 - O personagem tem **15 peças com esqueleto** (estilo R15): tronco de cima e de baixo, cabeça, braço/antebraço/mão e coxa/canela/pé
+- Animações com juntas: pés com IK (pisam no chão sem patinar, joelho dobra ao andar, agachar e aterrissar), mão esquerda segura a arma de verdade (guarda-mão, pente, bomba) e cotovelos naturais em todas as poses
 - Aceita animações de fora em **.glb**, **.gltf** e **.fbx** (Mixamo, Quaternius, Kenney…)
 - Converte automaticamente qualquer esqueleto humanoide para o boneco de blocos
 - Mistura com as animações do jogo, de corpo inteiro ou só da cintura pra cima/baixo

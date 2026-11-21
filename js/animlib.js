@@ -238,7 +238,7 @@ LS.Anim = {
     const carryOn = on && s.armed && !s.armedAim && !(s.reload >= 0) && !s.heal;
     st.carry = cl((st.carry || 0) + (carryOn ? dt / 0.15 : -dt / 0.12), 0, 1);
     const ck = st.carry * st.carry * (3 - 2 * st.carry);
-    m.gunHolder.rotation.x = this.CARRY.gun * ck;
+    m.gunHolder.rotation.x = LS.CharacterModel.CARRY.gun * ck;
     if (st.w <= 0) return;
     st.t = (st.t + dt * cl(spd / this.RUN_SPEED, 0.6, 1.4)) % c.duration; // passada acompanha a velocidade
     const fr = st.t * c.fps, i0 = Math.floor(fr) % c.frames, i1 = Math.min(c.frames - 1, i0 + 1), a = fr - Math.floor(fr);
@@ -262,15 +262,10 @@ LS.Anim = {
     }
     // antebraços e mãos: sem arma, da animação; com arma, retos (o código segura a arma)
     for (const b of ['RightForeArm', 'RightHand', 'LeftForeArm', 'LeftHand']) blend(b, w * (1 - arm));
-    if (ck > 0) {
-      const C = this.CARRY, e = st.e || (st.e = new THREE.Euler());
-      const sw = Math.sin(st.t / c.duration * Math.PI * 2) * C.swing; // balança junto com a passada
-      m.armR.quaternion.slerp(st.q.setFromEuler(e.set(C.R[0] + sw, C.R[1], C.R[2])), ck);
-      m.armL.quaternion.slerp(st.q.setFromEuler(e.set(C.L[0] + sw, C.L[1], C.L[2])), ck);
-    }
+    if (ck > 0) m.carryPose(ck, Math.sin(st.t / c.duration * Math.PI * 2) * LS.CharacterModel.CARRY.swing);
+    // com arma: a mão esquerda volta a segurar a arma depois do tronco mexer
+    else if (arm > 0 && m._ikW > 0.01 && m._ikPt) m.gripLeft(m._ikW * arm, m._ikPt);
   },
-  // braços (em relação ao tronco) e inclinação da arma na corrida armada
-  CARRY: { R: [-1.2, 0, 0.45], L: [-1.7, 0, -0.6], gun: -0.6, swing: 0.06 },
 
   // ---------- ajudantes ----------
   player(model) { return model.anim || (model.anim = new LS.AnimPlayer(model)); },
