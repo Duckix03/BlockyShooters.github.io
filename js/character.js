@@ -31,28 +31,35 @@ LS.CharacterModel = class {
     this.look = opts.look || K.randomLook();
     this.seed = Math.floor(Math.random() * 1e6) + 1;
     this.tex = K.makeTexture(this.look, this.seed);
-    this.mat = new THREE.MeshLambertMaterial({ map: this.tex });
+    this.mat = new THREE.MeshLambertMaterial({ map: this.tex, skinning: true });
     const M = c => LS.lambert(c);
+    // ---- esqueleto em 15 peças (como o R15): tronco de cima/baixo, cabeça, braço/antebraço/mão e coxa/canela/pé ----
     this.root = new THREE.Group();
-    this.hips = new THREE.Bone(); this.hips.name = 'Hips'; this.hipsY = 12 * S; this.hips.position.y = this.hipsY; this.root.add(this.hips);
-    this.torso = new THREE.Bone(); this.torso.name = 'Spine'; this.hips.add(this.torso);
-    this.torso.add(new THREE.Mesh(K.geometry('body', 'bottom'), this.mat));
-    this.vestMesh = new THREE.Mesh(LS.boxGeo(8.8 * S, 8 * S, 4.8 * S, 4 * S), M(0x4a5a3a)); this.vestMesh.position.y = 3.6 * S; this.vestMesh.visible = false; this.torso.add(this.vestMesh);
-    this.bagMesh = new THREE.Mesh(LS.boxGeo(6 * S, 8 * S, 3 * S, 4 * S), M(0x5a4a2a)); this.bagMesh.position.set(0, 3 * S, -3.5 * S); this.bagMesh.visible = false; this.torso.add(this.bagMesh);
-    this.headG = new THREE.Bone(); this.headG.name = 'Head'; this.headG.position.y = 12 * S; this.torso.add(this.headG);
-    this.headG.add(new THREE.Mesh(K.geometry('head', 'bottom'), this.mat));
+    const B = (name, parent, x, y) => { const b = new THREE.Bone(); b.name = name; b.position.set(x, y, 0); parent.add(b); return b; };
+    this.hipsY = 12 * S;
+    this.hips = B('Hips', this.root, 0, this.hipsY);           // tronco de baixo (quadril)
+    this.torso = B('Spine', this.hips, 0, 5 * S);              // tronco de cima, gira na cintura
+    this.torsoC = new THREE.Group(); this.torsoC.position.y = -5 * S; this.torso.add(this.torsoC); // origem no quadril (colete, mochila)
+    this.headG = B('Head', this.torso, 0, 7 * S);
+    const arm = (side, P) => { const a = B(P + 'Arm', this.torso, side * 6 * S, 7 * S), f = B(P + 'ForeArm', a, 0, -5 * S), h = B(P + 'Hand', f, 0, -5 * S); return [a, f, h]; };
+    const leg = (side, P) => { const u = B(P + 'UpLeg', this.hips, side * 2 * S, 0), l = B(P + 'Leg', u, 0, -6 * S), f = B(P + 'Foot', l, 0, -5 * S); return [u, l, f]; };
+    [this.armR, this.foreR, this.handR] = arm(-1, 'Right'); [this.armL, this.foreL, this.handL] = arm(1, 'Left');
+    [this.legR, this.shinR, this.footR] = leg(-1, 'Right'); [this.legL, this.shinL, this.footL] = leg(1, 'Left');
+    this.bones = {};
+    for (const n of LS.CharacterModel.BONES) this.root.traverse(o => { if (o.isBone && o.name === n) this.bones[n] = o; });
+    // uma malha só, com cada pedaço preso no seu osso (1 desenho por personagem)
+    this.root.updateMatrixWorld(true);
+    this.body = new THREE.SkinnedMesh(LS.CharacterModel.skinGeometry(this), this.mat);
+    this.body.frustumCulled = false; this.root.add(this.body); this.body.updateMatrixWorld(true);
+    this.skeleton = new THREE.Skeleton(LS.CharacterModel.BONES.map(n => this.bones[n]));
+    this.body.bind(this.skeleton);
+    this.vestMesh = new THREE.Mesh(LS.boxGeo(8.8 * S, 8 * S, 4.8 * S, 4 * S), M(0x4a5a3a)); this.vestMesh.position.y = 3.6 * S; this.vestMesh.visible = false; this.torsoC.add(this.vestMesh);
+    this.bagMesh = new THREE.Mesh(LS.boxGeo(6 * S, 8 * S, 3 * S, 4 * S), M(0x5a4a2a)); this.bagMesh.position.set(0, 3 * S, -3.5 * S); this.bagMesh.visible = false; this.torsoC.add(this.bagMesh);
     this.helmetMesh = new THREE.Mesh(LS.boxGeo(9 * S, 4 * S, 9 * S, 2 * S), M(0x3a4a2a)); this.helmetMesh.position.y = 5.5 * S; this.helmetMesh.visible = false; this.headG.add(this.helmetMesh);
     this.brim = new THREE.Mesh(LS.boxGeo(8 * S, 0.8 * S, 3 * S), M(0x333333)); this.brim.position.set(0, 6.4 * S, 5.4 * S); this.headG.add(this.brim);
     this.accG = new THREE.Group(); this.headG.add(this.accG);
-    const mkArm = side => { const g = new THREE.Bone(); g.name = side < 0 ? 'RightArm' : 'LeftArm'; g.position.set(side * 6 * S, 12 * S, 0); g.add(new THREE.Mesh(K.geometry('arm', 'top'), this.mat)); this.torso.add(g); return g; };
-    this.armR = mkArm(-1); this.armL = mkArm(1);
-    const mkLeg = side => { const g = new THREE.Bone(); g.name = side < 0 ? 'RightUpLeg' : 'LeftUpLeg'; g.position.set(side * 2 * S, 0, 0); g.add(new THREE.Mesh(K.geometry('leg', 'top'), this.mat)); this.hips.add(g); return g; };
-    this.legR = mkLeg(-1); this.legL = mkLeg(1);
-    // esqueleto: os 7 ossos têm nomes padrão (os mesmos do Mixamo) para receber animações de fora (js/animlib.js)
-    this.bones = { Hips: this.hips, Spine: this.torso, Head: this.headG, RightArm: this.armR, LeftArm: this.armL, RightUpLeg: this.legR, LeftUpLeg: this.legL };
-    this.skeleton = new THREE.Skeleton(Object.values(this.bones));
     this.anim = null; // LS.AnimPlayer, criado quando tocar a primeira animação externa
-    this.gunHolder = new THREE.Group(); this.gunHolder.position.set(0, -11 * S, 0.5 * S); this.armR.add(this.gunHolder);
+    this.gunHolder = new THREE.Group(); this.gunHolder.position.set(0, -1 * S, 0.5 * S); this.handR.add(this.gunHolder);
     this.gun = null; this.gunId = null;
     // paraquedas
     this.chute = new THREE.Group();
@@ -103,7 +110,7 @@ LS.CharacterModel = class {
       this[key] = lv ? LS.Items.mesh(LS.Items.gearGeometry(kind, lv)) : null;
       if (this[key]) parent.add(this[key]);
     };
-    put('vestModel', this.torso, 'vest', vest); put('helmetModel', this.headG, 'helmet', helmet); put('bagModel', this.torso, 'bag', bag);
+    put('vestModel', this.torsoC, 'vest', vest); put('helmetModel', this.headG, 'helmet', helmet); put('bagModel', this.torsoC, 'bag', bag);
     this.vestMesh.visible = this.helmetMesh.visible = this.bagMesh.visible = false;
     this.brim.visible = !helmet && this.look.hairStyle === 'boné' && !this.hatVisible;
     this.accG.children.forEach(m => { if (m.position.y > 6 * LS.Skin.PX) m.visible = !helmet; });
@@ -125,12 +132,12 @@ LS.CharacterModel = class {
     const id = on ? this.gunId : null;
     if (this.handMagId === id) return;
     this.handMagId = id;
-    if (this.handMag) { this.armL.remove(this.handMag); this.handMag = null; }
+    if (this.handMag) { this.handL.remove(this.handMag); this.handMag = null; }
     if (!id || !LS.Items.gunTags(id).includes('mag')) return;
     const geo = LS.Items.gunPart(id, 'mag'); geo.computeBoundingBox();
     const c = geo.boundingBox.getCenter(new THREE.Vector3()), S = LS.Skin.PX, g = new THREE.Group(), m = LS.Items.mesh(geo);
-    m.position.copy(c).negate(); g.add(m); g.position.set(0, -12.6 * S, 0.6 * S); g.rotation.set(0.3, 0, 0);
-    this.armL.add(g); this.handMag = g;
+    m.position.copy(c).negate(); g.add(m); g.position.set(0, -2.6 * S, 0.6 * S); g.rotation.set(0.3, 0, 0);
+    this.handL.add(g); this.handMag = g;
   }
   punch() { this.punchT = 1; this.punchSide = -(this.punchSide || -1); }
   hit() { this.hitT = 1; this.hitSide = Math.random() < 0.5 ? -1 : 1; }
@@ -142,11 +149,11 @@ LS.CharacterModel = class {
   setMedInHand(type) {
     if (this.medType === type) return;
     this.medType = type;
-    if (this.medMesh) { this.armL.remove(this.medMesh); this.medMesh = null; }
+    if (this.medMesh) { this.handL.remove(this.medMesh); this.medMesh = null; }
     if (type) {
       const S = LS.Skin.PX, m = LS.Items.mesh(LS.Items.itemGeometry({ type: 'med', id: type }));
-      m.scale.setScalar(type === 'medkit' ? 0.55 : 0.8); m.position.set(0, -12.5 * S, 1.2 * S); m.rotation.set(Math.PI / 2, 0, 0);
-      this.armL.add(m); this.medMesh = m;
+      m.scale.setScalar(type === 'medkit' ? 0.55 : 0.8); m.position.set(0, -2.5 * S, 1.2 * S); m.rotation.set(Math.PI / 2, 0, 0);
+      this.handL.add(m); this.medMesh = m;
     }
   }
   // morte: perde as pernas (joelhos), cai com aceleração e quica de leve no chão
@@ -172,6 +179,7 @@ LS.CharacterModel = class {
     // zera o que o código não controla, para uma animação externa que acabou não deixar o osso torto
     this.hips.position.x = 0; this.hips.position.z = 0; this.hips.rotation.y = 0;
     this.legR.rotation.y = 0; this.legL.rotation.y = 0;
+    for (const n of LS.CharacterModel.JOINTS) this.bones[n].quaternion.set(0, 0, 0, 1); // cotovelo, mão, joelho e pé: retos (o código não dobra)
     this.animateBase(s);
     if (LS.Anim) LS.Anim.loco(this, s); // corrida oficial (run_f)
     if (this.anim) this.anim.apply(s.dt || 0, s);
@@ -386,4 +394,42 @@ LS.CharacterModel = class {
     if (this.gun) { this.gun.position.set(0, rk * 0.045, 0); this.gun.rotation.set(Math.PI / 2 - rk * 0.12, 0, 0); }
     this.gunHolder.rotation.y = E(this.gunHolder.rotation.y, roll, 12);
   }
+};
+// ordem dos ossos no esqueleto (nomes padrão do Mixamo; equivalentes do R15 do lado)
+LS.CharacterModel.BONES = [
+  'Hips', 'Spine', 'Head',                        // LowerTorso, UpperTorso, Head
+  'RightArm', 'RightForeArm', 'RightHand',        // RightUpperArm, RightLowerArm, RightHand
+  'LeftArm', 'LeftForeArm', 'LeftHand',
+  'RightUpLeg', 'RightLeg', 'RightFoot',          // RightUpperLeg, RightLowerLeg, RightFoot
+  'LeftUpLeg', 'LeftLeg', 'LeftFoot'];
+LS.CharacterModel.JOINTS = ['RightForeArm', 'RightHand', 'LeftForeArm', 'LeftHand', 'RightLeg', 'RightFoot', 'LeftLeg', 'LeftFoot'];
+// pedaços de cada osso: [osso, parte do atlas, linha inicial, linha final, pivô] (linhas em pixels, de cima pra baixo)
+LS.CharacterModel.PIECES = [
+  ['Hips', 'body', 7, 12, 'bottom'], ['Spine', 'body', 0, 7, 'bottom'], ['Head', 'head', 0, 8, 'bottom'],
+  ['RightArm', 'arm', 0, 5, 'top'], ['RightForeArm', 'arm', 5, 10, 'top'], ['RightHand', 'arm', 10, 12, 'top'],
+  ['LeftArm', 'arm', 0, 5, 'top'], ['LeftForeArm', 'arm', 5, 10, 'top'], ['LeftHand', 'arm', 10, 12, 'top'],
+  ['RightUpLeg', 'leg', 0, 6, 'top'], ['RightLeg', 'leg', 6, 11, 'top'], ['RightFoot', 'leg', 11, 12, 'top'],
+  ['LeftUpLeg', 'leg', 0, 6, 'top'], ['LeftLeg', 'leg', 6, 11, 'top'], ['LeftFoot', 'leg', 11, 12, 'top']];
+// junta os 15 pedaços numa geometria só, com peso 1 no osso de cada pedaço (igual para todos os personagens)
+LS.CharacterModel.skinGeometry = function (model) {
+  if (this._skinGeo) return this._skinGeo;
+  const pos = [], nor = [], uv = [], idx = [], si = [], sw = [], wp = new THREE.Vector3();
+  for (const [bone, part, y0, y1, pivot] of this.PIECES) {
+    const g = LS.Skin.slice(part, y0, y1, pivot), bi = this.BONES.indexOf(bone), base = pos.length / 3;
+    model.bones[bone].getWorldPosition(wp).sub(model.root.position);
+    const P = g.attributes.position, N = g.attributes.normal, U = g.attributes.uv;
+    for (let i = 0; i < P.count; i++) {
+      pos.push(P.getX(i) + wp.x, P.getY(i) + wp.y, P.getZ(i) + wp.z); nor.push(N.getX(i), N.getY(i), N.getZ(i)); uv.push(U.getX(i), U.getY(i));
+      si.push(bi, 0, 0, 0); sw.push(1, 0, 0, 0);
+    }
+    const I = g.index; for (let i = 0; i < I.count; i++) idx.push(I.getX(i) + base);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4));
+  geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
+  geo.setIndex(idx);
+  return (this._skinGeo = geo);
 };

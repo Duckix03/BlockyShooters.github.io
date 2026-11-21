@@ -68,6 +68,26 @@ LS.Skin = {
     return g;
   },
 
+  // fatia de uma parte (linhas y0..y1 da altura, em pixels): braço/antebraço/mão, coxa/canela/pé, tronco de cima/baixo
+  slice(part, y0, y1, pivot) {
+    const k = part + '_' + y0 + '_' + y1 + pivot;
+    if (this.geoCache[k]) return this.geoCache[k];
+    const [ox, oy, w, h, d] = this.PARTS[part], S = this.PX, hh = y1 - y0, R = this.faceRects(part);
+    const g = new THREE.BoxGeometry(w * S, hh * S, d * S), uv = g.attributes.uv;
+    const side = r => [r[0], r[1] + y0, r[2], hh], strip = y => [ox + d, oy + d + y, w, 1]; // corte: mesma cor da frente naquela altura
+    const rects = [side(R[0]), side(R[1]), y0 === 0 ? R[2] : strip(y0), y1 === h ? R[3] : strip(y1 - 1), side(R[4]), side(R[5])];
+    for (let f = 0; f < 6; f++) {
+      const [x0, yy, rw, rh] = rects[f];
+      for (let i = 0; i < 4; i++) {
+        const id = f * 4 + i, ix = uv.getX(id), iy = 1 - uv.getY(id);
+        uv.setXY(id, (x0 + ix * rw) / 64, 1 - (yy + iy * rh) / 64);
+      }
+    }
+    if (pivot === 'bottom') g.translate(0, hh * S / 2, 0);
+    if (pivot === 'top') g.translate(0, -hh * S / 2, 0);
+    return (this.geoCache[k] = g);
+  },
+
   // ---------- pintura ----------
   paint(canvas, look, seed) {
     const ctx = canvas.getContext('2d');
