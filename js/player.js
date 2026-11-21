@@ -86,15 +86,18 @@ LS.Player = class extends LS.Fighter {
     this.camYaw = 0; this.camPitch = -0.1; this.camDist = 3.6;
     this.stepT = 0; this.prompt = ''; this.pickMsgT = 0;
     this.camPos = new THREE.Vector3(); this.aimDir = new THREE.Vector3(0, 0, 1);
+    this.recoilX = 0; this.recoilY = 0; this.recoilPend = { x: 0, y: 0 }; this.shake = 0; this._aaT = 0; this._aaTarget = null;
     this._v = new THREE.Vector3(); this._w = new THREE.Vector3();
   }
   update(dt, camera) {
     const I = LS.Input, k = I.keys;
     const sens = 0.0022 * LS.settings.sensitivity * (70 / camera.fov) ** -0.9;
     if (!LS.Game.inventoryOpen) {
-      this.camYaw -= I.mouse.dx * sens;
-      this.camPitch -= I.mouse.dy * sens;
+      const aa = this.aimAssist(dt);
+      this.camYaw -= I.mouse.dx * sens * aa.slow + aa.yaw;
+      this.camPitch -= I.mouse.dy * sens * aa.slow - aa.pitch;
     }
+    this.stepRecoil(dt);
     this.camPitch = LS.util.clamp(this.camPitch, -1.35, 1.2);
     if (!this.alive) { this.updateCamera(dt, camera); return; }
     this.updateTimers(dt);
@@ -162,10 +165,7 @@ LS.Player = class extends LS.Fighter {
         if (d && (d.auto ? I.mouse.left : I.mouse.leftPressed)) {
           if (this.running) this.running = false;
           const origin = this.shotOrigin(), sd = LS.Console.silentDir(this, origin);
-          if (this.tryFire(origin, sd || this.aimDir, sd ? 0.15 : 1)) {
-            this.camPitch += d.recoil * 0.012 * (this.crouch ? 0.7 : 1) * (this.aiming ? 0.8 : 1);
-            this.camYaw += (Math.random() - 0.5) * d.recoil * 0.006;
-          }
+          if (this.tryFire(origin, sd || this.aimDir, sd ? 0.15 : 1)) this.kickRecoil(d);
         }
       }
       this.handleLoot();
@@ -173,10 +173,80 @@ LS.Player = class extends LS.Fighter {
     this.model.root.position.copy(this.pos);
     this.model.root.rotation.y = this.yaw;
     this.model.animate({ dt, vy: this.vel.y, fall: this.state === 'fall', dive: this.dive, steer: this.steer, speed: Math.hypot(this.vel.x, this.vel.z), running: this.running, crouch: this.crouch, air: this.state === 'ground' && !this.onGround,
-      chute: this.state === 'chute', aimPitch: this.camPitch, armed: !!this.weapon(), armedAim: this.aiming || this.fireCd > 0, dead: !this.alive,
+      chute: this.state === 'chute', aimPitch: this.camPitch + this.recoilY, armed: !!this.weapon(), armedAim: this.aiming || this.fireCd > 0, dead: !this.alive,
       reload: this.reloadT > 0 && this.wdef() ? 1 - this.reloadT / this.wdef().reload : -1, heal: this.healType });
     this.model.root.visible = this.state !== 'plane';
     this.updateCamera(dt, camera);
+  }
+  // ---------- recuo (estilo celular) ----------
+  // cada tiro dá um "chute" pra cima (e um pouco pro lado, num padrão fixo da arma). O chute entra rápido,
+  // a maior parte volta sozinha quando para de atirar e só um pouco fica na mira (dá pra compensar puxando o mouse).
+  kickRecoil(d) {
+    const R = this.recoilDef(), n = this.sprayN, deg = Math.PI / 180;
+    const ramp = d.auto ? Math.min(1, 0.5 + n * 0.14) : 1; // primeiros tiros da rajada sobem menos
+    const v = R.v * ramp * (this.crouch ? 0.8 : 1) * (this.aiming ? 0.85 : 1) * (0.92 + Math.random() * 0.16);
+    const side = n < 3 && d.auto ? 0 : Math.sin(n * 0.55 + R.seed) * R.h * (d.auto ? Math.min(1, (n - 2) / 4) : 1);
+    const h = side + (Math.random() - 0.5) * R.h * 0.35;
+    this.recoilPend.y += v * deg; this.recoilPend.x += h * deg;
+    this.shake = Math.min(1, this.shake + R.shake);
+  }
+  stepRecoil(dt) {
+    const P = this.recoilPend, take = Math.min(1, dt * 30); // chute entra em ~40 ms (sem tranco)
+    const ky = P.y * take, kx = P.x * take; P.y -= ky; P.x -= kx;
+    const keep = this.recoilDef().keep ?? 0.28; // a parte que fica na mira (sniper quase nada; fuzil ~30%)
+    this.recoilY += ky * (1 - keep); this.camPitch += ky * keep;
+    this.recoilX += kx * (1 - keep); this.camYaw += kx * keep;
+    if (LS.Game.time - this.lastFireT > 0.08) {
+      const r = 1 - Math.exp(-this.recoilDef().rec * dt);
+      this.recoilY -= this.recoilY * r; this.recoilX -= this.recoilX * r;
+    }
+    this.shake = Math.max(0, this.shake - dt * 5);
+  }
+
+  // ---------- assistência de mira (bem leve, quase imperceptível) ----------
+  // só quando está atirando ou mirando e o inimigo já está quase na mira (cone de 2–3°):
+  // a sensibilidade cai um pouco em cima dele (fica "grudento") e a mira escorrega devagar pro peito.
+  // Nunca puxa de longe, nunca trava, não ajuda com a luneta e não atravessa parede.
+  aimAssist(dt) {
+    const out = this._aa || (this._aa = { slow: 1, yaw: 0, pitch: 0 });
+    out.slow = 1; out.yaw = 0; out.pitch = 0;
+    const d = this.wdef(), I = LS.Input;
+    if (LS.settings.aimAssist === false || !this.alive || this.state !== 'ground' || !d || this.reloadT > 0 || this.healType || this.scopeUp) return out;
+    const firing = I.mouse.left;
+    if (!firing && !this.aiming) { this._aaTarget = null; return out; }
+    const cone = (this.aiming ? 2.2 : 3.0) * Math.PI / 180;
+    const eye = this.camPos, aim = this.aimDir;
+    const errOf = f => {
+      const ty = f.pos.y + (f.crouch ? 0.8 : 1.1), dx = f.pos.x - eye.x, dy = ty - eye.y, dz = f.pos.z - eye.z;
+      const len = Math.hypot(dx, dy, dz); if (len < 0.5) return null;
+      const yawT = Math.atan2(dx, dz), pitchT = Math.asin(dy / len);
+      const yawA = Math.atan2(aim.x, aim.z), pitchA = Math.asin(LS.util.clamp(aim.y, -1, 1));
+      const ey = LS.util.angleDiff(yawA, yawT), ep = pitchT - pitchA;
+      return { ey, ep, err: Math.hypot(ey * Math.cos(pitchA), ep), len, ty };
+    };
+    this._aaT -= dt;
+    if (this._aaT <= 0) { // escolhe o alvo ~10x por segundo
+      this._aaT = 0.1; this._aaTarget = null;
+      const maxD = Math.min(d.range, 160), cands = [];
+      for (const f of LS.Game.fighters) {
+        if (f === this || !f.alive || f.netHidden || f.state !== 'ground') continue;
+        if (f.pos.distanceToSquared(this.pos) > maxD * maxD) continue;
+        const e = errOf(f); if (e && e.err < cone * 1.3) cands.push({ f, e });
+      }
+      cands.sort((a, b) => a.e.err - b.e.err);
+      for (const c of cands.slice(0, 3)) {
+        if (LS.World.hasLOS(this._w.copy(eye).addScaledVector(aim, 0.6), new THREE.Vector3(c.f.pos.x, c.e.ty, c.f.pos.z))) { this._aaTarget = c.f; break; }
+      }
+    }
+    const f = this._aaTarget; if (!f || !f.alive || f.netHidden) return out;
+    const e = errOf(f); if (!e || e.err > cone) return out;
+    const k = 1 - e.err / cone; // 0 na borda do cone, 1 no centro
+    out.slow = 1 - 0.16 * k;    // até 16% menos sensível em cima do alvo
+    // escorrega pro peito: no máximo ~1,2°/s atirando, ~0,6°/s só mirando
+    const maxStep = (firing ? 1.2 : 0.6) * Math.PI / 180 * dt * (0.4 + 0.6 * k);
+    const step = Math.min(e.err * dt * 1.5, maxStep), inv = e.err > 1e-5 ? step / e.err : 0;
+    out.yaw = -e.ey * inv; out.pitch = e.ep * inv;
+    return out;
   }
   shotOrigin() {
     // começa o raio da câmera na altura do personagem (evita acertar paredes atrás dele)
@@ -244,7 +314,7 @@ LS.Player = class extends LS.Fighter {
     }
     this.camDist = LS.util.lerp(this.camDist, dist, Math.min(1, dt * (scopeUp ? 18 : 10)));
     // balanço da luneta (respiração); menor agachado e quase nenhum segurando o fôlego
-    let yaw = this.camYaw, pitch = this.camPitch;
+    let yaw = this.camYaw + this.recoilX, pitch = this.camPitch + this.recoilY;
     if (scoped) {
       const tt = performance.now() * 0.001, moving = Math.hypot(this.vel.x, this.vel.z) > 0.5;
       const amp = 0.0045 * (this.holding ? 0.1 : 1) * (this.crouch ? 0.6 : 1) * (moving ? 2.2 : 1) * (this.breathPenalty > 0 ? 1.8 : 1);
@@ -267,5 +337,7 @@ LS.Player = class extends LS.Fighter {
     }
     camera.position.copy(this.camPos);
     camera.lookAt(this._w.copy(this.camPos).add(fwd));
+    // tremida do tiro: só inclina a tela um tiquinho (o centro da mira não sai do lugar)
+    if (this.shake > 0.001 && !scoped) camera.rotateZ((Math.random() - 0.5) * this.shake * 0.02);
   }
 };

@@ -103,9 +103,11 @@ LS.HUD = {
     const ai = this.$('ammo-ico'); ai.classList.toggle('on', !!d); if (d) setImg(ai, LS.Icons.get('ammo', d.ammo));
     E['reload-text'].classList.toggle('hidden', P.reloadT <= 0);
     // mira dinâmica
-    const moving = Math.hypot(P.vel.x, P.vel.z) > 1;
-    const gap = 6 + (d ? d.spread * 300 : 4) * (P.aiming ? 0.5 : 1) * (moving ? 1.6 : 1) * (P.crouch ? 0.75 : 1) + P.recoilKick * 1.5;
-    E.crosshair.style.setProperty('--gap', gap.toFixed(1) + 'px');
+    // mira dinâmica: a abertura mostra a dispersão de verdade (onde as balas podem cair na tela)
+    const cam = LS.Game.camera, sp = d ? P.currentSpread() : 0.01;
+    const gapT = 3 + Math.tan(Math.min(sp, 0.35)) / Math.tan(cam.fov * Math.PI / 360) * (window.innerHeight / 2);
+    this._gap = this._gap === undefined ? gapT : LS.util.lerp(this._gap, gapT, Math.min(1, LS.Game.lastDt * (gapT > this._gap ? 30 : 12) || 1));
+    E.crosshair.style.setProperty('--gap', Math.min(90, this._gap).toFixed(1) + 'px');
     E.crosshair.style.visibility = P.state === 'ground' && P.alive ? 'visible' : 'hidden';
     E.crosshair.classList.toggle('ads', !!(P.aiming && d && !d.scope)); // mira de ponto ao aproximar
     // cura

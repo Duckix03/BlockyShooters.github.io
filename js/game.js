@@ -273,6 +273,7 @@ LS.Game = {
   loop() {
     requestAnimationFrame(this.loop);
     const dt = Math.min(this.clock.getDelta(), 0.05) * LS.Console.timeScale;
+    this.lastDt = dt;
     this.fpsAcc += dt; this.fpsFrames++;
     if (this.fpsAcc >= 0.5) { document.getElementById('fps').textContent = Math.round(this.fpsFrames / this.fpsAcc) + ' FPS'; this.fpsAcc = 0; this.fpsFrames = 0; }
     if (this.state === 'lobby' || (this.state === 'menu' && LS.Lobby.built)) { LS.Lobby.update(dt); LS.Post.render(LS.Lobby.scene, LS.Lobby.camera); LS.Input.endFrame(); return; }
