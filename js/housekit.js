@@ -81,6 +81,10 @@ LS.HouseKit = {
       wb(axis, xc, y0, zc, mu - 0.025, mu + 0.025, bot + 0.03, top - 0.06, -0.035, 0.035, trimCol);
       if (!vitrine) wb(axis, xc, y0, zc, a + 0.06, b - 0.06, my - 0.025, my + 0.025, -0.03, 0.03, trimCol);
       wb(axis, xc, y0, zc, a + 0.03, b - 0.03, bot + 0.01, top - 0.03, -0.012, 0.012, LS.GLASS, false, false);
+      // vidraça com colisor de "vidro": bloqueia quem anda (sem atravessar pela janela), mas não bloqueia tiro nem visão
+      { const g = out.boxes[out.boxes.length - 1]; if (g && g.color === LS.GLASS) {
+        const tx = axis === 'x' ? 0 : 0.05, tz = axis === 'x' ? 0.05 : 0;
+        out.colliders.push({ minX: g.x - g.w / 2 - tx, minY: g.y, minZ: g.z - g.d / 2 - tz, maxX: g.x + g.w / 2 + tx, maxY: g.y + g.h, maxZ: g.z + g.d / 2 + tz, glass: true }); } }
     };
     // ---- porta: só o vão com batente e soleira (sem folha: não atrapalha a passagem nem a mira) ----
     const doorDecor = (axis, xc, y0, zc, a, b, top, inn) => {

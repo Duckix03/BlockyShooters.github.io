@@ -67,6 +67,7 @@ LS.World = {
   // verdadeiro se uma esfera (x,y,z,r) encosta em algum colisor
   sphereHits(x, y, z, r) {
     for (const b of this.nearBoxes(x, z, r + 0.5)) {
+      if (b.glass) continue;
       const cx = Math.max(b.minX, Math.min(x, b.maxX)), cy = Math.max(b.minY, Math.min(y, b.maxY)), cz = Math.max(b.minZ, Math.min(z, b.maxZ));
       if ((cx - x) ** 2 + (cy - y) ** 2 + (cz - z) ** 2 < r * r) return true;
     }
@@ -85,6 +86,7 @@ LS.World = {
   groundAt(x, z, y, r) {
     let g = this.heightAt(x, z);
     for (const b of this.nearBoxes(x, z, r + 1)) {
+      if (b.glass) continue;
       if (x + r * 0.5 > b.minX && x - r * 0.5 < b.maxX && z + r * 0.5 > b.minZ && z - r * 0.5 < b.maxZ && b.maxY <= y + 0.55 && b.maxY > g) g = b.maxY;
     }
     return g;
@@ -154,6 +156,7 @@ LS.World = {
           const l = this.grid.get(cx + ',' + cz); if (!l) continue;
           for (const b of l) {
             if (seen.has(b)) continue; seen.add(b);
+            if (b.glass) continue; // vidro: tiro e visão passam
             if (b.maxX < minX || b.minX > maxX || b.maxZ < minZ || b.minZ > maxZ) continue;
             const tb = this.rayBox(o, d, b, best); if (tb >= 0 && tb < best) best = tb;
           }
