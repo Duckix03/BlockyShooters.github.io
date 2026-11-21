@@ -234,11 +234,6 @@ LS.Anim = {
     const on = s.running && spd > 2.5 && !s.air && !s.crouch && !s.dead && !s.fall && !s.chute && !(m.anim && m.anim.playing);
     st.w = cl(st.w + (on ? dt / 0.18 : -dt / 0.15), 0, 1);
     st.arm = cl(st.arm + (s.armed ? dt / 0.2 : -dt / 0.2), 0, 1);
-    // pose de corrida armada: arma atravessada no peito (sai na hora de mirar, recarregar ou curar)
-    const carryOn = on && s.armed && !s.armedAim && !(s.reload >= 0) && !s.heal;
-    st.carry = cl((st.carry || 0) + (carryOn ? dt / 0.15 : -dt / 0.12), 0, 1);
-    const ck = st.carry * st.carry * (3 - 2 * st.carry);
-    m.gunHolder.rotation.x = LS.CharacterModel.CARRY.gun * ck;
     if (st.w <= 0) return;
     st.t = (st.t + dt * cl(spd / this.RUN_SPEED, 0.6, 1.4)) % c.duration; // passada acompanha a velocidade
     const fr = st.t * c.fps, i0 = Math.floor(fr) % c.frames, i1 = Math.min(c.frames - 1, i0 + 1), a = fr - Math.floor(fr);
@@ -260,11 +255,10 @@ LS.Anim = {
       if (arm > 0) { st.q2.copy(st.corr).multiply(q); q.slerp(st.q2, arm * w); }
       blend(b, w * (1 - arm));
     }
-    // antebraços e mãos: sem arma, da animação; com arma, retos (o código segura a arma)
+    // antebraços e mãos: sem arma, da animação; com arma, quem manda é a IK das mãos
     for (const b of ['RightForeArm', 'RightHand', 'LeftForeArm', 'LeftHand']) blend(b, w * (1 - arm));
-    if (ck > 0) m.carryPose(ck, Math.sin(st.t / c.duration * Math.PI * 2) * LS.CharacterModel.CARRY.swing);
-    // com arma: a mão esquerda volta a segurar a arma depois do tronco mexer
-    else if (arm > 0 && m._ikW > 0.01 && m._ikPt) m.gripLeft(m._ikW * arm, m._ikPt);
+    // com arma: a arma acompanha o tronco e as duas mãos voltam pra ela (a pose de corrida armada vem do código)
+    if (s.armed && m.gun) { m.placeGun(); m.solveHands(); }
   },
 
   // ---------- ajudantes ----------
