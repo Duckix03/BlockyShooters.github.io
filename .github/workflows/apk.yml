@@ -19,14 +19,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
@@ -61,7 +61,17 @@ jobs:
           ./gradlew assembleRelease --no-daemon
           cp app/build/outputs/apk/release/app-release.apk ../LastSurvivor.apk
 
-      - uses: actions/upload-artifact@v4
+      - name: Conferir o APK (jogo dentro, plugin do botão voltar, assinatura)
+        run: |
+          unzip -l LastSurvivor.apk > conteudo.txt
+          for f in assets/public/index.html assets/public/js/vendor/three.min.js assets/public/js/app.js assets/public/js/main.js assets/public/version.json; do
+            grep -q "$f" conteudo.txt || { echo "faltando no APK: $f"; exit 1; }
+          done
+          unzip -p LastSurvivor.apk assets/capacitor.plugins.json | grep -q AppPlugin || { echo "plugin App faltando"; exit 1; }
+          "$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -1)/apksigner" verify --print-certs LastSurvivor.apk | head -3
+          ls -lh LastSurvivor.apk
+
+      - uses: actions/upload-artifact@v5
         with:
           name: LastSurvivor-apk
           path: LastSurvivor.apk
