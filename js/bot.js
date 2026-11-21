@@ -66,7 +66,7 @@ LS.Bot = class extends LS.Fighter {
     const range = this.wdef() && this.wdef().cat === 'Sniper' ? 160 : 100;
     const cands = [];
     for (const f of G.fighters) {
-      if (f === this || !f.alive || f.state !== 'ground') continue;
+      if (f === this || !f.alive || f.state !== 'ground' || f.netHidden) continue;
       const d = this.pos.distanceTo(f.pos);
       let r = range * (f.crouch ? 0.6 : 1) * (f.lastShotT > G.time - 1.5 ? 1.5 : 1);
       if (d < r) cands.push({ f, d });

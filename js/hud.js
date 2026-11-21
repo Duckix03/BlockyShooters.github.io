@@ -165,7 +165,7 @@ LS.HUD = {
     // inimigos que atiraram recentemente aparecem como pontos vermelhos
     ctx.fillStyle = '#ff4040';
     for (const f of G.fighters) {
-      if (f === P || !f.alive || f.state !== 'ground') continue;
+      if (f === P || !f.alive || f.state !== 'ground' || f.netHidden) continue;
       if (G.time - f.lastShotT < 2 && f.pos.distanceTo(P.pos) < 120) { ctx.beginPath(); ctx.arc(f.pos.x, f.pos.z, 3 / sc, 0, Math.PI * 2); ctx.fill(); }
     }
     // jogador

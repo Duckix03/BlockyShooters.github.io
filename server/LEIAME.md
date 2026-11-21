@@ -14,10 +14,19 @@ Na partida, o **servidor é a autoridade**:
 - guarda a **vida** de todo mundo (editar o jogo no navegador não dá vida infinita);
 - confere cada **tiro**: se a pessoa tem aquela arma, se não está atirando mais rápido do que a arma permite e se o alvo está no alcance. O **dano é calculado no servidor**;
 - recusa **teleporte e velocidade impossível**;
-- decide quem pegou cada **item** do chão, as mortes, a colocação e o **vencedor**.
+- decide quem pegou cada **item** do chão, as mortes, a colocação e o **vencedor**;
+- **anti-wallhack:** cada jogador só recebe a posição de quem ele poderia ver. O servidor confere a linha de visão
+  (relevo, paredes, telhados e pedras do mapa, em `src/occluders.js`) umas 3 vezes por segundo pra cada par.
+  Quem está bem escondido atrás de parede ou morro nem chega no navegador, então não tem ESP que mostre.
+  Tiros só chegam pra quem está perto o bastante pra ouvir. A regra é generosa (na dúvida, aparece), pra ninguém
+  ficar invisível por erro.
 
 A IA dos bots roda no navegador de um dos jogadores (o "host"). Se ele sair, outro jogador assume.
 Os comandos de trapaça do console (`give`, `god`, `tp`, `esp`...) ficam desligados no online.
+O console fica escondido pros jogadores: só abre depois de abrir o jogo uma vez com `?dev` no link (`?dev=0` desliga).
+
+**Mudou o mapa?** (terreno, casas, pedras ou `LS.MAP_SEED`) Rode `python tools/export-occluders.py . server/src/occluders.js`
+pra atualizar as paredes que o servidor usa pra linha de visão.
 
 ## Publicar (uma vez só, uns 5 minutos)
 
@@ -50,7 +59,7 @@ cd server
 npx wrangler dev
 ```
 
-Depois, no console do jogo (tecla `'`), digite `LS.NET_URL = 'http://127.0.0.1:8787'` e clique em **JOGAR**.
+Depois, no console do jogo (tecla `'`; no localhost ele sempre abre), digite `LS.NET_URL = 'http://127.0.0.1:8787'` e clique em **JOGAR**.
 
 ## Limites do plano grátis
 
@@ -59,6 +68,6 @@ Depois, no console do jogo (tecla `'`), digite `LS.NET_URL = 'http://127.0.0.1:8
 
 ## O que ainda dá pra trapacear (e como melhorar depois)
 
-- **Wallhack/ESP:** o navegador recebe a posição de todos os jogadores. Pra impedir, o servidor teria que mandar só quem cada jogador consegue ver.
+- **Wallhack/ESP:** resolvido em boa parte (veja acima). Sobra: quem está perto (até 18 m) ou visível há menos de 1 s ainda chega, e o **host** recebe todo mundo, porque os bots rodam no navegador dele. Um host trapaceiro ainda veria todos.
 - **Inventário e munição** ainda são controlados pelo navegador. O servidor já confere a arma em uso e o ritmo de tiro, mas não conta as balas.
 - **Mira automática** não tem como o servidor impedir totalmente. Dá pra detectar padrões suspeitos depois.

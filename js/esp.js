@@ -29,7 +29,7 @@ LS.ESP = {
     g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H); this.drawn = true;
     g.font = '600 12px Rubik, Segoe UI, Arial'; g.textAlign = 'center'; g.textBaseline = 'bottom'; g.lineJoin = 'round';
     for (const f of G.fighters) {
-      if (f === me || !f.alive || f.state === 'plane') continue;
+      if (f === me || !f.alive || f.state === 'plane' || f.netHidden) continue;
       const h = f.state === 'ground' ? (f.crouch ? 1.35 : 1.85) : 1.85, r = 0.45, p = f.pos;
       // caixa 2D a partir dos 8 cantos da caixa 3D do personagem
       let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, ok = true;
