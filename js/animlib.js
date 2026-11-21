@@ -110,7 +110,7 @@ LS.Anim = {
     if (this.clips[name]) return this.clips[name];
     const e = this.LIBRARY.find(x => x.name === name);
     if (!e) throw new Error('Animação "' + name + '" não carregada. Carregadas: ' + (Object.keys(this.clips).join(', ') || 'nenhuma'));
-    await this.load(e.url, e.name);
+    await this.load(e.url + (e.url.includes('?') ? '&' : '?') + 'v=' + LS.VERSION, e.name); // ?v= evita pegar o .json antigo do cache
     if (!this.clips[name]) throw new Error('Animação "' + name + '" não está em ' + e.url);
     if (e.loop === false || e.mask) Object.assign(this.clips[name], { loop: e.loop !== false, mask: e.mask || 'full' });
     return this.clips[name];
