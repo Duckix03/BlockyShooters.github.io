@@ -1,7 +1,7 @@
 // Núcleo do jogo: renderização, partida, eventos e loop principal
 'use strict';
 LS.Game = {
-  state: 'menu', // menu | loading | playing | paused | ended
+  state: 'menu', // menu | loading | playing | paused | victory (comemoração) | ended
   mode: 'br', frozen: false, // mode: 'br' (battle royale) | 'duel'; frozen: ninguém anda nem atira (contagem do duelo)
   time: 0, fighters: [], bots: [], botDamageMul: 0.55, built: false, inventoryOpen: false,
 
@@ -74,7 +74,7 @@ LS.Game = {
     LS.UI.showScreen('loading');
     document.getElementById('loading-fill').style.width = this.built ? '100%' : '0%';
     this.build(() => {
-      LS.Duel.exit(); this.mode = 'br'; this.lastKiller = null;
+      LS.Duel.exit(); this.mode = 'br'; this.lastKiller = null; LS.HUD.clearShots(); LS.Victory.hide();
       LS.Net.leave(); this.zone.rng = null;
       this.bots = this.botPool.slice(); this.fighters = [this.player].concat(this.bots);
       this.bots.forEach(b => { b.netId = null; if (!b.model.root.parent) this.scene.add(b.model.root); }); this.player.netId = null;
@@ -106,7 +106,7 @@ LS.Game = {
     LS.UI.showScreen('loading');
     document.getElementById('loading-fill').style.width = this.built ? '100%' : '0%';
     this.build(() => {
-      LS.Duel.exit(); this.mode = 'br'; this.lastKiller = null;
+      LS.Duel.exit(); this.mode = 'br'; this.lastKiller = null; LS.HUD.clearShots(); LS.Victory.hide();
       const N = LS.Net; N.begin(d);
       LS.util.withSeed(d.seed, () => { LS.Loot.spawnAll(); this.plane.reset(); this.zone.reset(); });
       this.zone.rng = LS.util.seeded(d.seed + 7); LS.Effects.clear();
@@ -149,7 +149,7 @@ LS.Game = {
     LS.UI.showScreen('loading');
     document.getElementById('loading-fill').style.width = this.built ? '100%' : '0%';
     this.build(() => {
-      LS.Net.leave(); LS.Duel.exit(); this.mode = 'duel'; this.lastKiller = null; this.zone.rng = null;
+      LS.Net.leave(); LS.Duel.exit(); this.mode = 'duel'; this.lastKiller = null; LS.HUD.clearShots(); LS.Victory.hide(); this.zone.rng = null;
       for (const b of this.botPool) { b.reset(); b.netId = null; if (b.model.root.parent) b.model.root.parent.remove(b.model.root); }
       const size = LS.Modes.duelSize, df = LS.BOT_LEVEL, n = size * 2 - 1;
       const names = LS.BOT_NAMES.slice().sort(() => Math.random() - 0.5);
@@ -217,7 +217,8 @@ LS.Game = {
     else if (this.player.alive && this.aliveCount() === 1) { this.endTimer = 2; this.pendingWin = true; }
     else if (!this.player.alive && this.aliveCount() <= 1) { /* já derrotado */ }
   },
-  onGunshot(shooter) { for (const b of this.bots) if (b !== shooter && b.alive && b.state === 'ground') b.hearShot(shooter); },
+  onGunshot(shooter) { LS.HUD.gunshot(shooter); // indicador na tela / minimapa de onde vem o tiro
+    for (const b of this.bots) if (b !== shooter && b.alive && b.state === 'ground') b.hearShot(shooter); },
   onPlayerHit(head, killed) { LS.HUD.hit(head || killed); LS.Audio.hitmarker(head); },
 
   // ---------- Teclas globais ----------
@@ -254,7 +255,7 @@ LS.Game = {
     this.clock.getDelta();
   },
   quitToMenu() {
-    LS.Net.leave(); this.frozen = false;
+    LS.Net.leave(); this.frozen = false; LS.HUD.clearShots(); LS.Victory.hide();
     this.state = 'menu'; LS.Input.enabled = false; LS.Input.unlock();
     this.setInventory(false);
     LS.HUD.show(false); LS.Audio.stopAll();
@@ -262,13 +263,51 @@ LS.Game = {
     LS.UI.showScreen('menu-main'); LS.UI.updateMenuStats();
     if (LS.Lobby.built) { LS.Lobby.model.applyLook(LS.playerProfile.look); LS.Lobby.syncUI(); }
   },
-  endMatch(win) {
+  // fim da partida: ganhou = comemoração "LAST SURVIVOR!" antes do menu; perdeu = menu direto
+  finish(win) { if (win) this.celebrate(); else this.endMatch(false); },
+  celebrate() {
+    if (this.state === 'victory') return;
+    this.state = 'victory'; this.victoryT = 0; this.frozen = false;
+    LS.Input.enabled = false; LS.Input.unlock(); this.setInventory(false);
+    LS.HUD.show(false); LS.HUD.clearShots();
+    document.getElementById('bigmap').classList.add('hidden');
+    const P = this.player, duel = this.mode === 'duel';
+    P.running = false; P.aiming = false; P.vel.set(0, 0, 0);
+    this.vicYaw = P.camYaw + Math.PI; // a câmera vem pra frente do jogador
+    const sub = duel ? (LS.Duel.size > 1 ? 'SEU TIME VENCEU O 2V2' : 'VOCÊ VENCEU O DUELO') + ' · ' + LS.Duel.score[0] + ' x ' + LS.Duel.score[1]
+      : 'VITÓRIA #1 · ' + P.kills + ' ABATE' + (P.kills === 1 ? '' : 'S');
+    LS.Victory.show(sub, () => this.endMatch(true, true));
+    LS.Audio.stopAll(); LS.Audio.victory();
+  },
+  // durante a comemoração: câmera girando em volta do jogador, que pula comemorando
+  updateVictory(dt) {
+    this.victoryT += dt;
+    const P = this.player, m = P.model, t = this.victoryT;
+    this.vicYaw += dt * 0.35;
+    let d = 4.2 - Math.min(1, t * 0.6) * 0.8; const cy = P.pos.y + 1.6 + Math.sin(t * 0.7) * 0.2;
+    const head = this._vh || (this._vh = new THREE.Vector3()), dir = this._vd || (this._vd = new THREE.Vector3());
+    head.set(P.pos.x, P.pos.y + 1.4, P.pos.z); dir.set(Math.sin(this.vicYaw) * d, cy - head.y, Math.cos(this.vicYaw) * d);
+    const len = dir.length(); dir.divideScalar(len);
+    d *= Math.max(0.35, Math.min(1, (LS.World.raycast(head, dir, len) - 0.3) / len)); // não atravessa parede
+    const cx = P.pos.x + Math.sin(this.vicYaw) * d, cz = P.pos.z + Math.cos(this.vicYaw) * d;
+    this.camera.position.set(cx, cy, cz); this.camera.lookAt(P.pos.x, P.pos.y + 1.15, P.pos.z);
+    this.camera.fov = LS.util.lerp(this.camera.fov, 55, Math.min(1, dt * 3)); this.camera.updateProjectionMatrix();
+    P.yaw += LS.util.angleDiff(P.yaw, Math.atan2(cx - P.pos.x, cz - P.pos.z)) * Math.min(1, dt * 4); // olha pra câmera
+    const hop = Math.max(0, Math.sin(t * 7)) * 0.38 * (t > 0.4 ? 1 : 0); // pulinhos de comemoração
+    m.root.position.set(P.pos.x, P.pos.y + hop, P.pos.z); m.root.rotation.y = P.yaw; m.root.visible = true;
+    m.animate({ dt, speed: 0, aimPitch: 0.5, armed: !!P.weapon(), armedAim: false, running: false, idle: true, air: hop > 0.05, vy: hop > 0.05 ? 3 : 0 });
+    for (const b of this.bots) if (b.alive) b.finishFrame(dt, 0);
+    LS.Effects.update(dt);
+    LS.World.updateSky(this.mode === 'duel' ? 0.33 : this.time / 430, this.scene, P.pos, dt);
+  },
+  endMatch(win, celebrated) {
+    LS.Victory.hide(); LS.HUD.clearShots();
     LS.Net.leave();
     this.state = 'ended'; LS.Input.enabled = false; LS.Input.unlock();
     this.setInventory(false);
     LS.Audio.stopAll();
     const P = this.player;
-    if (win) { LS.Audio.victory(); LS.stats.wins++; } else LS.Audio.defeat();
+    if (win) { if (!celebrated) LS.Audio.victory(); LS.stats.wins++; } else LS.Audio.defeat();
     LS.stats.kills += P.kills; LS.saveStats();
     const t = document.getElementById('end-title'), duel = this.mode === 'duel', sc = LS.Duel.score;
     t.textContent = win ? 'VITÓRIA!' : duel ? 'DERROTA' : 'FIM DE JOGO';
@@ -328,6 +367,7 @@ LS.Game = {
     if (this.state === 'lobby' || (this.state === 'menu' && LS.Lobby.built)) { LS.Lobby.update(dt); LS.Post.render(LS.Lobby.scene, LS.Lobby.camera); LS.Input.endFrame(); return; }
     if (!this.built) return;
     if (this.state === 'playing' || (this.state === 'paused' && LS.Net.online)) this.update(dt);
+    else if (this.state === 'victory') this.updateVictory(dt);
     else if (this.state === 'menu' || this.state === 'ended') { // câmera orbitando a ilha no fundo
       const t = performance.now() * 0.00005;
       this.camera.position.set(Math.cos(t) * 260, 120, Math.sin(t) * 260);
@@ -377,7 +417,7 @@ LS.Game = {
     LS.HUD.update(dt, this);
     if (this.endTimer > 0) {
       this.endTimer -= dt;
-      if (this.endTimer <= 0) this.endMatch(this.pendingWin && P.alive);
+      if (this.endTimer <= 0) this.finish(this.pendingWin && P.alive);
     }
   }
 };

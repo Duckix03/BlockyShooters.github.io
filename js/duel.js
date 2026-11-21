@@ -240,7 +240,7 @@ LS.Duel = {
     this.phase = 'done'; G.frozen = true;
     P.kills = this.kills; P.damageDealt = this.dmg; P.placement = win ? 1 : 2;
     document.getElementById('duel-count').className = 'hidden';
-    G.endMatch(win);
+    G.finish(win); // ganhou: comemoração "LAST SURVIVOR!" antes do menu
   },
 
   // ---------- LOJA (a cada 2 rounds) ----------

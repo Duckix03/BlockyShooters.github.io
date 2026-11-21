@@ -6,8 +6,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LAST SURVIVOR</title>
 <link rel="preload" href="fonts/lilita-one-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=47">
-<link rel="stylesheet" href="css/ui.css?v=47">
+<link rel="stylesheet" href="css/style.css?v=48">
+<link rel="stylesheet" href="css/ui.css?v=48">
 <link rel="icon" href="data:,">
 </head>
 <body>
@@ -94,6 +94,9 @@
   <div class="panel">
     <h2>NOVIDADES</h2>
     <div class="news-list">
+      <div><b>LAST SURVIVOR!</b><span>Comemoração de vitória com confete antes do menu, no battle royale e no duelo.</span></div>
+      <div><b>Minimapa novo</b><span>Redondo, gira com a câmera, bússola, cone de visão, gás animado e ondas onde alguém atira.</span></div>
+      <div><b>Indicador de tiro</b><span>Quando alguém atira perto, aparece na tela de onde vem (com a distância).</span></div>
       <div><b>Contas</b><span>Crie uma conta no seu perfil: o nome fica só seu, com senha, e seu perfil vai junto pra qualquer computador.</span></div>
       <div><b>Perfil novo</b><span>Personagem 3D, foto de perfil de verdade, ID, curtidas, recado, capa, patente e selos.</span></div>
       <div><b>Banners 3D</b><span>Os banners dos modos agora são feitos com os modelos do jogo, e o herói é o seu personagem!</span></div>
@@ -269,7 +272,8 @@
   </div>
   <div id="fps" class="hidden">0 FPS</div>
   <div id="zone-info"><div id="zone-text">Zona segura</div><div id="zone-dist"></div></div>
-  <div id="minimap-wrap"><canvas id="minimap" width="200" height="200"></canvas></div>
+  <div id="minimap-wrap"><canvas id="minimap" width="440" height="440"></canvas></div>
+  <div id="shot-ind"></div>
   <div id="killfeed"></div>
 
   <div id="crosshair"><i></i><i></i><i></i><i></i></div>
@@ -322,6 +326,18 @@
   </div>
 
   <div id="bigmap" class="hidden"><canvas id="bigmap-canvas" width="600" height="600"></canvas><p>Pressione M para fechar</p></div>
+</div>
+
+<!-- COMEMORAÇÃO DE VITÓRIA -->
+<div id="victory" class="hidden">
+  <div class="vic-rays"></div>
+  <div class="vic-confetti"></div>
+  <div class="vic-box">
+    <div class="vic-crown"><svg viewBox="0 0 24 24"><path d="M3 18h18l-2-10-5 4-2-7-2 7-5-4z" fill="currentColor"/></svg></div>
+    <h1 class="vic-title" data-t="LAST SURVIVOR!">LAST SURVIVOR!</h1>
+    <div class="vic-sub"></div>
+    <div class="vic-skip">clique para continuar</div>
+  </div>
 </div>
 
 <!-- INVENTÁRIO -->
@@ -383,44 +399,45 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="js/config.js?v=47"></script>
-<script src="js/icons.js?v=47"></script>
-<script src="js/post.js?v=47"></script>
-<script src="js/console.js?v=47"></script>
-<script src="js/audio.js?v=47"></script>
-<script src="js/gunsound.js?v=47"></script>
-<script src="js/input.js?v=47"></script>
-<script src="js/world.js?v=47"></script>
-<script src="js/sky.js?v=47"></script>
-<script src="js/worldbuild.js?v=47"></script>
-<script src="js/housekit.js?v=47"></script>
-<script src="js/houses.js?v=47"></script>
-<script src="js/skin.js?v=47"></script>
-<script src="js/character.js?v=47"></script>
-<script src="js/animlib.js?v=47"></script>
-<script src="js/itemmodels.js?v=47"></script>
-<script src="js/itemicons.js?v=47"></script>
-<script src="js/textures.js?v=47"></script>
-<script src="js/flora.js?v=47"></script>
-<script src="js/effects.js?v=47"></script>
-<script src="js/loot.js?v=47"></script>
-<script src="js/combat.js?v=47"></script>
-<script src="js/player.js?v=47"></script>
-<script src="js/bot.js?v=47"></script>
-<script src="js/zone.js?v=47"></script>
-<script src="js/plane.js?v=47"></script>
-<script src="js/net.js?v=47"></script>
-<script src="js/duel.js?v=47"></script>
-<script src="js/hud.js?v=47"></script>
-<script src="js/esp.js?v=47"></script>
-<script src="js/lobbyscene.js?v=47"></script>
-<script src="js/lobby.js?v=47"></script>
-<script src="js/banners.js?v=47"></script>
-<script src="js/account.js?v=47"></script>
-<script src="js/profile.js?v=47"></script>
-<script src="js/modes.js?v=47"></script>
-<script src="js/menu.js?v=47"></script>
-<script src="js/game.js?v=47"></script>
-<script src="js/main.js?v=47"></script>
+<script src="js/config.js?v=48"></script>
+<script src="js/icons.js?v=48"></script>
+<script src="js/post.js?v=48"></script>
+<script src="js/console.js?v=48"></script>
+<script src="js/audio.js?v=48"></script>
+<script src="js/gunsound.js?v=48"></script>
+<script src="js/input.js?v=48"></script>
+<script src="js/world.js?v=48"></script>
+<script src="js/sky.js?v=48"></script>
+<script src="js/worldbuild.js?v=48"></script>
+<script src="js/housekit.js?v=48"></script>
+<script src="js/houses.js?v=48"></script>
+<script src="js/skin.js?v=48"></script>
+<script src="js/character.js?v=48"></script>
+<script src="js/animlib.js?v=48"></script>
+<script src="js/itemmodels.js?v=48"></script>
+<script src="js/itemicons.js?v=48"></script>
+<script src="js/textures.js?v=48"></script>
+<script src="js/flora.js?v=48"></script>
+<script src="js/effects.js?v=48"></script>
+<script src="js/loot.js?v=48"></script>
+<script src="js/combat.js?v=48"></script>
+<script src="js/player.js?v=48"></script>
+<script src="js/bot.js?v=48"></script>
+<script src="js/zone.js?v=48"></script>
+<script src="js/plane.js?v=48"></script>
+<script src="js/net.js?v=48"></script>
+<script src="js/duel.js?v=48"></script>
+<script src="js/hud.js?v=48"></script>
+<script src="js/victory.js?v=48"></script>
+<script src="js/esp.js?v=48"></script>
+<script src="js/lobbyscene.js?v=48"></script>
+<script src="js/lobby.js?v=48"></script>
+<script src="js/banners.js?v=48"></script>
+<script src="js/account.js?v=48"></script>
+<script src="js/profile.js?v=48"></script>
+<script src="js/modes.js?v=48"></script>
+<script src="js/menu.js?v=48"></script>
+<script src="js/game.js?v=48"></script>
+<script src="js/main.js?v=48"></script>
 </body>
 </html>
