@@ -239,7 +239,7 @@ LS.Player = class extends LS.Fighter {
       this._aaT = 0.1; this._aaTarget = null;
       const maxD = Math.min(d.range, 160), cands = [];
       for (const f of LS.Game.fighters) {
-        if (f === this || !f.alive || f.netHidden || f.state !== 'ground') continue;
+        if (f === this || !f.alive || f.netHidden || f.state !== 'ground' || LS.sameTeam(this, f)) continue;
         if (f.pos.distanceToSquared(this.pos) > maxD * maxD) continue;
         const e = errOf(f); if (e && e.err < cone * 1.3) cands.push({ f, e });
       }
@@ -308,7 +308,8 @@ LS.Player = class extends LS.Fighter {
     if (this.state === 'plane') {
       target = LS.Game.plane.mesh.position.clone(); target.y += 2; dist = 32;
     } else {
-      target = this.eyePos(new THREE.Vector3());
+      const spec = !this.alive && LS.Duel.spectateTarget(); // duelo 2v2: morto, assiste o parceiro
+      target = (spec || this).eyePos(new THREE.Vector3());
       target.y += this.state === 'ground' ? 0.15 : 1.5;
       dist = this.state === 'ground' ? (scopeUp ? 0 : this.aiming ? 2.6 : 3.4) : this.state === 'fall' ? 8 : 9;
       if (scopeUp) target.y -= 0.15; // olho na luneta

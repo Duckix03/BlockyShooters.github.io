@@ -1,7 +1,7 @@
 // LAST SURVIVOR - configuração global, dados de armas/itens e utilitários
 'use strict';
 const LS = window.LS = {};
-LS.VERSION = '42'; // muda a cada atualização (também no ?v= do index.html e no version.json)
+LS.VERSION = '43'; // muda a cada atualização (também no ?v= do index.html e no version.json)
 // a página inicial pode ficar guardada no navegador por ~10 min (GitHub Pages): confere a versão no servidor
 // e, se esta estiver velha, recarrega num endereço novo (?v=...) que o navegador ainda não guardou
 (function () {
@@ -133,5 +133,7 @@ LS.util = {
   }
 };
 
+// mesmo time? (só existe time no duelo 2v2; no battle royale é cada um por si)
+LS.sameTeam = (a, b) => !!a && !!b && a.team != null && a.team === b.team;
 LS.BOT_NAMES = ['Viper', 'Shadow', 'Falcon', 'Ghost', 'Blaze', 'Raven', 'Storm', 'Titan', 'Nova', 'Hunter', 'Cobra', 'Wolf', 'Phantom', 'Reaper', 'Ace',
   'Tiger', 'Sniper_BR', 'Rex', 'Lince', 'Jaguar', 'Trovão', 'Fênix', 'Sombra', 'Zé_Bala', 'Kaiser', 'Onça', 'Dragão', 'Bravo', 'Raio', 'Furacão', 'Mamba', 'Orion'];

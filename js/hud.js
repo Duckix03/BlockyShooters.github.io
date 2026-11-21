@@ -121,6 +121,7 @@ LS.HUD = {
     let pr = P.prompt;
     if (P.state === 'plane') pr = G.plane.canJump() ? '<b>ESPAÇO</b> Saltar do avião' : 'Aguarde o avião chegar à ilha...';
     else if (P.state === 'fall') pr = '<b>ESPAÇO</b> Abrir paraquedas';
+    if (!P.alive && G.mode === 'duel') { const sp = LS.Duel.spectateTarget(); if (sp) pr = 'ASSISTINDO <b>' + sp.name + '</b>'; } // 2v2: morto, vendo o parceiro
     E.prompt.innerHTML = pr || '';
     // zona
     const Z = G.zone, out = Z.isOutside(P.pos), gas = G.mode === 'duel';

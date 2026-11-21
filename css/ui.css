@@ -340,23 +340,38 @@ kbd { font-family: var(--display); font-weight: 400; letter-spacing: 0.5px; bord
 .dc-input input { all: unset; flex: 1; font: 14px ui-monospace, 'Cascadia Mono', Consolas, monospace; color: #fff; caret-color: #ffc531; }
 .dc-input input::placeholder { color: #4f5a85; }
 
-/* ---------- MODOS DE JOGO ---------- */
-.modes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 16px; max-height: 64vh; overflow-y: auto; padding: 4px; }
-.mode-card { position: relative; display: block; text-align: left; padding: 0; border-radius: 14px; overflow: hidden; cursor: pointer; color: var(--txt);
-  border: 3px solid rgba(255, 255, 255, 0.1); background: #121726; font-family: var(--body); transition: transform 0.2s var(--pop), border-color 0.2s, box-shadow 0.2s; }
-.mode-card:hover { transform: translateY(-4px) scale(1.015); border-color: rgba(255, 138, 31, 0.7); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
-.mode-card.sel { border-color: #ff3b3b; box-shadow: 0 0 0 2px rgba(255, 59, 59, 0.35), 0 10px 30px rgba(0, 0, 0, 0.5); }
-.mode-card.locked { cursor: default; filter: grayscale(0.6); opacity: 0.75; }
-.mode-card.locked:hover { transform: none; border-color: rgba(255, 255, 255, 0.1); box-shadow: none; }
-.mode-art { height: 150px; overflow: hidden; }
-.mode-art svg { width: 100%; height: 100%; display: block; transition: transform 0.4s var(--ease); }
-.mode-card:not(.locked):hover .mode-art svg { transform: scale(1.06); }
-.mode-tag { position: absolute; top: 10px; left: 10px; font-family: var(--display); font-size: 13px; letter-spacing: 1px; padding: 3px 9px; border-radius: 6px; background: var(--grad); color: #2a1400; }
-.mode-check { position: absolute; top: 10px; right: 10px; font-family: var(--display); font-size: 12px; letter-spacing: 0.5px; padding: 3px 9px; border-radius: 6px; background: #ff3b3b; color: #fff; }
-.mode-info { padding: 10px 14px 14px; background: linear-gradient(180deg, rgba(0, 0, 0, 0.55), rgba(10, 14, 22, 0.95)); }
-.mode-info b { display: block; font-family: var(--display); font-weight: 400; font-size: 24px; letter-spacing: 1px; }
-.mode-info span { display: block; font-size: 12px; font-weight: 700; color: var(--accent2); letter-spacing: 0.5px; text-transform: uppercase; }
-.mode-info p { margin-top: 6px; font-size: 13px; color: var(--mut); line-height: 1.35; }
+/* ---------- MODOS DE JOGO (banners) ---------- */
+.modes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; max-height: 66vh; overflow-y: auto; padding: 8px 4px; }
+.mode-card { position: relative; display: block; text-align: left; padding: 0; border-radius: 16px; overflow: hidden; cursor: pointer; color: var(--txt);
+  border: 3px solid rgba(255, 255, 255, 0.12); background: #0c111d; font-family: var(--body); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  transition: transform 0.22s var(--pop), border-color 0.2s, box-shadow 0.2s; }
+.mode-card:hover { transform: translateY(-5px) scale(1.02); border-color: rgba(255, 197, 49, 0.85); box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 197, 49, 0.3); }
+.mode-card.sel { border-color: #ff3b3b; box-shadow: 0 0 0 3px rgba(255, 59, 59, 0.3), 0 0 26px rgba(255, 59, 59, 0.35), 0 14px 34px rgba(0, 0, 0, 0.55); }
+.mode-card.locked { cursor: default; }
+.mode-card.locked:hover { transform: none; border-color: rgba(255, 255, 255, 0.12); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
+.mode-art { height: 196px; overflow: hidden; position: relative; }
+.mode-art svg { width: 100%; height: 100%; display: block; transition: transform 0.5s var(--ease); }
+.mode-card:not(.locked):hover .mode-art svg { transform: scale(1.07); }
+.mode-shine { position: absolute; top: 0; left: -70%; width: 45%; height: 196px; transform: skewX(-20deg); pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent); opacity: 0; }
+.mode-card:hover .mode-shine { animation: modeShine 0.8s var(--ease); }
+@keyframes modeShine { 0% { left: -70%; opacity: 1; } 100% { left: 130%; opacity: 1; } }
+.mode-tag { position: absolute; top: 10px; left: 10px; font-family: var(--display); font-size: 13px; letter-spacing: 1px; padding: 3px 10px; border-radius: 7px; background: var(--grad); color: #2a1400; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4); }
+.mode-check { position: absolute; top: 10px; right: 10px; font-family: var(--display); font-size: 12px; letter-spacing: 0.5px; padding: 3px 10px; border-radius: 7px; background: #ff3b3b; color: #fff; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4); }
+.mode-title { position: absolute; left: 0; right: 0; top: 196px; transform: translateY(-100%); padding: 30px 14px 9px; pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(5, 8, 16, 0.75) 45%, rgba(5, 8, 16, 0.95)); }
+.mode-title b { display: block; font-family: var(--display); font-weight: 400; font-size: 30px; letter-spacing: 1px; line-height: 1; text-shadow: 0 3px 0 rgba(0, 0, 0, 0.5); }
+.mode-title b em { font-style: normal; color: var(--accent2); }
+.mode-title span { display: block; margin-top: 3px; font-size: 11px; font-weight: 800; color: var(--accent2); letter-spacing: 0.8px; text-transform: uppercase; }
+.mode-card.locked .mode-title b { color: #8a94aa; }
+.mode-info { padding: 10px 14px 14px; background: #0c111d; }
+.mode-info p { font-size: 13px; color: var(--mut); line-height: 1.35; }
+.mode-sizes { display: flex; gap: 8px; margin-top: 10px; }
+.mode-sizes span { flex: 1; text-align: center; font-family: var(--display); font-size: 20px; letter-spacing: 1px; padding: 6px 0 5px; border-radius: 10px; cursor: pointer;
+  border: 2px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.05); color: #c9d2e3; transition: transform 0.15s var(--pop), border-color 0.15s, background 0.15s; }
+.mode-sizes span small { display: block; font-family: var(--body); font-size: 9px; font-weight: 800; letter-spacing: 1px; opacity: 0.8; }
+.mode-sizes span:hover { transform: translateY(-2px); border-color: rgba(255, 197, 49, 0.7); }
+.mode-sizes span.sel { background: var(--grad); color: #2a1400; border-color: #ffd36a; }
 
 /* ---------- HUD DO DUELO ---------- */
 #hud.duel #minimap-wrap, #hud.duel #top-left .pill:first-child { display: none; }
@@ -432,3 +447,9 @@ kbd { font-family: var(--display); font-weight: 400; letter-spacing: 0.5px; bord
 #shop-ok:disabled { opacity: 0.45; filter: grayscale(0.7); cursor: not-allowed; }
 @media (max-width: 900px) { .shop-grid { grid-template-columns: repeat(4, 1fr); } }
 .shop-card.sel:hover, .shop-card.sel { border-color: #ffd400 !important; }
+.ds-alive { display: flex; gap: 3px; }
+.ds-alive i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255, 255, 255, 0.18); }
+.me .ds-alive i.up { background: var(--cyan); } .foe .ds-alive i.up { background: var(--hot); }
+.mode-card { display: flex; flex-direction: column; justify-content: flex-start; }
+.mode-card .mode-art { flex: none; width: 100%; }
+.mode-card .mode-info { flex: 1; }

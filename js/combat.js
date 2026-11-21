@@ -124,7 +124,7 @@ LS.Fighter = class {
     this.fireCd = 0.45; this.model.punch();
     const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw);
     for (const f of LS.Game.fighters) {
-      if (f === this || !f.alive || f.netHidden) continue;
+      if (f === this || !f.alive || f.netHidden || LS.sameTeam(this, f)) continue;
       const dx = f.pos.x - this.pos.x, dz = f.pos.z - this.pos.z, d = Math.hypot(dx, dz) || 1e-3;
       if (d < 1.7 && Math.abs(f.pos.y - this.pos.y) < 1.2 && (dx * fx + dz * fz) / d > 0.5) {
         f.takeDamage(12, this, false, 'Soco');
@@ -230,7 +230,7 @@ LS.Combat = {
   hitFighter(o, d, maxT, shooter) {
     let best = null, bt = maxT, head = false;
     for (const f of LS.Game.fighters) {
-      if (!f.alive || f === shooter || f.state === 'plane' || f.netHidden) continue;
+      if (!f.alive || f === shooter || f.state === 'plane' || f.netHidden || LS.sameTeam(shooter, f)) continue; // sem fogo amigo: a bala passa pelo parceiro
       const dx = f.pos.x - o.x, dz = f.pos.z - o.z;
       if (dx * dx + dz * dz > (maxT + 3) * (maxT + 3)) continue;
       const k = f.crouch ? 0.7 : 1, p = f.pos;

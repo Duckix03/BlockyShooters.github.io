@@ -1,4 +1,4 @@
-// Modo DUELO: 1v1 contra um bot dentro de um galpão com contêineres.
+// Modo DUELO: 1v1 (ou 2v2 em equipes, com um bot parceiro) dentro de um galpão com contêineres.
 // - 5 mapas (o mapa muda a cada round), sempre simétricos: os dois lados têm a mesma cobertura
 // - cada um nasce num lado do galpão, de frente pro outro (os lados trocam a cada round)
 // - gás que fecha (senão ninguém dá rush), primeiro a fazer 5 rounds vence
@@ -40,7 +40,7 @@ LS.DuelZone = class extends LS.Zone {
 
 LS.Duel = {
   ARENA: { x: 0, z: -600, w: 50, d: 32, fy: 0.5, h: 10 }, // centro, largura (x), fundo (z), altura do piso, pé-direito
-  WIN: 5, SPAWN_X: 21.5, COUNTDOWN: 3, SHOP_TIME: 15, SHOP_EVERY: 2,
+  WIN: 5, SPAWN_X: 21.5, TEAM_Z: 2.8, COUNTDOWN: 3, SHOP_TIME: 15, SHOP_EVERY: 2,
   CW: 6.06, CD: 2.44, CH: 2.6, // contêiner de 20 pés
   COLORS: [0xb03a2e, 0x2e6bb0, 0x3a8a3a, 0xc98a1e, 0x6a6e74, 0x2a8a8a, 0xd8d6cc, 0x7a3a8a],
   // mapas: 'center' fica no meio; 'half' é espelhado no outro lado (x,z → -x,-z), então os dois lados são iguais.
@@ -76,10 +76,14 @@ LS.Duel = {
   totalKills() { return this.kills + (LS.Game.player ? LS.Game.player.kills : 0); },
 
   // ---------- entrar / sair do modo ----------
-  enter(scene, opp) {
+  // mine = [jogador, parceiro?], foes = [inimigo, inimigo?]
+  enter(scene, mine, foes) {
     const G = LS.Game;
-    this.scene = scene; this.opp = opp;
+    this.scene = scene; this.mine = mine; this.foes = foes; this.opp = foes[0]; this.size = foes.length;
+    this.all = mine.concat(foes);
+    mine.forEach(f => { f.team = 'a'; }); foes.forEach(f => { f.team = 'b'; });
     if (!this.built) this.buildShell(scene);
+    this.rings.forEach(r => { r.visible = r.userData.size === this.size; });
     this.group.visible = true; this.mapGroup.visible = true;
     if (!this.zone) this.zone = new LS.DuelZone(scene);
     this.brZone = this.brZone || G.zone;
@@ -93,8 +97,10 @@ LS.Duel = {
     this.order = [0, 1, 2, 3, 4].sort(() => Math.random() - 0.5);
     document.getElementById('hud').classList.add('duel');
     document.getElementById('duel-score').classList.remove('hidden');
-    document.getElementById('ds-foe').textContent = opp.name.toUpperCase();
-    document.getElementById('ds-me').textContent = (G.player.name || 'Você').toUpperCase();
+    const team = this.size > 1;
+    document.getElementById('ds-foe').textContent = team ? 'INIMIGOS' : this.opp.name.toUpperCase();
+    document.getElementById('ds-me').textContent = team ? 'SEU TIME' : (G.player.name || 'Você').toUpperCase();
+    if (team) this.addAllyTag(mine[1]);
     this.startRound();
   },
   exit() {
@@ -104,7 +110,8 @@ LS.Duel = {
     if (this.brZone) { G.zone = this.brZone; this.brZone.wall.visible = true; }
     if (this.zone) { this.zone.wall.visible = false; this.zone.nextRing.visible = false; }
     if (this.group) { this.group.visible = false; this.mapGroup.visible = false; this.hemi.intensity = 0; }
-    if (this.opp && this.opp._origName) { this.opp.name = this.opp._origName; this.opp._origName = null; }
+    (this.all || []).forEach(f => { f.team = null; if (f._origName) { f.name = f._origName; f._origName = null; } });
+    if (this.allyTag && this.allyTag.parent) this.allyTag.parent.remove(this.allyTag);
     document.getElementById('hud').classList.remove('duel');
     document.getElementById('duel-score').classList.add('hidden');
     document.getElementById('duel-count').className = 'hidden';
@@ -119,10 +126,15 @@ LS.Duel = {
     this.buildMap(this.mapIdx);
     LS.Effects.clear(); LS.Loot.clear();
     const side = this.round % 2 ? -1 : 1, L = this.loadout || []; // lados trocam a cada round
-    this.spawn(G.player, side, L); this.spawn(this.opp, -side, L);
+    const zs = this.size > 1 ? [-this.TEAM_Z, this.TEAM_Z] : [0];
+    this.mine.forEach((f, i) => this.spawn(f, side, L, zs[i]));
+    this.foes.forEach((f, i) => this.spawn(f, -side, L, zs[i]));
     const P = G.player;
     P.camYaw = P.yaw; P.camPitch = -0.05; P.recoilX = P.recoilY = 0; P.recoilPend = { x: 0, y: 0 };
-    const o = this.opp; o.target = P; o.alertPos = P.pos.clone(); o.alertT = 3; o.ai = 'investigate'; o.lockT = 0;
+    for (const b of G.bots) { // cada bot já começa de olho no inimigo à frente dele
+      const enemies = b.team === 'a' ? this.foes : this.mine, e = enemies[this.mine.indexOf(b) >= 0 ? this.mine.indexOf(b) : this.foes.indexOf(b)] || enemies[0];
+      b.target = e; b.alertPos = e.pos.clone(); b.alertT = 3; b.ai = 'investigate'; b.lockT = 0;
+    }
     this.zone.reset(); this.zone.update(0, []);
     G.frozen = true;
     this.renderScore();
@@ -143,11 +155,11 @@ LS.Duel = {
     L.forEach(id => { const d = LS.WEAPONS[id]; f.ammo[d.ammo] += d.mag * 3; });
   },
   // coloca o lutador no lado dele, olhando pro outro, com as armas do round
-  spawn(f, side, L) {
+  spawn(f, side, L, z) {
     const A = this.ARENA;
     f.reset();
     f.state = 'ground'; f.onGround = true; f.safeLand = true;
-    f.pos.set(A.x + side * this.SPAWN_X, A.fy, A.z); f.vel.set(0, 0, 0);
+    f.pos.set(A.x + side * this.SPAWN_X, A.fy, A.z + (z || 0)); f.vel.set(0, 0, 0);
     f.yaw = side > 0 ? -Math.PI / 2 : Math.PI / 2; f.pitch = 0;
     this.equip(f, L);
     f.vest = { level: 2, dur: LS.GEAR.vest.levels[2].dur }; f.helmet = { level: 2, dur: LS.GEAR.helmet.levels[2].dur }; f.bag = 1;
@@ -156,8 +168,33 @@ LS.Duel = {
     f.model.root.visible = true; f.model.root.position.copy(f.pos); f.model.root.rotation.y = f.yaw;
   },
   onKill() {
+    this.renderAlive();
     if (this.phase !== 'fight') return;
-    this.phase = 'resolve'; this.t = 0.25; // espera um tiquinho: se os dois morrerem juntos (gás), é empate
+    if (this.mine.some(f => f.alive) && this.foes.some(f => f.alive)) return; // 2v2: o round só acaba quando um time inteiro cai
+    this.phase = 'resolve'; this.t = 0.25; // espera um tiquinho: se os dois times caírem juntos (gás), é empate
+  },
+  // 2v2: morto, a câmera acompanha o parceiro vivo
+  spectateTarget() {
+    if (!this.active || this.size < 2) return null;
+    const a = this.mine[1];
+    return a && a.alive ? a : null;
+  },
+  // nome do parceiro em cima da cabeça (aparece até atrás da parede, pra não confundir com inimigo)
+  addAllyTag(ally) {
+    if (!this.allyTag) {
+      const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+      this.allyTagCanvas = c;
+      this.allyTag = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, transparent: true }));
+      this.allyTag.scale.set(1.6, 0.4, 1); this.allyTag.renderOrder = 20;
+    }
+    const g = this.allyTagCanvas.getContext('2d');
+    g.clearRect(0, 0, 256, 64);
+    g.font = 'bold 30px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineWidth = 6; g.strokeStyle = 'rgba(0,0,0,0.8)'; g.strokeText(ally.name, 128, 24); g.fillStyle = '#2fd6ff'; g.fillText(ally.name, 128, 24);
+    g.beginPath(); g.moveTo(116, 46); g.lineTo(140, 46); g.lineTo(128, 60); g.closePath(); g.fill();
+    this.allyTag.material.map.needsUpdate = true;
+    this.allyTag.position.set(0, 2.35, 0);
+    ally.model.root.add(this.allyTag);
   },
   update(dt) {
     if (!this.active) return;
@@ -186,13 +223,15 @@ LS.Duel = {
   resolve() {
     const G = LS.Game, P = G.player, o = this.opp;
     this.kills += P.kills; this.dmg += P.damageDealt; P.kills = 0; P.damageDealt = 0;
+    const meUp = this.mine.some(f => f.alive), foeUp = this.foes.some(f => f.alive);
     let title, cls;
-    if (P.alive && !o.alive) { this.score[0]++; title = 'ROUND VENCIDO!'; cls = 'win'; }
-    else if (!P.alive && o.alive) { this.score[1]++; title = 'ROUND PERDIDO'; cls = 'lose'; }
+    if (meUp && !foeUp) { this.score[0]++; title = 'ROUND VENCIDO!'; cls = 'win'; }
+    else if (!meUp && foeUp) { this.score[1]++; title = 'ROUND PERDIDO'; cls = 'lose'; }
     else { title = 'EMPATE'; cls = 'draw'; }
     const done = this.score[0] >= this.WIN || this.score[1] >= this.WIN;
     this.showCount(title, false, cls);
-    LS.HUD.centerMsg('', 'Você ' + this.score[0] + ' x ' + this.score[1] + ' ' + o.name + (done ? '' : ' · próximo round...'), 3);
+    const a = this.size > 1 ? 'Seu time ' : 'Você ', b = this.size > 1 ? ' Inimigos' : ' ' + o.name;
+    LS.HUD.centerMsg('', a + this.score[0] + ' x ' + this.score[1] + b + (done ? '' : ' · próximo round...'), 3);
     this.phase = 'roundEnd'; this.t = done ? 2.6 : 3.4;
     this.renderScore();
   },
@@ -293,7 +332,7 @@ LS.Duel = {
     this.hideShop();
     this.used.push(...this.picks);
     this.loadout = this.picks.slice();
-    this.equip(G.player, this.loadout); this.equip(this.opp, this.loadout);
+    this.all.forEach(f => this.equip(f, this.loadout));
     LS.Input.enabled = true; // se não prendeu o mouse ainda, o 1º clique na tela prende
     this.beginCountdown();
   },
@@ -302,7 +341,7 @@ LS.Duel = {
     const who = document.getElementById('shop-who'), done = this.shopDone > 0;
     const names = this.picks.map(id => W[id].name).join(' + ');
     if (done) who.innerHTML = (me ? 'VOCÊ ESCOLHEU' : foe.toUpperCase() + ' ESCOLHEU') + ': <b>' + names + '</b>';
-    else if (me) who.innerHTML = '<b>SUA VEZ!</b> Escolha <b>2 armas</b> pra vocês dois usarem nos próximos 2 rounds';
+    else if (me) who.innerHTML = '<b>SUA VEZ!</b> Escolha <b>2 armas</b> pra ' + (this.size > 1 ? 'os 4 jogadores' : 'vocês dois') + ' usarem nos próximos 2 rounds';
     else who.innerHTML = '<span class="watch">ASSISTINDO</span> <b>' + foe.toUpperCase() + '</b> está escolhendo as armas...';
     who.className = 'shop-who ' + (me ? 'me' : 'foe');
     const max = { dmg: 120, rate: 13, range: 600 };
@@ -333,6 +372,13 @@ LS.Duel = {
     document.getElementById('ds-pips-foe').innerHTML = pips(this.score[1]);
     document.getElementById('ds-round').textContent = this.round;
     document.getElementById('ds-map').textContent = this.MAPS[this.mapIdx].name;
+    this.renderAlive();
+  },
+  // 2v2: bolinhas de quem ainda está vivo em cada time
+  renderAlive() {
+    const dots = list => this.size > 1 ? list.map(f => '<i' + (f.alive ? ' class="up"' : '') + '></i>').join('') : '';
+    document.getElementById('ds-alive-me').innerHTML = dots(this.mine);
+    document.getElementById('ds-alive-foe').innerHTML = dots(this.foes);
   },
   showCount(text, go, cls) {
     const el = document.getElementById('duel-count');
@@ -420,11 +466,15 @@ LS.Duel = {
     deco(A.w - 2, 0.18, yl, A.x, A.z - hd + 1); deco(A.w - 2, 0.18, yl, A.x, A.z + hd - 1);
     deco(0.18, A.d - 2, yl, A.x - hw + 1, A.z); deco(0.18, A.d - 2, yl, A.x + hw - 1, A.z);
     deco(0.14, A.d - 6, 0xffffff, A.x, A.z); // linha do meio
+    this.rings = [];
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0xff8a1f, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), ringGeo = new THREE.RingGeometry(1.1, 1.35, 40).rotateX(-Math.PI / 2);
     [-1, 1].forEach(s => {
-      const ring = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.35, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff8a1f, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
-      ring.position.set(A.x + s * this.SPAWN_X, fy + 0.008, A.z); g.add(ring);
-      deco(2.2, 0.5, 0x1a1a1a, A.x + s * (hw - 4.5), A.z + 2.8, this.repeatTex(T.hazard, 4, 1));
-      deco(2.2, 0.5, 0x1a1a1a, A.x + s * (hw - 4.5), A.z - 2.8, this.repeatTex(T.hazard, 4, 1));
+      [[0, 1], [-this.TEAM_Z, 2], [this.TEAM_Z, 2]].forEach(([z, size]) => { // marcas de onde nasce: 1 por lado (1v1) ou 2 (2v2)
+        const ring = new THREE.Mesh(ringGeo, ringMat); ring.userData.size = size;
+        ring.position.set(A.x + s * this.SPAWN_X, fy + 0.008, A.z + z); g.add(ring); this.rings.push(ring);
+      });
+      deco(2.2, 0.5, 0x1a1a1a, A.x + s * (hw - 4.5), A.z + 5, this.repeatTex(T.hazard, 4, 1));
+      deco(2.2, 0.5, 0x1a1a1a, A.x + s * (hw - 4.5), A.z - 5, this.repeatTex(T.hazard, 4, 1));
     });
     // paredes de chapa (com colisor) e rodapé de concreto
     const wallMat = (len) => this.lambert({ color: 0x8c9aa8, map: this.repeatTex(T.wall, len / 1.6, H / 4) });
