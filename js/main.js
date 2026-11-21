@@ -27,6 +27,7 @@ LS.UI = {
       $('set-fps').checked = S.showFps;
       $('set-res').value = S.resScale; $('val-res').textContent = Math.round(S.resScale * 100) + '%';
       $('set-perf').checked = S.perfMode;
+      $('set-postfx').checked = S.postfx !== false;
       const v = S.vivid === undefined ? 0.6 : S.vivid; $('set-vivid').value = v; $('val-vivid').textContent = Math.round(v * 100) + '%';
     };
     this.syncSettings = sync;
@@ -38,6 +39,7 @@ LS.UI = {
     $('set-fps').addEventListener('change', e => { S.showFps = e.target.checked; changed(); });
     $('set-res').addEventListener('input', e => { S.resScale = +e.target.value; changed(); });
     $('set-perf').addEventListener('change', e => { S.perfMode = e.target.checked; changed(); });
+    $('set-postfx').addEventListener('change', e => { S.postfx = e.target.checked; changed(); });
     $('set-vivid').addEventListener('input', e => { S.vivid = +e.target.value; changed(); });
     $('set-fullscreen').addEventListener('change', e => {
       S.fullscreen = e.target.checked; LS.saveSettings();

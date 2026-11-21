@@ -19,7 +19,7 @@
 > Você e mais **30 jogadores** saltam de um avião sobre uma ilha. Pegue armas, se equipe, fique dentro da zona segura e seja **o último em pé**.
 
 - ✈️ **Salto do avião**: escolha a hora de pular e desça em queda livre
-- 🪂 **Paraquedas**: abre sozinho perto do chão, ou quando você quiser
+- 🪂 **Paraquedas**: asa de células com as linhas presas nas mãos; abre sozinho perto do chão, ou quando você quiser
 - 🔵 **Zona segura**: encolhe em **6 fases**, e o dano fora dela aumenta a cada fase
 - 💀 **Eliminações**: lista de abates ao vivo e contador de jogadores vivos
 - 🏆 **Vitória ou derrota**: tela final com colocação, abates, dano causado e tempo
@@ -161,6 +161,8 @@ Seu visual fica salvo para as próximas partidas.
 - 🖼️ Qualidade gráfica (baixa, média ou alta)
 - 📐 Escala de resolução
 - 🚀 Modo desempenho, para computadores mais fracos
+- 🌑 Efeitos de tela: sombra nos cantos (oclusão de ambiente), contorno suave, vinheta e anti-serrilhado
+- 🎨 Cores vivas (contraste e saturação)
 - 🔊 Volume
 - 👁️ Distância de renderização
 - 🖥️ Tela cheia

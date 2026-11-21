@@ -2,9 +2,9 @@
 'use strict';
 Object.assign(LS.World, {
   buildSky(scene) {
-    this.hemi = new THREE.HemisphereLight(0xbfd9ff, 0x4a5a3a, 0.6);
+    this.hemi = new THREE.HemisphereLight(0xbfd9ff, 0x3a3428, 0.5); // chão mais escuro: faces de baixo e sombras com profundidade
     scene.add(this.hemi);
-    this.ambient = new THREE.AmbientLight(0xfff2e0, 0.3); scene.add(this.ambient);
+    this.ambient = new THREE.AmbientLight(0xdfe8ff, 0.12); scene.add(this.ambient); // pouca luz "chapada": as faces ganham lado claro e escuro
     this.sun = new THREE.DirectionalLight(0xffffff, 0.9);
     Object.assign(this.sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 1, far: 400 });
     this.sun.shadow.bias = -0.0008; this.sun.shadow.normalBias = 0.03; // sem "acne" de sombra tremendo nas paredes
@@ -145,8 +145,8 @@ Object.assign(LS.World, {
     scene.background.copy(U.horizonColor.value);
     scene.fog.color.copy(U.horizonColor.value).lerp(U.topColor.value, 0.15);
     this.sun.color.copy(U.sunColor.value);
-    this.sun.intensity = LS.util.lerp(a.i, b.i, k);
-    this.hemi.intensity = 0.3 + this.sun.intensity * 0.35;
+    this.sun.intensity = LS.util.lerp(a.i, b.i, k) * 1.25;          // sol mais forte (contraste luz/sombra)
+    this.hemi.intensity = 0.24 + this.sun.intensity * 0.26;
     this.hemi.color.copy(U.topColor.value).lerp(new THREE.Color(0xffffff), 0.5);
     // trajetória do sol (nasce, passa alto e se põe no fim da partida)
     const ang = 0.3 + t * 2.75;
