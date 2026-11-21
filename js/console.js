@@ -293,14 +293,6 @@ LS.Console = {
     esp: { desc: 'caixa, linha, nome, arma, vida e distância de cada jogador (bots com a etiqueta BOT)', fn() {
       return 'ESP ' + (LS.ESP.toggle() ? 'ligado 👁' : 'desligado');
     } },
-    badge: { use: '<owner | dev | cc | verificado | nenhum>', desc: 'liga/desliga um selo no seu perfil (teste)', fn(a) {
-      const P = LS.playerProfile, k = (a[0] || '').toLowerCase();
-      if (k === 'nenhum') P.badges = [];
-      else if (LS.Profile.BADGES[k]) { const i = P.badges.indexOf(k); if (i >= 0) P.badges.splice(i, 1); else P.badges.push(k); }
-      else throw new Error('Use: badge owner | dev | cc | verificado | nenhum');
-      LS.saveProfile(); LS.Profile.renderTop(); if (LS.UI.current === 'panel-stats') LS.Profile.render();
-      return 'Selos: ' + (P.badges.length ? P.badges.map(b => '<b>' + LS.Profile.BADGES[b].label + '</b>').join(', ') : 'nenhum');
-    } },
     god: { desc: 'modo invencível (liga/desliga)', fn() {
       const P = this.P(); this.god = !this.god;
       if (!P._td) { P._td = P.takeDamage; P.takeDamage = function (...x) { return LS.Console.god ? 0 : this._td(...x); }; }

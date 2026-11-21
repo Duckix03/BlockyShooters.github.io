@@ -25,8 +25,32 @@ A IA dos bots roda no navegador de um dos jogadores (o "host"). Se ele sair, out
 Os comandos de trapaça do console (`give`, `god`, `tp`, `esp`...) ficam desligados no online.
 O console fica escondido pros jogadores: só abre depois de abrir o jogo uma vez com `?dev` no link (`?dev=0` desliga).
 
+**Atualizou o servidor (ex.: contas novas)?** Rode `npx wrangler deploy` de novo dentro da pasta `server`. Sem isso, o botão de criar conta dá erro.
+
 **Mudou o mapa?** (terreno, casas, pedras ou `LS.MAP_SEED`) Rode `python tools/export-occluders.py . server/src/occluders.js`
 pra atualizar as paredes que o servidor usa pra linha de visão.
+
+## 👤 Contas
+
+O servidor também guarda as **contas** (`src/accounts.js`): nome único com senha, perfil, estatísticas, curtidas e selos.
+
+- O **nome** de uma conta é só dela. Na partida online, quem não tem conta e tenta usar o nome de uma conta entra como `Convidado1234`.
+- A senha é guardada com hash (PBKDF2 + sal), nunca em texto.
+- **Selos** (Owner, Dev, Criador de Conteúdo, Verificado) só podem ser dados pelo **owner**, no botão **ADMIN** do perfil.
+- Não tem e-mail: quem esquecer a senha perde a conta (dá pra adicionar depois).
+
+### Virar owner (uma vez só)
+
+1. Crie a **chave de admin** (uma senha grande que só você sabe). Dentro da pasta `server`:
+
+   ```bash
+   npx wrangler secret put ADMIN_KEY
+   ```
+
+   Ele pede pra você digitar a chave (mínimo 12 caracteres). Ela fica guardada só na Cloudflare, não no GitHub.
+2. Publique de novo: `npx wrangler deploy` (veja abaixo).
+3. No jogo: abra o **perfil** (clique no seu nome no canto de cima), **CRIAR CONTA**, depois **CONTA** → **Chave de admin** → cole a chave → **USAR**.
+   Você ganha Owner, Dev e Verificado, e aparece o botão **ADMIN** no perfil pra dar selos pelo ID de cada um.
 
 ## Publicar (uma vez só, uns 5 minutos)
 

@@ -1,6 +1,8 @@
-// Perfil no estilo Free Fire: personagem 3D do lado, foto de perfil de verdade (foto 3D do seu boneco ou
-// uma imagem sua), nome, ID, curtidas, recado (bio), selos (verificado, criador de conteúdo, dev, owner),
-// patente, nível e estatísticas. Também mostra o perfil de outros jogadores (bots) no fim da partida.
+// Perfil no estilo Free Fire: personagem 3D do lado, foto de perfil (foto 3D do seu boneco), nome, ID,
+// curtidas, recado (bio), selos (verificado, criador de conteúdo, dev, owner), patente, nível e estatísticas.
+// Nome, curtidas e selos de verdade vêm da CONTA (js/account.js). Também mostra o perfil de outros jogadores:
+// de contas (busca por ID) e de bots (no fim da partida).
+// (Não tem envio de imagem de propósito: assim ninguém coloca foto imprópria no perfil.)
 'use strict';
 LS.Profile = {
   // selos: quem tem algum fica com o "verificado" azul do lado do nome
@@ -10,8 +12,6 @@ LS.Profile = {
     cc: { label: 'CRIADOR DE CONTEÚDO', cls: 'b-cc', icon: '<rect x="2" y="5" width="20" height="14" rx="4" fill="currentColor"/><path d="M10 9l5 3-5 3z" fill="#fff"/>' },
     verificado: { label: 'VERIFICADO', cls: 'b-ver', icon: '<path d="M12 2l2.6 2 3.3-.3.9 3.2 2.9 1.6-1.2 3.1 1.2 3.1-2.9 1.6-.9 3.2-3.3-.3L12 22l-2.6-2-3.3.3-.9-3.2-2.9-1.6 1.2-3.1-1.2-3.1 2.9-1.6.9-3.2 3.3.3z" fill="currentColor"/><path d="M8 12l3 3 5-6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>' }
   },
-  // IDs oficiais: coloque aqui o seu ID (aparece no perfil) pra ganhar os selos em qualquer navegador com esse ID
-  OFFICIAL: { /* '1234567890': ['owner', 'dev'], */ },
   BG: [['#ff8a1f', '#ffc531'], ['#2fd6ff', '#3a5bff'], ['#ff4d6d', '#7a1fff'], ['#8cf060', '#1f8a5a'], ['#ffe3a0', '#ff7a59'], ['#2a3246', '#5a6478'], ['#ff5ad1', '#ffb36b'], ['#1a1a1a', '#ff3b3b']],
   RANKS: [[0, 'BRONZE', '#c98a5a'], [5, 'PRATA', '#c9d2e3'], [10, 'OURO', '#ffc531'], [15, 'PLATINA', '#5ad1c9'], [20, 'DIAMANTE', '#7ab8ff'], [30, 'MESTRE', '#c08cff'], [40, 'DESAFIANTE', '#ff4d6d']],
   BIOS: ['Só jogo de capa 🎯', 'Rush ou nada!', 'Sniper desde 2019', 'Mira na cabeça e fé', 'Procurando squad', 'Não confia no gás', 'Bora x1 no galpão?', 'Main escopeta 💥', 'Último em pé, sempre', 'GG no final'],
@@ -24,7 +24,7 @@ LS.Profile = {
     if (typeof P.likes !== 'number') P.likes = 0;
     if (typeof P.bio !== 'string') P.bio = 'Bora sobreviver! 🪂';
     if (!Array.isArray(P.badges)) P.badges = [];
-    if (!P.avatar) P.avatar = { type: '3d', bg: 0 };
+    if (!P.avatar || P.avatar.type !== '3d') P.avatar = { type: '3d', bg: (P.avatar && P.avatar.bg) || 0 }; // (imagem enviada não existe mais)
     if (!P.cover) P.cover = 'br';
     LS.saveProfile();
     this.bind(); this.bound = true;
@@ -34,18 +34,11 @@ LS.Profile = {
       this.open(this.fakeProfile(this.endFoe)); LS.UI.openPanel('panel-stats');
     });
   },
-  badgesOf(p) { return [...new Set([...(p.badges || []), ...(this.OFFICIAL[p.id] || [])])].filter(b => this.BADGES[b]); },
+  // selos só existem em conta (o servidor é quem dá); convidado não tem
+  badgesOf(p) { if (p === LS.playerProfile && !LS.Account.logged()) return []; return (p.badges || []).filter((b, i, l) => this.BADGES[b] && l.indexOf(b) === i); },
   rankOf(level) { let r = this.RANKS[0]; for (const k of this.RANKS) if (level >= k[0]) r = k; return { name: r[1], color: r[2] }; },
   hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; },
   esc(t) { return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); },
-
-  // curtidas ganhas no fim da partida (outros jogadores curtem quem joga bem)
-  earnLikes(P, win) {
-    let n = Math.floor(P.kills / 2) + (Math.random() < 0.35 ? 1 : 0);
-    if (LS.Game.mode === 'duel') n += win ? 2 : 0; else n += win ? 4 : P.placement && P.placement <= 10 ? 1 : 0;
-    LS.playerProfile.likes += n; LS.saveProfile();
-    return n;
-  },
 
   // ---------- fotos 3D (com os modelos do jogo) ----------
   lights(sc) {
@@ -86,7 +79,6 @@ LS.Profile = {
   },
   // foto do perfil de alguém (a enviada pela pessoa, ou a foto 3D do boneco)
   avatarOf(p) {
-    if (p.avatar && p.avatar.type === 'img' && p.avatar.data) return p.avatar.data;
     try { return this.headshot(p.look, (p.avatar && p.avatar.bg) || 0); } catch (e) { return ''; }
   },
   coverOf(p) {
@@ -100,7 +92,7 @@ LS.Profile = {
     const el = document.getElementById('lb-avatar'); if (!el || !LS.Game.renderer) return;
     const P = LS.playerProfile, url = this.avatarOf(P);
     el.innerHTML = url ? '<img src="' + url + '" alt="">' : this.esc((P.name || 'J').charAt(0).toUpperCase());
-    const v = document.getElementById('lb-verified'); if (v) v.innerHTML = this.badgesOf(P).length ? this.verifiedIcon() : '';
+    const v = document.getElementById('lb-verified'); if (v) v.innerHTML = this.badgesOf(P).length ? this.verifiedIcon() : LS.Account.logged() ? '' : '<span class="lb-guest">CONVIDADO</span>';
   },
   verifiedIcon() { return '<svg class="pf-vtick" viewBox="0 0 24 24">' + this.BADGES.verificado.icon + '</svg>'; },
 
@@ -129,15 +121,17 @@ LS.Profile = {
     const coverStyle = cover ? 'background-image:url(' + cover + ')' : 'background:linear-gradient(160deg,' + gcol[0] + ',' + gcol[1] + ')';
     let body = '', full = '';
     try { full = this.fullbody(p.look, p.weapon || null); } catch (e) { /* sem WebGL */ }
-    const liked = !own && this.liked && this.liked[p.id];
+    const liked = !own && (p.real ? !!p.liked : this.liked && this.liked[p.id]);
     body += '<div class="pf"><div class="pf-left"><div class="pf-cover" style="' + coverStyle + '"></div><div class="pf-left-shade"></div>' + (full ? '<img class="pf-char" src="' + full + '" alt="">' : '') +
       '<div class="pf-rank" style="--rk:' + rank.color + '"><svg viewBox="0 0 24 24"><path d="M12 2l8 4.6v10.8L12 22l-8-4.6V6.6z" fill="currentColor"/><path d="M12 6.5l1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="#fff" opacity=".9"/></svg><div><small>PATENTE</small><b>' + rank.name + '</b></div></div></div>';
-    body += '<div class="pf-right"><div class="pf-head">' +
+    const guest = own && !LS.Account.logged();
+    body += '<div class="pf-right">' + (guest ? '<div class="pf-guest"><div><b>VOCÊ É CONVIDADO</b><span>Crie uma conta pra <b>reservar o seu nome</b>, receber curtidas, ganhar selos e levar o perfil pra qualquer computador.</span></div>' +
+      '<button class="btn small btn-primary" data-pf="register">CRIAR CONTA</button><button class="btn small" data-pf="login">ENTRAR</button></div>' : '') + '<div class="pf-head">' +
       '<div class="pf-avatar">' + (this.avatarOf(p) ? '<img src="' + this.avatarOf(p) + '" alt="">' : '') + (own ? '<button class="pf-cam" data-pf="photo" title="Trocar foto">' + this.camIcon() + '</button>' : '') + '<span class="pf-lvl">' + lvl + '</span></div>' +
       '<div class="pf-idbox"><div class="pf-name">' + this.esc(p.name || 'Jogador') + (badges.length ? this.verifiedIcon() : '') + '</div>' +
       '<div class="pf-sub">ID: <b>' + p.id + '</b> <button class="pf-copy" data-pf="copy" title="Copiar ID">COPIAR</button> · BR</div>' +
       '<div class="pf-badges">' + (badges.length ? badges.map(k => { const B = this.BADGES[k]; return '<span class="pf-badge ' + B.cls + '"><svg viewBox="0 0 24 24">' + B.icon + '</svg>' + B.label + '</span>'; }).join('') : '<span class="pf-nobadge">Sem selos</span>') + '</div></div>' +
-      '<div class="pf-likes' + (liked ? ' on' : '') + '"' + (own ? '' : ' data-pf="like"') + ' title="' + (own ? 'Curtidas que você recebeu' : 'Curtir') + '"><svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.6 3 5 6.6 5c2.1 0 3.6 1.2 5.4 3 1.8-1.8 3.3-3 5.4-3C21 5 23.1 8.6 21.6 11.8 19.5 16.4 12 21 12 21z" fill="currentColor"/></svg><b>' + (p.likes + (liked ? 1 : 0)).toLocaleString('pt-BR') + '</b><span>CURTIDAS</span></div></div>';
+      '<div class="pf-likes' + (liked ? ' on' : '') + '"' + (own ? '' : ' data-pf="like"') + ' title="' + (own ? 'Curtidas que você recebeu' : 'Curtir') + '"><svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.6 3 5 6.6 5c2.1 0 3.6 1.2 5.4 3 1.8-1.8 3.3-3 5.4-3C21 5 23.1 8.6 21.6 11.8 19.5 16.4 12 21 12 21z" fill="currentColor"/></svg><b>' + (p.likes + (liked && !p.real ? 1 : 0)).toLocaleString('pt-BR') + '</b><span>CURTIDAS</span></div></div>';
     body += '<div class="pf-xp"><span>NÍVEL ' + lvl + '</span><div><i style="width:' + Math.round(((s.xp || 0) - a) / (b - a) * 100) + '%"></i></div><span>' + ((s.xp || 0) - a) + ' / ' + (b - a) + ' XP</span></div>';
     body += '<div class="pf-bio"><small>RECADO</small><p>' + (p.bio ? this.esc(p.bio) : '<i>Sem recado</i>') + '</p>' + (own ? '<button data-pf="edit" title="Editar">' + this.penIcon() + '</button>' : '') + '</div>';
     body += '<div class="stats-grid pf-stats">' +
@@ -145,9 +139,11 @@ LS.Profile = {
       '<div><b>' + (s.kills || 0) + '</b><span>ABATES</span></div><div><b>' + ((s.kills || 0) / deaths).toFixed(2) + '</b><span>ABATES / MORTE</span></div><div><b>' + (s.best ? '#' + s.best : '-') + '</b><span>MELHOR COLOCAÇÃO</span></div>' +
       '</div></div></div>';
     document.getElementById('stats-body').innerHTML = body;
+    const isOwner = own && LS.Account.logged() && (p.badges || []).includes('owner');
     document.getElementById('pf-buttons').innerHTML = own
-      ? '<button class="btn" data-pf="edit">EDITAR PERFIL</button><button class="btn" data-pf="photo">FOTO</button><button class="btn" data-pf="cover">CAPA</button><button class="btn" data-pf="reset">ZERAR</button><button class="btn btn-primary" data-pf="back">VOLTAR</button>'
-      : '<button class="btn' + (liked ? '' : ' btn-like') + '" data-pf="like">' + (liked ? 'CURTIDO ♥' : 'CURTIR ♥') + '</button><button class="btn btn-primary" data-pf="back">VOLTAR</button>';
+      ? '<button class="btn" data-pf="edit">EDITAR</button><button class="btn" data-pf="photo">FOTO</button><button class="btn" data-pf="cover">CAPA</button><button class="btn" data-pf="search">BUSCAR ID</button>' +
+        (LS.Account.logged() ? '<button class="btn" data-pf="account">CONTA</button>' : '') + (isOwner ? '<button class="btn btn-admin" data-pf="admin">ADMIN</button>' : '') + '<button class="btn btn-primary" data-pf="back">VOLTAR</button>'
+      : (p.real ? '' : '<span class="pf-botnote">Perfil de bot</span>') + '<button class="btn' + (liked ? '' : ' btn-like') + '" data-pf="like">' + (liked ? 'CURTIDO ♥' : 'CURTIR ♥') + '</button><button class="btn btn-primary" data-pf="back">VOLTAR</button>';
     document.querySelector('#panel-stats h2').textContent = own ? 'MEU PERFIL' : 'PERFIL DO JOGADOR';
   },
   camIcon() { return '<svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/></svg>'; },
@@ -162,47 +158,30 @@ LS.Profile = {
   openEdit() {
     const P = LS.playerProfile;
     this.modal('<h3>EDITAR PERFIL</h3><label>Nome</label><input id="pf-in-name" maxlength="16" spellcheck="false" autocomplete="off" value="' + this.esc(P.name) + '">' +
+      (LS.Account.logged() ? '<p class="pf-hint">Nome da conta: dá pra trocar 1 vez a cada 7 dias, e só por um nome livre.</p>' : '') +
       '<label>Recado <small id="pf-bio-n"></small></label><textarea id="pf-in-bio" maxlength="80" rows="3">' + this.esc(P.bio || '') + '</textarea>' +
-      '<div class="pf-modal-btns"><button class="btn" data-pf="close">CANCELAR</button><button class="btn btn-primary" data-pf="save">SALVAR</button></div>');
+      '<p id="pf-err" class="pf-err hidden"></p><div class="pf-modal-btns"><button class="btn" data-pf="close">CANCELAR</button><button class="btn btn-primary" data-pf="save">SALVAR</button></div>');
     const bio = document.getElementById('pf-in-bio'), n = document.getElementById('pf-bio-n'), upd = () => { n.textContent = bio.value.length + '/80'; };
     bio.addEventListener('input', upd); upd(); document.getElementById('pf-in-name').focus();
   },
-  saveEdit() {
-    const P = LS.playerProfile;
-    P.name = document.getElementById('pf-in-name').value.trim().slice(0, 16) || 'Jogador';
+  async saveEdit() {
+    const P = LS.playerProfile, name = document.getElementById('pf-in-name').value.trim().slice(0, 16) || 'Jogador';
     P.bio = document.getElementById('pf-in-bio').value.replace(/\s+/g, ' ').trim().slice(0, 80);
+    if (LS.Account.logged() && name !== P.name) { // conta: o servidor confere se o nome está livre
+      try { await LS.Account.rename(name); } catch (e) { this.modalError(e.message); LS.saveProfile(); return; }
+    } else if (!LS.Account.logged()) P.name = name;
     LS.saveProfile(); this.closeModal(); this.render(); LS.Menu.render(); this.renderTop();
     if (LS.Lobby.built) LS.Lobby.syncUI();
   },
+  modalError(msg) { const e = document.getElementById('pf-err'); if (e) { e.textContent = msg; e.classList.remove('hidden', 'ok'); } },
   openPhoto() {
     const P = LS.playerProfile, cur = P.avatar || {};
     const opts = this.BG.map((_, i) => '<button class="pf-ph' + (cur.type !== 'img' && (cur.bg || 0) === i ? ' sel' : '') + '" data-pf="ph" data-v="' + i + '"><img src="' + this.headshot(P.look, i) + '" alt=""></button>').join('');
-    this.modal('<h3>FOTO DE PERFIL</h3><p class="pf-hint">Uma foto 3D do seu personagem (muda junto quando você troca o visual) ou uma imagem sua.</p>' +
-      '<div class="pf-ph-grid">' + opts + (cur.type === 'img' ? '<button class="pf-ph sel"><img src="' + cur.data + '" alt=""></button>' : '') + '</div>' +
-      '<div class="pf-modal-btns"><button class="btn" data-pf="upload">ENVIAR IMAGEM</button><button class="btn btn-primary" data-pf="close">PRONTO</button></div>');
+    this.modal('<h3>FOTO DE PERFIL</h3><p class="pf-hint">Uma foto 3D do seu personagem: muda junto quando você troca o visual. Escolha o fundo.</p>' +
+      '<div class="pf-ph-grid">' + opts + '</div>' +
+      '<div class="pf-modal-btns"><button class="btn btn-primary" data-pf="close">PRONTO</button></div>');
   },
   setPhoto(bg) { LS.playerProfile.avatar = { type: '3d', bg }; LS.saveProfile(); this.openPhoto(); this.render(); this.renderTop(); },
-  // imagem enviada: corta no meio, reduz pra 160x160 e guarda no navegador
-  upload() {
-    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
-    inp.onchange = () => {
-      const file = inp.files && inp.files[0]; if (!file) return;
-      const r = new FileReader();
-      r.onload = () => {
-        const img = new Image();
-        img.onload = () => {
-          const c = document.createElement('canvas'); c.width = c.height = 160;
-          const s = Math.min(img.width, img.height), g = c.getContext('2d'); g.imageSmoothingQuality = 'high';
-          g.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, 160, 160);
-          LS.playerProfile.avatar = { type: 'img', data: c.toDataURL('image/jpeg', 0.85) };
-          LS.saveProfile(); this.openPhoto(); this.render(); this.renderTop();
-        };
-        img.src = r.result;
-      };
-      r.readAsDataURL(file);
-    };
-    inp.click();
-  },
   openCover() {
     const P = LS.playerProfile, cur = P.cover || 'br';
     const banners = [['br', 'Battle Royale'], ['duel1', 'Duelo 1v1'], ['duel2', 'Duelo 2v2']].map(([id, name]) => { const u = LS.Banners.cached(id);
@@ -211,11 +190,93 @@ LS.Profile = {
     this.modal('<h3>CAPA DO PERFIL</h3><div class="pf-cv-grid">' + banners.join('') + grads.join('') + '</div><div class="pf-modal-btns"><button class="btn btn-primary" data-pf="close">PRONTO</button></div>');
   },
   setCover(id) { LS.playerProfile.cover = id; LS.saveProfile(); this.openCover(); this.render(); },
-  like() {
+  async like() {
     const p = this.view; if (!p) return;
+    if (p.real) {
+      if (!LS.Account.logged()) { this.openAuth('register', 'Crie uma conta (ou entre) pra curtir perfis.'); return; }
+      try { const d = await LS.Account.like(p.id); p.liked = d.liked; p.likes = d.likes; LS.Audio.click(); this.render(); } catch (e) { this.modal('<h3>OPS</h3><p class="pf-hint">' + this.esc(e.message) + '</p><div class="pf-modal-btns"><button class="btn btn-primary" data-pf="close">OK</button></div>'); }
+      return;
+    }
     this.liked = this.liked || {};
     this.liked[p.id] = !this.liked[p.id];
     LS.Audio.click(); this.render();
+  },
+
+  // ---------- conta: entrar / criar ----------
+  openAuth(mode, note) {
+    this.authMode = mode;
+    const reg = mode === 'register';
+    this.modal('<div class="pf-tabs"><button class="' + (reg ? 'on' : '') + '" data-pf="register">CRIAR CONTA</button><button class="' + (reg ? '' : 'on') + '" data-pf="login">ENTRAR</button></div>' +
+      (note ? '<p class="pf-hint">' + this.esc(note) + '</p>' : '') +
+      '<label>Nome' + (reg ? ' <small>(3 a 16: letras, números, _ . -)</small>' : '') + '</label><input id="pf-a-name" maxlength="16" spellcheck="false" autocomplete="username" value="' + (reg ? this.esc(LS.playerProfile.name === 'Jogador' ? '' : LS.playerProfile.name) : '') + '">' +
+      '<label>Senha' + (reg ? ' <small>(6 ou mais)</small>' : '') + '</label><input id="pf-a-pass" type="password" maxlength="64" autocomplete="' + (reg ? 'new-password' : 'current-password') + '">' +
+      (reg ? '<label>Repita a senha</label><input id="pf-a-pass2" type="password" maxlength="64" autocomplete="new-password"><p class="pf-hint pf-warn">Não tem e-mail pra recuperar: <b>guarde bem a sua senha</b>.</p>' : '') +
+      '<p id="pf-err" class="pf-err hidden"></p><div class="pf-modal-btns"><button class="btn" data-pf="close">CANCELAR</button><button class="btn btn-primary" data-pf="auth-go">' + (reg ? 'CRIAR CONTA' : 'ENTRAR') + '</button></div>');
+    const first = document.getElementById('pf-a-name');
+    (first.value ? document.getElementById('pf-a-pass') : first).focus();
+  },
+  async authGo() {
+    const name = document.getElementById('pf-a-name').value.trim(), pass = document.getElementById('pf-a-pass').value, reg = this.authMode === 'register';
+    if (reg && pass !== document.getElementById('pf-a-pass2').value) return this.modalError('As senhas não são iguais.');
+    const btn = document.querySelector('[data-pf="auth-go"]'); btn.disabled = true; btn.textContent = '...';
+    try { if (reg) await LS.Account.register(name, pass); else await LS.Account.login(name, pass); this.closeModal(); this.open(); this.renderTop(); }
+    catch (e) { this.modalError(e.message); btn.disabled = false; btn.textContent = reg ? 'CRIAR CONTA' : 'ENTRAR'; }
+  },
+  openAccount() {
+    const P = LS.playerProfile;
+    this.modal('<h3>MINHA CONTA</h3><p class="pf-hint">Você está como <b>' + this.esc(P.name) + '</b> (ID ' + P.id + '). Seu perfil e estatísticas ficam salvos na conta.</p>' +
+      '<label>Chave de admin <small>(só pro dono do jogo)</small></label><div class="pf-row"><input id="pf-key" type="password" autocomplete="off"><button class="btn small" data-pf="claim">USAR</button></div>' +
+      '<p id="pf-err" class="pf-err hidden"></p><div class="pf-modal-btns"><button class="btn" data-pf="reset">ZERAR ESTATÍSTICAS</button><button class="btn" data-pf="logout">SAIR DA CONTA</button><button class="btn btn-primary" data-pf="close">FECHAR</button></div>');
+  },
+  async claimGo() {
+    try { await LS.Account.claim(document.getElementById('pf-key').value.trim()); this.closeModal(); this.render(); this.renderTop(); }
+    catch (e) { this.modalError(e.message); }
+  },
+  // ---------- buscar jogador pelo ID ----------
+  openSearch() {
+    this.modal('<h3>BUSCAR JOGADOR</h3><p class="pf-hint">Digite o ID de 10 números (fica no perfil de cada um).</p><div class="pf-row"><input id="pf-sid" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="1234567890"><button class="btn small btn-primary" data-pf="search-go">BUSCAR</button></div>' +
+      '<p id="pf-err" class="pf-err hidden"></p><div class="pf-modal-btns"><button class="btn" data-pf="close">FECHAR</button></div>');
+    document.getElementById('pf-sid').focus();
+  },
+  async searchGo() {
+    const id = document.getElementById('pf-sid').value.replace(/\D/g, '');
+    if (id.length !== 10) return this.modalError('O ID tem 10 números.');
+    if (id === LS.playerProfile.id) { this.closeModal(); return this.open(); }
+    try { const d = await LS.Account.profile(id); this.closeModal(); this.open(this.realProfile(d.profile, d.liked)); }
+    catch (e) { this.modalError(e.message); }
+  },
+  // perfil de uma conta de verdade (vindo do servidor)
+  realProfile(a, liked) {
+    const pr = a.profile || {};
+    return { other: true, real: true, liked, name: a.name, id: a.id, likes: a.likes, badges: a.badges || [], bio: pr.bio || '',
+      look: Object.assign({}, LS.defaultProfile.look, pr.look || {}), weapon: pr.weapon || null, avatar: { type: '3d', bg: pr.avatarBg || 0 }, cover: pr.cover || 'br',
+      stats: Object.assign({ games: 0, wins: 0, kills: 0, xp: 0, best: 0 }, a.stats || {}) };
+  },
+  // ---------- painel do owner: dar selos ----------
+  openAdmin() {
+    this.modal('<h3>PAINEL ADMIN</h3><p class="pf-hint">Dê ou tire selos de qualquer conta pelo ID.</p><div class="pf-row"><input id="pf-adm-id" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="ID da conta"><button class="btn small" data-pf="adm-find">BUSCAR</button></div>' +
+      '<div id="pf-adm-box"></div><p id="pf-err" class="pf-err hidden"></p><div class="pf-modal-btns"><button class="btn btn-primary" data-pf="close">FECHAR</button></div>');
+    document.getElementById('pf-adm-id').focus();
+  },
+  async admFind() {
+    const id = document.getElementById('pf-adm-id').value.replace(/\D/g, '');
+    try {
+      const a = id === LS.playerProfile.id ? LS.Account.me : (await LS.Account.profile(id)).profile;
+      this.admTarget = a.id;
+      document.getElementById('pf-adm-box').innerHTML = '<p class="pf-adm-name">' + this.esc(a.name) + ' <small>(' + a.id + ')</small></p><div class="pf-adm-badges">' +
+        Object.keys(this.BADGES).map(k => '<label class="pf-chk"><input type="checkbox" value="' + k + '"' + ((a.badges || []).includes(k) ? ' checked' : '') + '><span class="pf-badge ' + this.BADGES[k].cls + '"><svg viewBox="0 0 24 24">' + this.BADGES[k].icon + '</svg>' + this.BADGES[k].label + '</span></label>').join('') +
+        '</div><button class="btn small btn-primary" data-pf="adm-save">SALVAR SELOS</button>';
+      document.getElementById('pf-err').classList.add('hidden');
+    } catch (e) { this.modalError(e.message); }
+  },
+  async admSave() {
+    const badges = [...document.querySelectorAll('#pf-adm-box input:checked')].map(i => i.value);
+    try {
+      const a = await LS.Account.setBadges(this.admTarget, badges);
+      if (a.id === LS.playerProfile.id) await LS.Account.refresh();
+      this.modalError('Salvo! ' + a.name + ': ' + (a.badges.length ? a.badges.map(b => this.BADGES[b].label).join(', ') : 'sem selos'));
+      document.getElementById('pf-err').classList.add('ok');
+    } catch (e) { this.modalError(e.message); }
   },
 
   bind() {
@@ -231,11 +292,21 @@ LS.Profile = {
         case 'close': this.closeModal(); break;
         case 'photo': this.openPhoto(); break;
         case 'ph': this.setPhoto(+el.dataset.v); break;
-        case 'upload': this.upload(); break;
+        case 'register': this.openAuth('register'); break;
+        case 'login': this.openAuth('login'); break;
+        case 'auth-go': this.authGo(); break;
+        case 'account': this.openAccount(); break;
+        case 'claim': this.claimGo(); break;
+        case 'logout': LS.Account.logout().then(() => { this.closeModal(); this.open(); this.renderTop(); }); break;
+        case 'search': this.openSearch(); break;
+        case 'search-go': this.searchGo(); break;
+        case 'admin': this.openAdmin(); break;
+        case 'adm-find': this.admFind(); break;
+        case 'adm-save': this.admSave(); break;
         case 'cover': LS.Banners.generate(['br', 'duel1', 'duel2'], () => { if (!document.getElementById('pf-modal').classList.contains('hidden')) this.openCover(); }); this.openCover(); break;
         case 'cv': this.setCover(el.dataset.v); break;
         case 'like': this.like(); break;
-        case 'reset': LS.Menu.resetStats(); this.render(); break;
+        case 'reset': this.closeModal(); LS.Menu.resetStats(); this.render(); break;
         case 'copy': {
           const id = (this.view || LS.playerProfile).id;
           try { navigator.clipboard.writeText(id); } catch (err) { /* sem permissão */ }
@@ -244,6 +315,14 @@ LS.Profile = {
         }
       }
     });
-    root.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'pf-in-name') this.saveEdit(); });
+    root.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      const id = e.target.id;
+      if (id === 'pf-in-name') this.saveEdit();
+      else if (id === 'pf-a-name' || id === 'pf-a-pass' || id === 'pf-a-pass2') this.authGo();
+      else if (id === 'pf-sid') this.searchGo();
+      else if (id === 'pf-adm-id') this.admFind();
+      else if (id === 'pf-key') this.claimGo();
+    });
   }
 };

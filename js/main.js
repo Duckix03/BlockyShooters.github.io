@@ -93,6 +93,7 @@ window.addEventListener('load', () => {
   LS.Anim.initLoco(); // carrega a run_f (anims/locomocao.json) para a corrida
   LS.Anim.initDrop(); // arrastar .glb/.fbx para a janela toca a animação no personagem
   LS.Modes.init();
+  LS.Account.init(); // conta (se já entrou neste navegador)
   LS.Profile.init();
   LS.Menu.init();
   document.getElementById('arsenal-list').addEventListener('click', e => { const b = e.target.closest('[data-wpn]'); if (b) { LS.Audio.init(); LS.Audio.click(); LS.Menu.pickLobbyWeapon(b.dataset.wpn); } });
