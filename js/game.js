@@ -236,6 +236,7 @@ LS.Game = {
       LS.World.updateSky(0.3, this.scene, new THREE.Vector3(0, 0, 0), dt);
     }
     if (this.state !== 'menu' || this.built) LS.Post.render(this.scene, this.camera);
+    LS.ESP.draw(); // comando esp (desenha só quando ligado)
     LS.Input.endFrame();
   },
   update(dt) {

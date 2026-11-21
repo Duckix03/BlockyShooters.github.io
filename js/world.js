@@ -4,15 +4,32 @@ LS.World = {
   SEG: 200, boxes: [], grid: new Map(), CELL: 16, towns: [], lootSpots: [], heights: null,
 
   // ---------- Altura ----------
+  // relevo: planícies onduladas com distorção (sem formas "de ruído"), colinas com cristas, 2 maciços de montanha
+  // largos (base larga, encostas com cristas e vales, pico com neve) e costa irregular. As cidades são aplainadas depois.
+  MASSIFS: [{ x: 235, z: 15, r: 125, h: 92 }, { x: -240, z: -5, r: 95, h: 52 }],
   baseHeight(x, z) {
-    const n = LS.util.noise;
-    let h = 3 + n(x * 0.008, z * 0.008) * 9 + n(x * 0.03, z * 0.03) * 2.5;
-    const m = n(x * 0.005 + 37, z * 0.005 + 91);
-    if (m > 0.52) { const k = (m - 0.52) / 0.48; h += k * k * 140 + n(x * 0.05, z * 0.05) * 6 * k; }
-    const d = Math.hypot(x, z);
-    const e = LS.util.clamp((d - 320) / 75, 0, 1);
-    const s = e * e * (3 - 2 * e);
-    return LS.util.lerp(h, -8, s);
+    const n = LS.util.noise, cl = LS.util.clamp, sm = k => k * k * (3 - 2 * k);
+    const fbm = (px, pz, o) => { let v = 0, a = 0.5, f = 1, t = 0; for (let i = 0; i < o; i++) { v += a * n(px * f + i * 17.3, pz * f + i * 9.1); t += a; a *= 0.5; f *= 2.03; } return v / t; };
+    const ridged = (px, pz, o) => { let v = 0, a = 0.5, f = 1, t = 0; for (let i = 0; i < o; i++) { const r = 1 - Math.abs(n(px * f + i * 5.7, pz * f + i * 3.3) * 2 - 1); v += a * r * r; t += a; a *= 0.5; f *= 2.1; } return v / t; };
+    // distorção do domínio: as formas ficam orgânicas
+    const wx = x + (n(x * 0.0045 + 11, z * 0.0045 + 5) - 0.5) * 90, wz = z + (n(x * 0.0045 + 71, z * 0.0045 + 23) - 0.5) * 90;
+    // planícies e ondulações suaves
+    let h = 4.5 + (fbm(wx * 0.0055, wz * 0.0055, 4) - 0.5) * 13 + (fbm(wx * 0.022, wz * 0.022, 3) - 0.5) * 3.2;
+    // colinas com cristas (aparecem só em algumas regiões)
+    const hm = sm(cl((fbm(wx * 0.004 + 50, wz * 0.004 + 50, 2) - 0.5) * 3.2, 0, 1));
+    h += hm * ridged(wx * 0.012, wz * 0.012, 3) * 16;
+    // maciços: base bem larga, corpo arredondado, cristas e vales nas encostas
+    for (const M of this.MASSIFS) {
+      const d = Math.hypot(x - M.x, z - M.z) / M.r;
+      if (d >= 1) continue;
+      const k = 1 - d, base = sm(k), peak = Math.pow(k, 2.2);
+      const rd = ridged(wx * 0.018 + M.x, wz * 0.018 + M.z, 4);
+      h += M.h * (base * 0.42 + peak * 0.58) * (0.72 + 0.5 * rd);
+    }
+    // costa irregular (baías e cabos) descendo pro mar
+    const d = Math.hypot(x, z) + (fbm(x * 0.006 + 3, z * 0.006 + 9, 3) - 0.5) * 80;
+    const e = sm(cl((d - 300) / 80, 0, 1));
+    return LS.util.lerp(h, -8, e);
   },
   exactHeight(x, z) {
     let h = this.baseHeight(x, z);
@@ -182,8 +199,9 @@ LS.World = {
     const geo = new THREE.PlaneGeometry(LS.MAP_SIZE, LS.MAP_SIZE, S, S);
     geo.rotateX(-Math.PI / 2);
     const pos = geo.attributes.position, colors = new Float32Array(pos.count * 3), tmix = new Float32Array(pos.count); // tmix: 0 grama .. 1 terra
-    const c = new THREE.Color(), sand = new THREE.Color(0xd9c58b), grass = new THREE.Color(0x6cbf45), grass2 = new THREE.Color(0x4f9e38),
-      rock = new THREE.Color(0x7a7268), snow = new THREE.Color(0xf2f4f7), dirt = new THREE.Color(0x9b8360);
+    const c = new THREE.Color(), sand = new THREE.Color(0xe2cd92), wetSand = new THREE.Color(0xb9a274), grass = new THREE.Color(0x6cbf45), grass2 = new THREE.Color(0x4a9a36),
+      dry = new THREE.Color(0x9fbf55), forest = new THREE.Color(0x3f8a34), rock = new THREE.Color(0x8a8378), rock2 = new THREE.Color(0x6e6a64),
+      snow = new THREE.Color(0xf4f6fa), dirt = new THREE.Color(0x9b8360), n = LS.util.noise;
     for (let i = 0; i < pos.count; i++) {
       const ix = i % W, iz = Math.floor(i / W);
       const h = this.heights[i]; pos.setY(i, h);
@@ -191,10 +209,18 @@ LS.World = {
       const hn = (ix < S ? this.heights[i + 1] : h), hs = (iz < S ? this.heights[i + W] : h);
       const slope = Math.hypot(hn - h, hs - h) / cell;
       let mx = 0;
-      if (h < 1.6) { c.copy(sand); mx = 1; }
-      else { c.copy(grass).lerp(grass2, LS.util.noise(x * 0.05, z * 0.05)); }
-      if (slope > 0.6 || h > 30) { const k = LS.util.clamp(Math.max((slope - 0.6) * 2, (h - 30) / 10), 0, 1); c.lerp(rock, k); mx = Math.max(mx, k); }
-      if (h > 70) c.lerp(snow, LS.util.clamp((h - 70) / 15, 0, 1));
+      // grama com manchas grandes: verde, verde-escura (mata), amarelada (seca)
+      const g1 = n(x * 0.012, z * 0.012), g2 = n(x * 0.03 + 40, z * 0.03 + 40);
+      c.copy(grass).lerp(grass2, g2 * 0.8).lerp(g1 > 0.5 ? forest : dry, Math.abs(g1 - 0.5) * 1.3);
+      // praia: areia molhada perto da água, seca acima
+      if (h < 2.4) { const k = LS.util.clamp((2.4 - h) / 1.2, 0, 1); c.lerp(h < 0.8 ? wetSand : sand, k); mx = Math.max(mx, k * 0.6); }
+      // rocha: encostas íngremes e altitude (com ruído pra borda não ficar reta)
+      const alt = LS.util.clamp((h - 34 - n(x * 0.05, z * 0.05) * 12) / 14, 0, 1), stp = LS.util.clamp((slope - 0.55) * 2.2, 0, 1);
+      const rk = Math.max(alt, stp);
+      if (rk > 0) c.lerp(rock.clone().lerp(rock2, n(x * 0.08 + 9, z * 0.08)), rk);
+      // neve no topo, mais embaixo nas faces menos inclinadas
+      const sn = LS.util.clamp((h - 66 - n(x * 0.04 + 5, z * 0.04 + 5) * 10 + (0.9 - Math.min(slope, 0.9)) * 6) / 8, 0, 1);
+      if (sn > 0) c.lerp(snow, sn);
       for (const t of this.towns) {
         const dd = Math.hypot(x - t.x, z - t.z);
         if (dd < t.r + 4) { // ruas em grade
