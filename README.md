@@ -145,6 +145,13 @@ No estilo Free Fire (toque no seu nome no topo do lobby):
 - **Atirar** segurando (e arrastando pra mirar, como no Free Fire), mirar, pular, agachar, recarregar, curar, pegar item, mochila, mapa e pausa
 - Menus e HUD se ajustam à tela; começa com gráficos mais leves
 
+### 🤖 App Android (APK)
+
+- 📥 [**Baixar o APK**](https://github.com/Duckix03/LastSurvivor/releases/latest/download/LastSurvivor.apk): o jogo inteiro dentro do app, deitado e em tela cheia
+- 🔁 **Crossplay**: quem joga no app e quem joga no navegador caem na mesma partida (e usam as mesmas contas)
+- 📴 Contra bots funciona **sem internet**
+- Como funciona, como compilar e como atualizar: veja [ANDROID.md](ANDROID.md)
+
 ---
 
 ## 🧱 Personagens e Lobby

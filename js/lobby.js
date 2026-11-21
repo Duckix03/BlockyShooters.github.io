@@ -80,8 +80,12 @@ LS.Lobby = {
       onFail: why => {
         if (!this.searching) return;
         this.online = false;
-        title.textContent = why === 'nomatch' ? 'NINGUÉM ONLINE AGORA' : 'SERVIDOR INDISPONÍVEL';
+        title.textContent = why === 'nomatch' ? 'NINGUÉM ONLINE AGORA' : why === 'outdated' ? 'JOGO DESATUALIZADO' : 'SERVIDOR INDISPONÍVEL';
         cnt.textContent = 'começando contra bots…';
+        if (why === 'outdated') { // versão velha não entra no online (crossplay com regras diferentes dá bug)
+          cnt.textContent = LS.IS_APP ? 'baixe o app novo pra jogar online · contra bots…' : 'recarregue a página pra jogar online · contra bots…';
+          if (LS.IS_APP && !this._askedUpdate) { this._askedUpdate = true; setTimeout(() => { if (confirm('Tem uma versão nova do Last Survivor!\nBaixar agora pra jogar online?')) location.href = LS.APP_DOWNLOAD_URL; }, 1600); }
+        }
         setTimeout(() => { if (!this.searching) return; this.searching = false; document.getElementById('lobby-mm').classList.add('hidden'); title.textContent = 'PROCURANDO PARTIDA'; LS.Game.startMatch(); }, 1400);
       },
     });

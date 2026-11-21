@@ -67,13 +67,14 @@ LS.Net = {
     try { ws = new WebSocket(this.wsUrl('/ws/find')); } catch (e) { fail('erro'); return; }
     this.findWs = ws;
     const to = setTimeout(() => fail('sem resposta'), 45000);
-    ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', name: LS.playerProfile.name, look: LS.playerProfile.look, auth: LS.Account && LS.Account.token }));
+    ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', proto: LS.NET_PROTO, ver: LS.VERSION, app: LS.IS_APP, name: LS.playerProfile.name, look: LS.playerProfile.look, auth: LS.Account && LS.Account.token }));
     ws.onerror = () => { clearTimeout(to); fail('erro'); };
     ws.onclose = () => { clearTimeout(to); if (!done && !this._matching) fail('fechou'); };
     ws.onmessage = ev => {
       let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
       if (m.t === 'queue') cb.onQueue(m.n, m.left);
       else if (m.t === 'nomatch') { clearTimeout(to); fail('nomatch'); }
+      else if (m.t === 'outdated') { clearTimeout(to); fail('outdated'); }
       else if (m.t === 'match') { clearTimeout(to); this._matching = true; this.joinMatch(m, cb, () => { done = true; }, fail); }
     };
   },
