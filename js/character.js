@@ -63,14 +63,8 @@ LS.CharacterModel = class {
     this.gunSocket = new THREE.Group(); this.hips.add(this.gunSocket);
     this.gunHolder = new THREE.Group(); this.gunSocket.add(this.gunHolder);
     this.gun = null; this.gunId = null;
-    // paraquedas
-    this.chute = new THREE.Group();
-    const canopy = new THREE.Mesh(new THREE.SphereGeometry(2.4, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2.5), new THREE.MeshLambertMaterial({ color: opts.chute || LS.util.pick([0xff5a2a, 0x2a8aff, 0xffd02a, 0x2aff8a, 0xff2a8a]), side: THREE.DoubleSide }));
-    canopy.scale.y = 0.5; canopy.position.y = 4; this.chute.add(canopy);
-    const pts = [];
-    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; pts.push(new THREE.Vector3(0, 1.4, 0), new THREE.Vector3(Math.cos(a) * 1.9, 4.6, Math.sin(a) * 1.9)); }
-    this.chute.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x222222 })));
-    this.chute.visible = false; this.root.add(this.chute);
+    // paraquedas (asa de células; as linhas vão até as mãos)
+    this.chute = this.buildChute(opts.chute); this.root.add(this.chute);
     this.root.traverse(o => { if (o.isMesh) o.castShadow = true; });
     this.applyLook(this.look);
     this.phase = 0; this.recoilT = 0; this.crouchK = 0; this.deadT = 0;
@@ -181,6 +175,68 @@ LS.CharacterModel = class {
     if (d > LEN) { fwd *= LEN / d; dy *= LEN / d; d = LEN; }
     const c = Math.acos(Math.min(1, d / LEN)), a = Math.atan2(fwd, dy) + c, knee = 2 * c;
     u.rotation.set(-a, 0, side > 0 ? spread : -spread); l.rotation.set(knee, 0, 0); f.rotation.set(a - knee, 0, 0);
+  }
+
+  // ---------- paraquedas ----------
+  // asa moderna: 9 células em arco com faixas de 2 cores e bordo de ataque escuro; linhas da asa até as mãos (frente)
+  // e os ombros (trás), refeitas a cada quadro
+  buildChute(color) {
+    const g = new THREE.Group(), PAL = [[0xff5a2a, 0xffd02a], [0x2a8aff, 0xf2f2f2], [0x2fd27a, 0x1d3b2a], [0xff3a8a, 0x2a2a2a], [0xffc21a, 0x2a5ab0], [0xe8e8e8, 0xd0302a]];
+    const pc = color ? [color, 0xf2f2f2] : LS.util.pick(PAL);
+    const N = 9, SPAN = 4.4, CHORD = 1.7, TH = 0.26, R = 3.2;
+    this.wing = new THREE.Group(); this.wing.position.y = 3.7; g.add(this.wing);
+    this.cells = [];
+    for (let i = 0; i < N; i++) {
+      const u = (i - (N - 1) / 2) / ((N - 1) / 2), a = u * 0.62, w = SPAN / N * 1.04, col = i % 2 ? pc[1] : pc[0];
+      const piv = new THREE.Group(); piv.position.set(Math.sin(a) * R, Math.cos(a) * R - R, 0); piv.rotation.z = -a;
+      const body = new THREE.Group(); piv.add(body);
+      const m = new THREE.Mesh(LS.boxGeo(w, TH, CHORD), LS.lambert(col)); m.castShadow = true; body.add(m);
+      const le = new THREE.Mesh(LS.boxGeo(w * 0.96, TH * 0.78, 0.07), LS.lambert(new THREE.Color(col).multiplyScalar(0.45).getHex()));
+      le.position.z = CHORD / 2 + 0.03; body.add(le);
+      this.wing.add(piv); this.cells.push({ piv, body, u, base: piv.position.clone(), rot: -a });
+    }
+    // pontos de amarração: embaixo das células 0, 2, 6 e 8, na frente e atrás
+    this.lineAnch = [];
+    for (const c of [0, 2, 6, 8]) for (const z of [0.65, -0.55]) this.lineAnch.push({ c, z });
+    this.lineGeo = new THREE.BufferGeometry();
+    this.lineGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.lineAnch.length * 6), 3));
+    this.lineMat = new THREE.LineBasicMaterial({ color: 0x1b1b1b, transparent: true, opacity: 0.85 });
+    this.lines = new THREE.LineSegments(this.lineGeo, this.lineMat); this.lines.frustumCulled = false; g.add(this.lines);
+    g.visible = false;
+    return g;
+  }
+  // abertura (0..1), respiração, curva (puxa o lado) e murchar no pouso (collapse 0..1)
+  poseChute(open, st, jolt, t, collapse) {
+    const L = LS.util.lerp, ss = x => { x = LS.util.clamp(x, 0, 1); return x * x * (3 - 2 * x); };
+    const eo = 1 - Math.pow(1 - LS.util.clamp(open, 0, 1), 3), cl = ss(collapse || 0);
+    // sobe da mochila até lá em cima, já abrindo; no pouso cai pra trás murchando
+    this.wing.position.set(0, L(L(1.5, 3.7, eo), 0.35, cl), L(0, -1.6, cl));
+    this.wing.rotation.set(-jolt * 0.35 + Math.sin(t * 0.9) * 0.03 - cl * 1.3, 0, Math.sin(t * 1.3) * 0.06 + st * 0.35);
+    for (const c of this.cells) {
+      const k = ss((open - Math.abs(c.u) * 0.35) / 0.65);               // enche do centro pras pontas
+      const br = 1 + Math.sin(t * 3.1 + c.u * 2.2) * 0.07;               // "respira" em onda
+      c.piv.position.set(c.base.x * L(0.12, 1, k) * L(1, 1.25, cl), c.base.y * L(0.3, 1, k), 0);
+      c.piv.rotation.z = c.rot * k;
+      c.body.scale.set(L(0.25, 1, k), L(0.15, 1, k) * br * L(1, 0.25, cl), L(0.35, 1, k));
+      c.body.rotation.x = Math.max(0, Math.sign(c.u) * st) * Math.abs(c.u) * 0.45; // lado puxado: bordo de fuga desce
+    }
+    this.lineMat.opacity = 0.85 * (1 - cl);
+  }
+  // linhas: da asa até as mãos (frente) e os ombros (trás) — seguem o boneco em tempo real
+  updateChuteLines() {
+    const V = THREE.Vector3, t = this._cl || (this._cl = { a: new V(), h: [new V(), new V()], s: [new V(), new V()] });
+    this.root.updateMatrixWorld(true);
+    const S = LS.Skin.PX;
+    [this.handR, this.handL].forEach((h, i) => this.chute.worldToLocal(h.localToWorld(t.h[i].set(0, -1.5 * S, 0))));
+    [this.armR, this.armL].forEach((a, i) => this.chute.worldToLocal(a.localToWorld(t.s[i].set(0, 0, 0))));
+    const P = this.lineGeo.attributes.position, arr = P.array;
+    this.lineAnch.forEach((an, j) => {
+      const c = this.cells[an.c];
+      c.body.localToWorld(t.a.set(0, -0.13, an.z)); this.chute.worldToLocal(t.a);
+      const side = c.u < 0 ? 0 : 1, end = an.z > 0 ? t.h[side] : t.s[side];   // u < 0 = lado direito do boneco
+      arr.set([t.a.x, t.a.y, t.a.z, end.x, end.y, end.z], j * 6);
+    });
+    P.needsUpdate = true;
   }
 
   // ---------- armas: encaixe no corpo + as duas mãos por IK ----------
@@ -372,12 +428,11 @@ LS.CharacterModel = class {
       this.chuteT = Math.min(1, (this.chuteT || 0) + dt * 2.2);
       this.chuteAge = (this.chuteAge || 0) + dt;
       this.steerK = E(this.steerK || 0, s.steer || 0, 3);
-      const k = this.chuteT, c1 = 1.70158, c3 = c1 + 1, back = 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2);
       const age = this.chuteAge, st = this.steerK, t = now + this.seed;
       const jolt = Math.exp(-age * 1.8) * Math.sin(age * 6.5) * 0.55;          // tranco da abertura (pêndulo amortecido)
-      const sway = Math.sin(t * 1.3) * 0.06, breathe = 1 + Math.sin(t * 2.4) * 0.035;
-      this.chute.visible = true; this.chute.scale.set(back * breathe, Math.max(0.05, back) / breathe, back * breathe);
-      this.chute.rotation.set(-jolt * 0.35, 0, sway + st * 0.3);
+      const sway = Math.sin(t * 1.3) * 0.06;
+      this.chute.visible = true; this.collapseT = 0; this.wasChute = true;
+      this.poseChute(this.chuteT, st, jolt, t, 0);
       this.hips.rotation.x = E(this.hips.rotation.x, jolt, 12);
       this.hips.rotation.z = E(this.hips.rotation.z, sway * 0.8 + st * 0.35, 5);
       this.hips.position.y = this.hipsY;
@@ -390,9 +445,17 @@ LS.CharacterModel = class {
       }
       this.headG.rotation.set(0.3 - jolt * 0.3, -st * 0.2, 0);
       if (this.gun) this.solveArm(-1, 0.5, this._rPt);
+      this.updateChuteLines();
       return;
     }
-    this.chute.visible = false; this.chuteT = 0;
+    // pousou: o paraquedas cai pra trás murchando e some (as linhas somem junto)
+    if (this.wasChute) { this.wasChute = false; this.collapseT = 1e-4; }
+    if (this.collapseT > 0 && this.chute.visible) {
+      this.collapseT = Math.min(1, this.collapseT + dt / 0.9);
+      this.poseChute(1, 0, 0, now + this.seed, this.collapseT);
+      if (this.collapseT >= 1) { this.chute.visible = false; this.collapseT = 0; }
+    } else this.chute.visible = false;
+    this.chuteT = 0;
     // ---- base: passada (pés com IK) entre parado / andando / correndo ----
     this.hips.rotation.x = E(this.hips.rotation.x, 0, 10);
     this.landT = Math.max(0, (this.landT || 0) - dt);

@@ -10,6 +10,7 @@ LS.Game = {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     document.getElementById('game-container').appendChild(this.renderer.domElement);
+    LS.Post.init(this.renderer); // oclusão de ambiente, contorno, vinheta e anti-serrilhado
     this.applyColors();
     this.scene = new THREE.Scene();
     // near 0.25 (era 0.1): 2,5x mais precisão de profundidade de longe, menos pisca-pisca em paredes e telhados.
@@ -225,7 +226,7 @@ LS.Game = {
     const dt = Math.min(this.clock.getDelta(), 0.05) * LS.Console.timeScale;
     this.fpsAcc += dt; this.fpsFrames++;
     if (this.fpsAcc >= 0.5) { document.getElementById('fps').textContent = Math.round(this.fpsFrames / this.fpsAcc) + ' FPS'; this.fpsAcc = 0; this.fpsFrames = 0; }
-    if (this.state === 'lobby' || (this.state === 'menu' && LS.Lobby.built)) { LS.Lobby.update(dt); this.renderer.render(LS.Lobby.scene, LS.Lobby.camera); LS.Input.endFrame(); return; }
+    if (this.state === 'lobby' || (this.state === 'menu' && LS.Lobby.built)) { LS.Lobby.update(dt); LS.Post.render(LS.Lobby.scene, LS.Lobby.camera); LS.Input.endFrame(); return; }
     if (!this.built) return;
     if (this.state === 'playing') this.update(dt);
     else if (this.state === 'menu' || this.state === 'ended') { // câmera orbitando a ilha no fundo
@@ -234,7 +235,7 @@ LS.Game = {
       this.camera.lookAt(0, 10, 0);
       LS.World.updateSky(0.3, this.scene, new THREE.Vector3(0, 0, 0), dt);
     }
-    if (this.state !== 'menu' || this.built) this.renderer.render(this.scene, this.camera);
+    if (this.state !== 'menu' || this.built) LS.Post.render(this.scene, this.camera);
     LS.Input.endFrame();
   },
   update(dt) {
