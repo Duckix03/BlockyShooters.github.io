@@ -9,8 +9,8 @@
 <meta name="theme-color" content="#0b0f1c">
 <title>LAST SURVIVOR</title>
 <link rel="preload" href="fonts/lilita-one-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=50">
-<link rel="stylesheet" href="css/ui.css?v=50">
+<link rel="stylesheet" href="css/style.css?v=51">
+<link rel="stylesheet" href="css/ui.css?v=51">
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="favicon.png">
 </head>
@@ -169,8 +169,20 @@
   <div class="panel">
     <h2>CONFIGURAÇÕES</h2>
     <div class="setting">
-      <label>Sensibilidade do mouse <span id="val-sens"></span></label>
+      <label><span class="no-mobile">Sensibilidade do mouse</span><span class="only-mobile">Sensibilidade da câmera</span> <span id="val-sens"></span></label>
       <input type="range" id="set-sens" min="0.1" max="3" step="0.05">
+    </div>
+    <div class="setting only-mobile">
+      <label>Tamanho dos botões <span id="val-btns"></span></label>
+      <input type="range" id="set-btns" min="0.7" max="1.4" step="0.05">
+    </div>
+    <div class="setting only-mobile">
+      <label>Opacidade dos botões <span id="val-btna"></span></label>
+      <input type="range" id="set-btna" min="0.3" max="1" step="0.05">
+    </div>
+    <div class="setting only-mobile">
+      <label>Tamanho dos menus e da HUD <span id="val-uis"></span></label>
+      <input type="range" id="set-uis" min="0.8" max="1.25" step="0.05">
     </div>
     <div class="setting">
       <label>Qualidade gráfica</label>
@@ -409,52 +421,52 @@
 </div>
 
 <script src="js/vendor/three.min.js"></script>
-<script src="js/config.js?v=50"></script>
-<script src="js/icons.js?v=50"></script>
-<script src="js/post.js?v=50"></script>
-<script src="js/console.js?v=50"></script>
-<script src="js/audio.js?v=50"></script>
-<script src="js/gunsound.js?v=50"></script>
-<script src="js/input.js?v=50"></script>
-<script src="js/touch.js?v=50"></script>
-<script src="js/world.js?v=50"></script>
-<script src="js/sky.js?v=50"></script>
-<script src="js/worldbuild.js?v=50"></script>
-<script src="js/housekit.js?v=50"></script>
-<script src="js/houses.js?v=50"></script>
-<script src="js/skin.js?v=50"></script>
-<script src="js/character.js?v=50"></script>
-<script src="js/animlib.js?v=50"></script>
-<script src="js/itemmodels.js?v=50"></script>
-<script src="js/itemicons.js?v=50"></script>
-<script src="js/textures.js?v=50"></script>
-<script src="js/flora.js?v=50"></script>
-<script src="js/effects.js?v=50"></script>
-<script src="js/loot.js?v=50"></script>
-<script src="js/combat.js?v=50"></script>
-<script src="js/player.js?v=50"></script>
-<script src="js/bot.js?v=50"></script>
-<script src="js/zone.js?v=50"></script>
-<script src="js/plane.js?v=50"></script>
-<script src="js/net.js?v=50"></script>
-<script src="js/duel.js?v=50"></script>
-<script src="js/hud.js?v=50"></script>
-<script src="js/victory.js?v=50"></script>
-<script src="js/esp.js?v=50"></script>
-<script src="js/lobbyscene.js?v=50"></script>
-<script src="js/lobby.js?v=50"></script>
-<script src="js/banners.js?v=50"></script>
-<script src="js/account.js?v=50"></script>
-<script src="js/cosmetics.js?v=50"></script>
-<script src="js/thumbs.js?v=50"></script>
-<script src="js/wardrobe.js?v=50"></script>
-<script src="js/shop.js?v=50"></script>
-<script src="js/friends.js?v=50"></script>
-<script src="js/profile.js?v=50"></script>
-<script src="js/modes.js?v=50"></script>
-<script src="js/menu.js?v=50"></script>
-<script src="js/game.js?v=50"></script>
-<script src="js/app.js?v=50"></script>
-<script src="js/main.js?v=50"></script>
+<script src="js/config.js?v=51"></script>
+<script src="js/icons.js?v=51"></script>
+<script src="js/post.js?v=51"></script>
+<script src="js/console.js?v=51"></script>
+<script src="js/audio.js?v=51"></script>
+<script src="js/gunsound.js?v=51"></script>
+<script src="js/input.js?v=51"></script>
+<script src="js/touch.js?v=51"></script>
+<script src="js/world.js?v=51"></script>
+<script src="js/sky.js?v=51"></script>
+<script src="js/worldbuild.js?v=51"></script>
+<script src="js/housekit.js?v=51"></script>
+<script src="js/houses.js?v=51"></script>
+<script src="js/skin.js?v=51"></script>
+<script src="js/character.js?v=51"></script>
+<script src="js/animlib.js?v=51"></script>
+<script src="js/itemmodels.js?v=51"></script>
+<script src="js/itemicons.js?v=51"></script>
+<script src="js/textures.js?v=51"></script>
+<script src="js/flora.js?v=51"></script>
+<script src="js/effects.js?v=51"></script>
+<script src="js/loot.js?v=51"></script>
+<script src="js/combat.js?v=51"></script>
+<script src="js/player.js?v=51"></script>
+<script src="js/bot.js?v=51"></script>
+<script src="js/zone.js?v=51"></script>
+<script src="js/plane.js?v=51"></script>
+<script src="js/net.js?v=51"></script>
+<script src="js/duel.js?v=51"></script>
+<script src="js/hud.js?v=51"></script>
+<script src="js/victory.js?v=51"></script>
+<script src="js/esp.js?v=51"></script>
+<script src="js/lobbyscene.js?v=51"></script>
+<script src="js/lobby.js?v=51"></script>
+<script src="js/banners.js?v=51"></script>
+<script src="js/account.js?v=51"></script>
+<script src="js/cosmetics.js?v=51"></script>
+<script src="js/thumbs.js?v=51"></script>
+<script src="js/wardrobe.js?v=51"></script>
+<script src="js/shop.js?v=51"></script>
+<script src="js/friends.js?v=51"></script>
+<script src="js/profile.js?v=51"></script>
+<script src="js/modes.js?v=51"></script>
+<script src="js/menu.js?v=51"></script>
+<script src="js/game.js?v=51"></script>
+<script src="js/app.js?v=51"></script>
+<script src="js/main.js?v=51"></script>
 </body>
 </html>

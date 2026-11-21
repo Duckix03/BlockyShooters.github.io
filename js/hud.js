@@ -119,8 +119,9 @@ LS.HUD = {
     } else E['heal-progress'].classList.add('hidden');
     // prompt
     let pr = P.prompt;
-    if (P.state === 'plane') pr = G.plane.canJump() ? '<b>ESPAÇO</b> Saltar do avião' : 'Aguarde o avião chegar à ilha...';
-    else if (P.state === 'fall') pr = '<b>ESPAÇO</b> Abrir paraquedas';
+    const kSp = LS.Touch.active ? '<b>⬆</b>' : '<b>ESPAÇO</b>'; // no celular é o botão de pular
+    if (P.state === 'plane') pr = G.plane.canJump() ? kSp + ' Saltar do avião' : 'Aguarde o avião chegar à ilha...';
+    else if (P.state === 'fall') pr = kSp + ' Abrir paraquedas';
     if (!P.alive && G.mode === 'duel') { const sp = LS.Duel.spectateTarget(); if (sp) pr = 'ASSISTINDO <b>' + sp.name + '</b>'; } // 2v2: morto, vendo o parceiro
     E.prompt.innerHTML = pr || '';
     // zona

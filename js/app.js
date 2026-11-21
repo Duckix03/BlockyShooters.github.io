@@ -2,6 +2,7 @@
 //  - botão "voltar" do Android: pausa a partida / fecha o painel aberto / minimiza no menu (em vez de fechar o jogo)
 //  - esconde o botão de tela cheia (o app já abre em tela cheia, deitado)
 //  - minimizou o app no meio da partida: pausa
+//  - recebe do Android onde fica o furo da câmera (window.__lsInsets) pra nada ficar escondido atrás dele
 'use strict';
 LS.App = {
   init() {
@@ -13,6 +14,8 @@ LS.App = {
     this.plugin.addListener('backButton', () => this.back());
     this.plugin.addListener('pause', () => { if (LS.Game.state === 'playing') LS.Game.pause(); });
   },
+  // área do entalhe/furo da câmera, mandada pelo Android (MainActivity) em px de CSS
+  applyInsets() { if (LS.Touch && LS.Touch.active) LS.Touch.fit(); },
   back() {
     const G = LS.Game;
     if (G.state === 'playing') { G.pause(); return; }

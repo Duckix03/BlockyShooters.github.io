@@ -95,7 +95,7 @@ LS.Game = {
       this.state = 'playing';
       LS.Input.enabled = true; LS.Input.lock();
       LS.Audio.stopAll(); LS.Audio.startLoop('plane', 'plane');
-      LS.HUD.centerMsg('LAST SURVIVOR', 'Pressione ESPAÇO para saltar do avião', 4);
+      LS.HUD.centerMsg('LAST SURVIVOR', LS.Touch.active ? 'Toque no botão ⬆ para saltar do avião' : 'Pressione ESPAÇO para saltar do avião', 4);
       LS.stats.games++; LS.saveStats();
     });
   },
@@ -138,7 +138,7 @@ LS.Game = {
       this.state = 'playing'; LS.Input.enabled = true; LS.Input.lock();
       LS.Audio.stopAll(); LS.Audio.startLoop('plane', 'plane');
       const humans = d.players.length;
-      LS.HUD.centerMsg('PARTIDA ONLINE', humans + ' jogadores + ' + d.bots.length + ' bots · ESPAÇO para saltar', 4);
+      LS.HUD.centerMsg('PARTIDA ONLINE', humans + ' jogadores + ' + d.bots.length + ' bots · ' + (LS.Touch.active ? 'toque no ⬆ pra saltar' : 'ESPAÇO para saltar'), 4);
       LS.stats.games++; LS.saveStats();
     });
   },

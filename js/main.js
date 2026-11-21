@@ -30,6 +30,10 @@ LS.UI = {
       $('set-postfx').checked = S.postfx !== false;
       $('set-aa').checked = S.aimAssist !== false;
       const v = S.vivid === undefined ? 0.6 : S.vivid; $('set-vivid').value = v; $('val-vivid').textContent = Math.round(v * 100) + '%';
+      const pc = x => Math.round(x * 100) + '%'; // celular
+      $('set-btns').value = S.btnSize || 1; $('val-btns').textContent = pc(S.btnSize || 1);
+      $('set-btna').value = S.btnAlpha === undefined ? 0.85 : S.btnAlpha; $('val-btna').textContent = pc(S.btnAlpha === undefined ? 0.85 : S.btnAlpha);
+      $('set-uis').value = S.uiSize || 1; $('val-uis').textContent = pc(S.uiSize || 1);
     };
     this.syncSettings = sync;
     const changed = () => { LS.saveSettings(); sync(); LS.Game.applySettings(); };
@@ -43,6 +47,8 @@ LS.UI = {
     $('set-postfx').addEventListener('change', e => { S.postfx = e.target.checked; changed(); });
     $('set-aa').addEventListener('change', e => { S.aimAssist = e.target.checked; changed(); });
     $('set-vivid').addEventListener('input', e => { S.vivid = +e.target.value; changed(); });
+    const touchSet = (id, key) => $(id).addEventListener('input', e => { S[key] = +e.target.value; LS.saveSettings(); sync(); LS.Touch.fit(); });
+    touchSet('set-btns', 'btnSize'); touchSet('set-btna', 'btnAlpha'); touchSet('set-uis', 'uiSize');
     $('set-fullscreen').addEventListener('change', e => {
       S.fullscreen = e.target.checked; LS.saveSettings();
       if (e.target.checked) { const p = document.documentElement.requestFullscreen(); if (p && p.catch) p.catch(() => { e.target.checked = false; }); }
@@ -77,7 +83,7 @@ LS.UI = {
       case 'credits': this.openPanel('panel-credits'); break;
       case 'back': this.back(); break;
       case 'settings-reset':
-        Object.assign(LS.settings, LS.defaultSettings); LS.saveSettings(); this.syncSettings(); LS.Game.applySettings();
+        Object.assign(LS.settings, LS.defaultSettings); LS.saveSettings(); this.syncSettings(); LS.Game.applySettings(); LS.Touch.fit();
         if (document.fullscreenElement) document.exitFullscreen();
         break;
       case 'resume': LS.Game.resume(); break;
