@@ -10,6 +10,7 @@ LS.Game = {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     document.getElementById('game-container').appendChild(this.renderer.domElement);
+    this.applyColors();
     this.scene = new THREE.Scene();
     // near 0.25 (era 0.1): 2,5x mais precisão de profundidade de longe, menos pisca-pisca em paredes e telhados.
     // logarithmicDepthBuffer foi avaliado e ficou desligado: anula o polygonOffset (marcas de bala, vidro) e custa desempenho.
@@ -191,11 +192,17 @@ LS.Game = {
   },
 
   // ---------- Configurações gráficas ----------
+  // cores vivas: contraste e saturação só na imagem 3D (o HUD fica igual); filtro feito pela GPU, praticamente não pesa
+  applyColors() {
+    const v = LS.settings.vivid === undefined ? 0.6 : LS.settings.vivid;
+    this.renderer.domElement.style.filter = v > 0 ? 'contrast(' + (1 + 0.22 * v).toFixed(3) + ') saturate(' + (1 + 0.5 * v).toFixed(3) + ') brightness(' + (1 + 0.04 * v).toFixed(3) + ')' : '';
+  },
   applySettings() {
     const s = LS.settings, r = this.renderer;
     const q = s.quality;
     const base = q === 'low' ? 0.75 : q === 'medium' ? 1 : Math.min(window.devicePixelRatio, 2);
     r.setPixelRatio(Math.max(0.3, base * (s.resScale || 1) * (s.perfMode ? 0.85 : 1)));
+    this.applyColors();
     const shadows = q !== 'low' && !s.perfMode;
     if (this.built) {
       const sun = LS.World.sun;
