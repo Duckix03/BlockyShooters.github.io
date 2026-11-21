@@ -22,8 +22,8 @@
 - 🪂 **Paraquedas**: asa de células com as linhas presas nas mãos; abre sozinho perto do chão, ou quando você quiser
 - 🔵 **Zona segura**: encolhe em **6 fases**, e o dano fora dela aumenta a cada fase
 - 💀 **Eliminações**: lista de abates ao vivo e contador de jogadores vivos
-- 🏆 **Vitória**: comemoração **"LAST SURVIVOR!"** dourada com confete e a câmera girando em volta de você (também no duelo), depois a tela final com colocação, abates, dano e tempo
-- 🎯 **Indicador de tiro**: quando alguém atira perto, aparece na tela de onde vem o tiro, com a distância (ou uma seta na borda), por ~1 s depois do último tiro
+- 🏆 **Vitória**: faixa amarela **"LAST SURVIVOR!"** no estilo Booyah, com o seu personagem na tela e o botão **VOLTAR** com contagem (também no duelo); depois a tela final com colocação, abates, dano e tempo
+- 🎯 **Indicador de tiro**: quando alguém atira perto, um **arco vermelho em volta da mira** mostra de que lado vem o tiro (some ~1 s depois do último tiro)
 - 🌅 **Ciclo do dia**: a partida começa de manhã e termina ao anoitecer
 
 ---
