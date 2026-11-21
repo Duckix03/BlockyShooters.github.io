@@ -142,6 +142,23 @@ LS.Effects = {
     }
   },
 
+  // pente que sai da arma na recarga: cai, quica e some encolhendo
+  dropMag(mesh) {
+    if (this.lite()) return;
+    mesh.castShadow = true;
+    const v = new THREE.Vector3(LS.util.rand(-0.4, 0.4), LS.util.rand(-0.5, 0.2), LS.util.rand(-0.4, 0.4));
+    this.add(mesh, 2.6, 'mag', { v, spin: new THREE.Vector3(LS.util.rand(-6, 6), LS.util.rand(-4, 4), LS.util.rand(-6, 6)), bounced: 0, s0: mesh.scale.x });
+  },
+  // nuvenzinha quando um personagem eliminado some
+  poof(pos) {
+    const n = this.lite() ? 4 : 12;
+    for (let i = 0; i < n; i++) {
+      const a = i / n * Math.PI * 2, d = new THREE.Sprite(this.dustMat.clone()), r = LS.util.rand(0.2, 0.5);
+      d.position.set(pos.x + Math.cos(a) * r, pos.y + LS.util.rand(0.15, 0.5), pos.z + Math.sin(a) * r); d.scale.setScalar(0.45);
+      this.add(d, 0.7, 'puff', { v: new THREE.Vector3(Math.cos(a) * 1.6, LS.util.rand(0.8, 1.8), Math.sin(a) * 1.6), grow: 2.2, op: 0.7 });
+    }
+  },
+
   update(dt) {
     this.flashLight.intensity = Math.max(0, this.flashLight.intensity - dt * 60);
     for (let i = this.items.length - 1; i >= 0; i--) {
@@ -150,7 +167,7 @@ LS.Effects = {
       if (it.life <= 0) {
         this.scene.remove(it.obj);
         const mat = it.obj.material;
-        if (mat && it.type !== 'flash' && it.type !== 'shell' && it.type !== 'drop') { if (mat.map && it.type === 'number') mat.map.dispose(); mat.dispose(); }
+        if (mat && it.type !== 'flash' && it.type !== 'shell' && it.type !== 'drop' && it.type !== 'mag') { if (mat.map && it.type === 'number') mat.map.dispose(); mat.dispose(); }
         this.items.splice(i, 1); continue;
       }
       const k = it.life / it.max, o = it.obj;
@@ -173,6 +190,18 @@ LS.Effects = {
         case 'number':
           o.position.addScaledVector(it.v, dt); o.material.opacity = Math.min(1, k * 2);
           break;
+        case 'mag': {
+          it.v.y -= 12 * dt; o.position.addScaledVector(it.v, dt);
+          o.rotation.x += it.spin.x * dt; o.rotation.y += it.spin.y * dt; o.rotation.z += it.spin.z * dt;
+          const g = LS.World.groundAt(o.position.x, o.position.z, o.position.y + 0.3, 0.05);
+          if (o.position.y < g + 0.02) {
+            o.position.y = g + 0.02;
+            if (it.bounced < 1 && it.v.y < -1) { it.v.y *= -0.25; it.v.x *= 0.4; it.v.z *= 0.4; it.spin.multiplyScalar(0.3); it.bounced++; }
+            else { it.v.set(0, 0, 0); it.spin.set(0, 0, 0); }
+          }
+          o.scale.setScalar(it.s0 * Math.min(1, it.life / 0.4)); // some encolhendo
+          break;
+        }
         case 'shell': {
           it.v.y -= 14 * dt; o.position.addScaledVector(it.v, dt);
           o.rotation.x += it.spin.x * dt; o.rotation.y += it.spin.y * dt;

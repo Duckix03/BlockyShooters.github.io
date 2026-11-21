@@ -1,7 +1,7 @@
 // LAST SURVIVOR - configuração global, dados de armas/itens e utilitários
 'use strict';
 const LS = window.LS = {};
-LS.VERSION = '28'; // muda a cada atualização (também no ?v= do index.html e no version.json)
+LS.VERSION = '30'; // muda a cada atualização (também no ?v= do index.html e no version.json)
 // a página inicial pode ficar guardada no navegador por ~10 min (GitHub Pages): confere a versão no servidor
 // e, se esta estiver velha, recarrega num endereço novo (?v=...) que o navegador ainda não guardou
 (function () {
@@ -22,7 +22,7 @@ LS.BOT_COUNT = 30;
 LS.GRAVITY = 24;
 
 // ---------- Configurações persistentes ----------
-LS.defaultSettings = { sensitivity: 1, quality: 'medium', volume: 0.6, renderDistance: 400, fullscreen: false, showFps: false, resScale: 1, perfMode: false };
+LS.defaultSettings = { sensitivity: 1, quality: 'medium', volume: 0.6, renderDistance: 400, fullscreen: false, showFps: false, resScale: 1, perfMode: false, vivid: 0.6 };
 LS.settings = Object.assign({}, LS.defaultSettings);
 try {
   const saved = JSON.parse(localStorage.getItem('lastsurvivor_settings') || '{}');
