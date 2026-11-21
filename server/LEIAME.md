@@ -95,3 +95,28 @@ Depois, no console do jogo (tecla `'`; no localhost ele sempre abre), digite `LS
 - **Wallhack/ESP:** resolvido em boa parte (veja acima). Sobra: quem está perto (até 18 m) ou visível há menos de 1 s ainda chega, e o **host** recebe todo mundo, porque os bots rodam no navegador dele. Um host trapaceiro ainda veria todos.
 - **Inventário e munição** ainda são controlados pelo navegador. O servidor já confere a arma em uso e o ritmo de tiro, mas não conta as balas.
 - **Mira automática** não tem como o servidor impedir totalmente. Dá pra detectar padrões suspeitos depois.
+
+## 🔵 Login com Google (sincronização entre aparelhos)
+
+O botão **Entrar com Google** (Configurações → Conta) fica como "EM BREVE" até você colocar o ID do cliente do Google.
+É grátis e só precisa fazer uma vez:
+
+1. Entre em <https://console.cloud.google.com/> e crie um projeto (ex.: `Last Survivor`).
+2. **APIs e serviços → Tela de permissão OAuth**: tipo **Externo**, nome do app `Last Survivor`, seu e-mail. Publique (não precisa de revisão, só pede nome/e-mail).
+3. **APIs e serviços → Credenciais → Criar credenciais → ID do cliente OAuth**:
+   - Tipo: **Aplicativo da Web**
+   - **Origens JavaScript autorizadas**: `https://lastsurvivor.pages.dev` (e, se quiser testar no PC, `http://localhost:8765`)
+   - Não precisa de "URI de redirecionamento".
+4. Copie o **ID do cliente** (termina em `.apps.googleusercontent.com`) e coloque nos dois lugares:
+   - `js/config.js` → `LS.GOOGLE_CLIENT_ID = '...'`
+   - `server/wrangler.toml` → `GOOGLE_CLIENT_ID = "..."`
+5. `npx wrangler deploy` na pasta `server` e faça o push do site.
+
+Como funciona:
+- **Navegador**: botão oficial do Google. O servidor confere a assinatura do token com as chaves públicas do Google
+  e só aceita se for pro seu ID de cliente. Primeira vez = cria a conta (sem senha); depois = entra nela.
+- **Logado** (com nome e senha): o botão vira **Ligar Google** e liga o Google à conta que você já tem.
+- **App (APK)**: o Google não deixa logar dentro do app, então o app abre o jogo no navegador do celular
+  (`?glogin=app`), a pessoa entra com o Google lá e toca em **VOLTAR PRO JOGO**. O navegador devolve pro app
+  um código de uso único (vale 3 minutos), e o app troca o código pela sessão. Nada de senha passa pela URL.
+- Conta que só entra pelo Google pode **criar uma senha** depois (Configurações → Conta).

@@ -13,6 +13,9 @@ LS.App = {
     if (!this.plugin) return;
     this.plugin.addListener('backButton', () => this.back());
     this.plugin.addListener('pause', () => { if (LS.Game.state === 'playing') LS.Game.pause(); });
+    // volta do navegador depois do login com Google (com.duckix03.lastsurvivor://login?code=...)
+    this.plugin.addListener('appUrlOpen', e => { if (e && e.url && LS.Conta) LS.Conta.onAppUrl(e.url); });
+    this.plugin.getLaunchUrl && this.plugin.getLaunchUrl().then(r => { if (r && r.url && LS.Conta) LS.Conta.onAppUrl(r.url); }).catch(() => {});
   },
   // área do entalhe/furo da câmera, mandada pelo Android (MainActivity) em px de CSS
   applyInsets() { if (LS.Touch && LS.Touch.active) LS.Touch.fit(); },

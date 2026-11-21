@@ -27,6 +27,11 @@ LS.MAP_SIZE = 800;          // tamanho do terreno (metros)
 LS.MAP_SEED = 20261120;     // semente da ilha: todo mundo gera o MESMO mapa (necessário pro online)
 // endereço do servidor online (Cloudflare). Vazio = só partidas contra bots. Ex.: 'https://last-survivor-server.SEU-USUARIO.workers.dev'
 LS.NET_URL = 'https://lastsurvivor.lastsurvivorbr.workers.dev';
+// endereço do jogo no navegador (o app abre ele pra fazer o login com Google)
+LS.WEB_URL = 'https://lastsurvivor.pages.dev/';
+// login com Google: ID do cliente OAuth "Aplicativo da Web" do Google Cloud (é público, pode ficar aqui).
+// Vazio = botão do Google desligado. O mesmo ID vai no servidor (GOOGLE_CLIENT_ID no server/wrangler.toml). Veja server/LEIAME.md
+LS.GOOGLE_CLIENT_ID = '';
 LS.ISLAND_RADIUS = 340;     // raio útil da ilha
 LS.WATER_LEVEL = 0;
 LS.BOT_COUNT = 30;
@@ -37,14 +42,24 @@ LS.GRAVITY = 24;
 // ---------- Configurações persistentes ----------
 LS.defaultSettings = { sensitivity: 1, quality: 'medium', volume: 0.6, renderDistance: 400, fullscreen: false, showFps: false, resScale: 1, perfMode: false, vivid: 0.6, postfx: true, aimAssist: true,
   // celular: tamanho dos botões de toque, transparência deles e tamanho dos menus/HUD (1 = padrão)
-  btnSize: 1, btnAlpha: 0.85, uiSize: 1 };
+  btnSize: 1, btnAlpha: 0.85, uiSize: 1,
+  // sensibilidade estilo Free Fire (0 a 100; 50 = padrão): geral (sem mirar), red dot (mirando sem luneta) e lunetas 4x/6x/8x
+  sensGeneral: 50, sensRedDot: 50, sens4x: 50, sens6x: 50, sens8x: 50,
+  // filtro de cor da imagem 3D (a intensidade é o "vivid")
+  filter: 'classico' };
 LS.settings = Object.assign({}, LS.defaultSettings);
 // celular: começa mais leve (dá pra mudar nas configurações)
 try { if (window.matchMedia && matchMedia('(pointer: coarse)').matches && !localStorage.getItem('lastsurvivor_settings')) Object.assign(LS.settings, { quality: 'low', resScale: 0.8, perfMode: true, renderDistance: 250, postfx: false }); } catch (e) { /* ignora */ }
 try {
   const saved = JSON.parse(localStorage.getItem('lastsurvivor_settings') || '{}');
   Object.assign(LS.settings, saved);
+  // configurações antigas: a "sensibilidade do mouse" (0,1 a 3) vira a sensibilidade geral (0 a 100)
+  if (saved.sensitivity !== undefined && saved.sensGeneral === undefined) LS.settings.sensGeneral = Math.round(Math.max(1, Math.min(100, 50 * Math.pow(saved.sensitivity, 1 / 1.585))));
 } catch (e) { /* ignora configurações corrompidas */ }
+// 0..100 (50 = 1x) → multiplicador; 100 = 3x, 12 ≈ 0,1x (cobre a faixa da sensibilidade antiga)
+LS.sensMult = v => Math.pow(Math.max(1, +v || 50) / 50, 1.585);
+// qual sensibilidade vale agora: sem mirar = geral; mirando sem luneta = red dot; luneta = 4x/6x/8x pelo zoom atual
+LS.sensKey = (aiming, scoped, zoom) => !aiming ? 'sensGeneral' : !scoped ? 'sensRedDot' : zoom < 5 ? 'sens4x' : zoom < 7 ? 'sens6x' : 'sens8x';
 // distância de renderização efetiva (limitada no modo desempenho)
 LS.effDist = () => LS.settings.perfMode ? Math.min(LS.settings.renderDistance, 250) : LS.settings.renderDistance;
 LS.saveSettings = function () {
@@ -72,7 +87,7 @@ LS.WEAPONS = {
   ump:    { name: 'UMP',        cat: 'SMG',      ammo: 'light',  dmg: 21, rate: 10,  mag: 25, reload: 2.2, recoil: 1.1, spread: 0.03,  range: 120, pellets: 1, auto: true,  zoom: 1.45, color: 0x3a3a2a, len: 0.62, snd: { freq: 1100, dur: 0.09, body: 190, vol: 0.5 }, rarity: 2 },
   ak47:   { name: 'AK-47',      cat: 'Rifle',    ammo: 'rifle',  dmg: 32, rate: 9,   mag: 30, reload: 2.5, recoil: 1.8, spread: 0.025, range: 250, pellets: 1, auto: true,  zoom: 1.7,  color: 0x6b4423, len: 0.85, snd: { freq: 700,  dur: 0.14, body: 130, vol: 0.7 }, rarity: 2 },
   m4a1:   { name: 'M4A1',       cat: 'Rifle',    ammo: 'rifle',  dmg: 27, rate: 11,  mag: 30, reload: 2.2, recoil: 1.2, spread: 0.02,  range: 250, pellets: 1, auto: true,  zoom: 1.8,  color: 0x2d2d2d, len: 0.8, snd: { freq: 850,  dur: 0.12, body: 150, vol: 0.62 }, rarity: 2 },
-  awm:    { name: 'AWM',        cat: 'Sniper',   ammo: 'sniper', dmg: 105, rate: 0.75, mag: 5, reload: 3.4, recoil: 7,   spread: 0.002, range: 600, pellets: 1, auto: false, zoom: 6,  color: 0x3f5a2a, len: 1.15, scope: true, snd: { freq: 400, dur: 0.4, body: 70, vol: 1.0 }, rarity: 3 },
+  awm:    { name: 'AWM',        cat: 'Sniper',   ammo: 'sniper', dmg: 105, rate: 0.75, mag: 5, reload: 3.4, recoil: 7,   spread: 0.002, range: 600, pellets: 1, auto: false, zoom: 8,  color: 0x3f5a2a, len: 1.15, scope: true, snd: { freq: 400, dur: 0.4, body: 70, vol: 1.0 }, rarity: 3 },
   kar98:  { name: 'Kar98k',     cat: 'Sniper',   ammo: 'sniper', dmg: 80,  rate: 1,   mag: 5,  reload: 3.0, recoil: 6,   spread: 0.003, range: 550, pellets: 1, auto: false, zoom: 4.5,    color: 0x5a3a1f, len: 1.1, scope: true, snd: { freq: 480, dur: 0.35, body: 85, vol: 0.9 }, rarity: 3 },
   m1887:  { name: 'M1887',      cat: 'Escopeta', ammo: 'shell',  dmg: 15, rate: 1.1, mag: 2,  reload: 2.0, recoil: 6,   spread: 0.09,  range: 40,  pellets: 9, auto: false, zoom: 1.2,  color: 0x4a2a14, len: 0.9, snd: { freq: 300,  dur: 0.3, body: 60, vol: 1.0 }, rarity: 2 },
   spas12: { name: 'SPAS-12',    cat: 'Escopeta', ammo: 'shell',  dmg: 12, rate: 1.6, mag: 6,  reload: 3.0, recoil: 4.5, spread: 0.1,   range: 35,  pellets: 8, auto: false, zoom: 1.2,  color: 0x1c1c1c, len: 0.95, snd: { freq: 340, dur: 0.26, body: 70, vol: 0.9 }, rarity: 2 }

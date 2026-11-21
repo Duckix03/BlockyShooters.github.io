@@ -21,6 +21,12 @@
 //   POST /api/friends/add {query}              manda pedido pelo ID (10 números) ou pelo nome
 //   POST /api/friends/accept|decline|remove {id}
 //   POST /api/ping                             "estou online" (o jogo manda de tempos em tempos)
+//   POST /api/google {idToken, name, profile, stats, linkCode?}   entra com Google (cria a conta se for a 1ª vez)
+//                                              ou, logado (ou com linkCode do app), liga o Google à sua conta
+//   POST /api/google/unlink                    desliga o Google (só se a conta tiver senha)
+//   POST /api/password {pass}                  cria uma senha (conta que só entrava pelo Google)
+//   POST /api/handoff                          código de uso único (3 min) pra passar a sessão pro app / pro navegador
+//   POST /api/handoff/redeem {code}            troca o código pela sessão
 // Uso interno (só o Matchmaker chama, não fica exposto): /internal/resolve {token, name}
 'use strict';
 
@@ -46,6 +52,32 @@ async function hashPass(pass, saltHex) {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveBits']);
   return hex(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: PBKDF2_ITER }, key, 256));
 }
+// ---------- login com Google: confere o "ID token" (JWT RS256) com as chaves públicas do Google ----------
+const b64u = str => Uint8Array.from(atob(str.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - str.length % 4) % 4)), c => c.charCodeAt(0));
+const GOOGLE_ISS = ['accounts.google.com', 'https://accounts.google.com'];
+let googleKeys = null; // { keys, exp } (cache em memória)
+async function googleKey(kid) {
+  if (!googleKeys || googleKeys.exp < Date.now() || !googleKeys.keys.some(k => k.kid === kid)) {
+    const r = await fetch('https://www.googleapis.com/oauth2/v3/certs');
+    const age = +((/max-age=(\d+)/.exec(r.headers.get('cache-control') || '') || [])[1]) || 3600;
+    googleKeys = { keys: (await r.json()).keys || [], exp: Date.now() + age * 1000 };
+  }
+  return googleKeys.keys.find(k => k.kid === kid) || null;
+}
+async function verifyGoogle(token, clientId) {
+  const parts = String(token || '').split('.');
+  if (parts.length !== 3 || !clientId) return null;
+  const dec = new TextDecoder();
+  const head = JSON.parse(dec.decode(b64u(parts[0]))), body = JSON.parse(dec.decode(b64u(parts[1])));
+  if (head.alg !== 'RS256') return null;
+  const jwk = await googleKey(head.kid); if (!jwk) return null;
+  const key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
+  const ok = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, b64u(parts[2]), new TextEncoder().encode(parts[0] + '.' + parts[1]));
+  const now = Date.now() / 1000;
+  if (!ok || !GOOGLE_ISS.includes(body.iss) || body.aud !== clientId || !(body.exp > now) || !body.sub) return null;
+  if (body.email && body.email_verified === false) return null;
+  return { sub: String(body.sub), email: txt(body.email, 120) };
+}
 // compara sem vazar o tempo
 const same = (a, b) => { if (a.length !== b.length) return false; let d = 0; for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i); return d === 0; };
 
@@ -60,6 +92,8 @@ export class Accounts {
       const body = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
       if (path === '/api/register') return await this.register(body);
       if (path === '/api/login') return await this.login(body);
+      if (path === '/api/google') return await this.google(body, await this.auth(req, true));
+      if (path === '/api/handoff/redeem') return await this.redeem(body);
       let m = path.match(/^\/api\/profile\/(\d{10})$/);
       if (m && req.method === 'GET') return await this.publicProfile(m[1], await this.auth(req, true));
       const me = await this.auth(req);
@@ -74,6 +108,9 @@ export class Accounts {
       if (path === '/api/admin/claim') return await this.claim(me, body);
       if (path === '/api/admin/badges') return await this.setBadges(me, body);
       if (path === '/api/ping') { await this.seen(me); return json({ ok: true }); }
+      if (path === '/api/google/unlink') return await this.googleUnlink(me);
+      if (path === '/api/password') return await this.setPassword(me, body);
+      if (path === '/api/handoff') return await this.handoff(me);
       if (path === '/api/friends') return await this.friends(me);
       m = path.match(/^\/api\/friends\/(add|accept|decline|remove)$/);
       if (m) return await this.friendAction(me, m[1], body);
@@ -99,7 +136,7 @@ export class Accounts {
     return tok;
   }
   // o que o dono da conta vê (sem a senha)
-  mine(a) { return { id: a.id, name: a.name, badges: a.badges, likes: a.likes, profile: a.profile, stats: a.stats, renameAt: a.renameAt || 0 }; }
+  mine(a) { return { id: a.id, name: a.name, badges: a.badges, likes: a.likes, profile: a.profile, stats: a.stats, renameAt: a.renameAt || 0, google: a.google ? { email: a.google.email } : null, hasPass: !!a.hash }; }
   pub(a) { return { id: a.id, name: a.name, badges: a.badges, likes: a.likes, profile: a.profile, stats: a.stats, created: a.created }; }
 
   cleanProfile(p, old) {
@@ -149,8 +186,72 @@ export class Accounts {
     const name = txt(b.name, 16).toLowerCase(), pass = String(b.pass || '');
     if (this.locked(name)) return fail('Muitas tentativas. Espere 1 minuto.', 429);
     const id = await this.st.get('u:' + name), a = id && await this.st.get('a:' + id);
+    if (a && !a.hash) return fail('Essa conta entra com o Google (botão "Entrar com Google").', 401);
     if (!a || !same(await hashPass(pass, a.salt), a.hash)) { this.failed(name); return fail('Nome ou senha errados.', 401); }
     this.fails.delete(name);
+    return json({ token: await this.newToken(a.id), account: this.mine(a) });
+  }
+  // ---------- Google ----------
+  async google(b, me) {
+    const g = await verifyGoogle(b.idToken, this.env.GOOGLE_CLIENT_ID).catch(() => null);
+    if (!g) return fail(this.env.GOOGLE_CLIENT_ID ? 'Não deu pra confirmar o login do Google. Tente de novo.' : 'O login com Google ainda não foi ativado no servidor.', 401);
+    // ligar o Google a uma conta (logado no navegador, ou o app mandou um código da sessão dele)
+    if (!me && b.linkCode) { const h = await this.takeHandoff(b.linkCode); if (h) { me = await this.st.get('a:' + h.id); if (me) me._token = h.token; } }
+    const owner = await this.st.get('g:' + g.sub);
+    if (me && (b.linkCode || b.link)) {
+      if (owner && owner !== me.id) return fail('Esse Google já está ligado a outra conta.');
+      if (me.google && me.google.sub !== g.sub) await this.st.delete('g:' + me.google.sub);
+      me.google = g; const tok = me._token; delete me._token;
+      await this.st.put('g:' + g.sub, me.id); await this.st.put('a:' + me.id, me);
+      return json({ token: tok, account: this.mine(me), linked: true });
+    }
+    // entrar: já tem conta com esse Google
+    if (owner) { const a = await this.st.get('a:' + owner); if (a) return json({ token: await this.newToken(a.id), account: this.mine(a) }); }
+    // primeira vez: cria a conta (sem senha) com um nome livre
+    const name = await this.freeName([String(b.name || ''), (g.email || '').split('@')[0]]);
+    const id = await this.newId();
+    const a = { id, name, salt: null, hash: null, google: g, created: Date.now(), badges: [], likes: 0,
+      profile: this.cleanProfile(b.profile), stats: this.cleanStats(b.stats) };
+    await this.st.put('u:' + name.toLowerCase(), id); await this.st.put('g:' + g.sub, id); await this.st.put('a:' + id, a);
+    return json({ token: await this.newToken(id), account: this.mine(a), created: true });
+  }
+  async freeName(wish) {
+    const clean = n => n.normalize('NFC').replace(/[^A-Za-z0-9_.\-À-ÿ]/g, '').slice(0, 12);
+    for (const w of wish.map(clean)) {
+      if (w.length >= 3 && w.toLowerCase() !== 'jogador' && !this.checkName(w) && !(await this.st.get('u:' + w.toLowerCase()))) return w;
+    }
+    const base = (wish.map(clean).find(w => w.length >= 3 && w.toLowerCase() !== 'jogador') || 'Sobrevivente').slice(0, 11);
+    for (let i = 0; i < 30; i++) { const n = base + Math.floor(1000 + Math.random() * 9000); if (!(await this.st.get('u:' + n.toLowerCase()))) return n; }
+    throw new Error('sem nome');
+  }
+  async googleUnlink(a) {
+    if (!a.google) return json({ account: this.mine(a) });
+    if (!a.hash) return fail('Sua conta só entra pelo Google. Crie uma senha antes de desligar.');
+    await this.st.delete('g:' + a.google.sub); delete a.google; delete a._token; await this.st.put('a:' + a.id, a);
+    return json({ account: this.mine(a) });
+  }
+  async setPassword(a, b) {
+    if (a.hash) return fail('Sua conta já tem senha.');
+    const pass = String(b.pass || '');
+    if (pass.length < 6 || pass.length > 64) return fail('A senha precisa ter de 6 a 64 caracteres.');
+    a.salt = randHex(16); a.hash = await hashPass(pass, a.salt); delete a._token; await this.st.put('a:' + a.id, a);
+    return json({ account: this.mine(a) });
+  }
+  // código de uso único pra levar a sessão de um lugar pro outro (navegador → app, app → navegador pra ligar o Google)
+  async handoff(a) {
+    const code = randHex(16);
+    await this.st.put('h:' + code, { id: a.id, token: a._token, exp: Date.now() + 180000 });
+    return json({ code });
+  }
+  async takeHandoff(code) {
+    if (!/^[0-9a-f]{32}$/.test(String(code || ''))) return null;
+    const h = await this.st.get('h:' + code); if (!h) return null;
+    await this.st.delete('h:' + code);
+    return h.exp > Date.now() ? h : null;
+  }
+  async redeem(b) {
+    const h = await this.takeHandoff(b.code); if (!h) return fail('Código vencido. Tente entrar de novo.', 401);
+    const a = await this.st.get('a:' + h.id); if (!a) return fail('Conta não encontrada.', 404);
     return json({ token: await this.newToken(a.id), account: this.mine(a) });
   }
   async saveProfile(a, b) {

@@ -31,7 +31,7 @@ LS.Account = {
     } catch (e) { throw new Error('Não deu pra falar com o servidor. Confira a internet.'); }
     const d = await r.json().catch(() => ({ error: 'O servidor respondeu algo estranho (ele já foi atualizado?).' }));
     if (!r.ok) {
-      if (r.status === 401 && this.token && path !== '/api/login') this.drop(); // sessão vencida
+      if (r.status === 401 && this.token && !/^\/api\/(login|google|handoff|password)/.test(path)) this.drop(); // sessão vencida
       throw new Error(d.error || 'Erro ' + r.status);
     }
     return d;
@@ -79,6 +79,17 @@ LS.Account = {
   payload() { const P = LS.playerProfile; return { look: P.look, bio: P.bio, avatarBg: (P.avatar && P.avatar.bg) || 0, cover: P.cover, weapon: P.weapon || null, owned: P.owned || [] }; },
   async register(name, pass) { const d = await this.api('/api/register', { name, pass, profile: this.payload(), stats: LS.stats }); this.setToken(d.token); this.apply(d.account); },
   async login(name, pass) { const d = await this.api('/api/login', { name, pass }); this.setToken(d.token); this.apply(d.account); },
+  // Google: idToken vem do botão do Google. Logado = liga o Google nesta conta; sem conta = entra (ou cria)
+  async google(idToken, extra) {
+    const link = this.logged();
+    const d = await this.api('/api/google', Object.assign({ idToken, link, name: LS.playerProfile.name, profile: this.payload(), stats: LS.stats }, extra || {}));
+    return d;
+  },
+  async googleLogin(idToken) { const d = await this.google(idToken); this.setToken(d.token); this.apply(d.account); return d; },
+  async googleUnlink() { const d = await this.api('/api/google/unlink', {}); this.apply(d.account); },
+  async setPassword(pass) { const d = await this.api('/api/password', { pass }); this.apply(d.account); },
+  async handoff() { return (await this.api('/api/handoff', {})).code; },
+  async redeem(code) { const d = await this.api('/api/handoff/redeem', { code }); this.setToken(d.token); this.apply(d.account); return d; },
   async logout() { try { await this.api('/api/logout', {}); } catch (e) { /* tanto faz */ } this.drop(); },
   async rename(name) { const d = await this.api('/api/rename', { name }); this.apply(d.account); },
   async claim(key) { const d = await this.api('/api/admin/claim', { key }); this.apply(d.account); },

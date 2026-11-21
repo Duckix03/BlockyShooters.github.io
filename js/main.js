@@ -18,27 +18,39 @@ LS.UI = {
   // ---------- Configurações ----------
   bindSettings() {
     const S = LS.settings, $ = id => document.getElementById(id);
+    const pc = x => Math.round(x * 100) + '%';
+    const SENS = [['set-s-general', 'sensGeneral'], ['set-s-reddot', 'sensRedDot'], ['set-s-4x', 'sens4x'], ['set-s-6x', 'sens6x'], ['set-s-8x', 'sens8x']];
     const sync = () => {
-      $('set-sens').value = S.sensitivity; $('val-sens').textContent = (+S.sensitivity).toFixed(2);
-      $('set-quality').value = S.quality;
-      $('set-vol').value = S.volume; $('val-vol').textContent = Math.round(S.volume * 100) + '%';
+      for (const [id, k] of SENS) { $(id).value = S[k]; $('val-' + id.slice(4)).textContent = S[k]; }
+      $('set-res').value = S.resScale; $('val-res').textContent = pc(S.resScale);
+      document.querySelectorAll('#set-quality [data-q]').forEach(b => b.classList.toggle('on', b.dataset.q === S.quality));
+      document.querySelectorAll('#set-filter [data-f]').forEach(b => b.classList.toggle('on', b.dataset.f === (S.filter || 'classico')));
+      const v = S.vivid === undefined ? 0.6 : S.vivid; $('set-vivid').value = v; $('val-vivid').textContent = pc(v);
       $('set-dist').value = S.renderDistance; $('val-dist').textContent = S.renderDistance + ' m';
-      $('set-fullscreen').checked = !!document.fullscreenElement;
-      $('set-fps').checked = S.showFps;
-      $('set-res').value = S.resScale; $('val-res').textContent = Math.round(S.resScale * 100) + '%';
-      $('set-perf').checked = S.perfMode;
       $('set-postfx').checked = S.postfx !== false;
+      $('set-perf').checked = S.perfMode;
+      $('set-fps').checked = S.showFps;
+      $('set-vol').value = S.volume; $('val-vol').textContent = pc(S.volume);
       $('set-aa').checked = S.aimAssist !== false;
-      const v = S.vivid === undefined ? 0.6 : S.vivid; $('set-vivid').value = v; $('val-vivid').textContent = Math.round(v * 100) + '%';
-      const pc = x => Math.round(x * 100) + '%'; // celular
-      $('set-btns').value = S.btnSize || 1; $('val-btns').textContent = pc(S.btnSize || 1);
+      $('set-fullscreen').checked = !!document.fullscreenElement;
+      $('set-btns').value = S.btnSize || 1; $('val-btns').textContent = pc(S.btnSize || 1); // celular
       $('set-btna').value = S.btnAlpha === undefined ? 0.85 : S.btnAlpha; $('val-btna').textContent = pc(S.btnAlpha === undefined ? 0.85 : S.btnAlpha);
       $('set-uis').value = S.uiSize || 1; $('val-uis').textContent = pc(S.uiSize || 1);
     };
     this.syncSettings = sync;
     const changed = () => { LS.saveSettings(); sync(); LS.Game.applySettings(); };
-    $('set-sens').addEventListener('input', e => { S.sensitivity = +e.target.value; changed(); });
-    $('set-quality').addEventListener('change', e => { S.quality = e.target.value; changed(); });
+    // abas
+    this.setTab = tab => {
+      this.settingsTab = tab;
+      document.querySelectorAll('#set-tabs [data-st]').forEach(b => b.classList.toggle('on', b.dataset.st === tab));
+      document.querySelectorAll('#panel-settings .set-pane').forEach(p => p.classList.toggle('on', p.dataset.pane === tab));
+      $('set-reset').style.visibility = tab === 'conta' ? 'hidden' : ''; // "padrão" não mexe na conta
+      if (tab === 'conta' && LS.Conta) LS.Conta.render();
+    };
+    $('set-tabs').addEventListener('click', e => { const b = e.target.closest('[data-st]'); if (b) { LS.Audio.click(); this.setTab(b.dataset.st); } });
+    for (const [id, k] of SENS) $(id).addEventListener('input', e => { S[k] = +e.target.value; LS.saveSettings(); sync(); });
+    $('set-quality').addEventListener('click', e => { const b = e.target.closest('[data-q]'); if (b) { LS.Audio.click(); S.quality = b.dataset.q; changed(); } });
+    $('set-filter').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (b) { LS.Audio.click(); S.filter = b.dataset.f; if (!S.vivid) S.vivid = 0.6; changed(); } });
     $('set-vol').addEventListener('input', e => { S.volume = +e.target.value; changed(); });
     $('set-dist').addEventListener('input', e => { S.renderDistance = +e.target.value; changed(); });
     $('set-fps').addEventListener('change', e => { S.showFps = e.target.checked; changed(); });
@@ -55,7 +67,7 @@ LS.UI = {
       else if (document.fullscreenElement) document.exitFullscreen();
     });
     document.addEventListener('fullscreenchange', sync);
-    sync();
+    sync(); this.setTab('sens');
   },
 
   onAction(a) {
@@ -83,8 +95,12 @@ LS.UI = {
       case 'credits': this.openPanel('panel-credits'); break;
       case 'back': this.back(); break;
       case 'settings-reset':
-        Object.assign(LS.settings, LS.defaultSettings); LS.saveSettings(); this.syncSettings(); LS.Game.applySettings(); LS.Touch.fit();
-        if (document.fullscreenElement) document.exitFullscreen();
+        { // volta ao padrão só o que está na aba aberta
+          const D = LS.defaultSettings, TAB = { sens: ['sensGeneral', 'sensRedDot', 'sens4x', 'sens6x', 'sens8x'],
+            gfx: ['resScale', 'quality', 'filter', 'vivid', 'renderDistance', 'postfx', 'perfMode', 'showFps'], geral: ['volume', 'aimAssist', 'btnSize', 'btnAlpha', 'uiSize'] };
+          for (const k of TAB[this.settingsTab] || []) LS.settings[k] = D[k];
+          LS.saveSettings(); this.syncSettings(); LS.Game.applySettings(); LS.Touch.fit();
+        }
         break;
       case 'resume': LS.Game.resume(); break;
       case 'quit': LS.Game.quitToMenu(); break;
@@ -107,6 +123,7 @@ window.addEventListener('load', () => {
   LS.Modes.init();
   LS.Account.init(); // conta (se já entrou neste navegador)
   LS.Profile.init();
+  LS.Conta.init(); // aba CONTA das configurações (e a página de login com Google aberta pelo app)
   LS.Shop.init(); LS.Friends.init(); LS.Menu.initBanners();
   LS.Menu.init();
   document.getElementById('arsenal-list').addEventListener('click', e => { const b = e.target.closest('[data-wpn]'); if (b) { LS.Audio.init(); LS.Audio.click(); LS.Menu.pickLobbyWeapon(b.dataset.wpn); } });
