@@ -453,3 +453,7 @@ kbd { font-family: var(--display); font-weight: 400; letter-spacing: 0.5px; bord
 .mode-card { display: flex; flex-direction: column; justify-content: flex-start; }
 .mode-card .mode-art { flex: none; width: 100%; }
 .mode-card .mode-info { flex: 1; }
+.mode-art img.banner3d { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.5s var(--ease); }
+.mode-card:not(.locked):hover .mode-art img.banner3d { transform: scale(1.07); }
+.mode-art img.banner3d.fresh { animation: bannerIn 0.5s var(--ease); }
+@keyframes bannerIn { from { opacity: 0; filter: blur(6px); } to { opacity: 1; filter: none; } }

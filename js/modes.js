@@ -65,7 +65,7 @@ LS.Modes = {
       const sizes = id === 'duel' ? '<div class="mode-sizes">' + [1, 2].map(n => '<span data-size="' + n + '" class="' + (this.duelSize === n ? 'sel' : '') + '">' +
         n + ' V ' + n + '<small>' + (n > 1 ? 'EQUIPES' : 'SOLO') + '</small></span>').join('') + '</div>' : '';
       return '<button class="mode-card' + (sel ? ' sel' : '') + '" data-mode="' + id + '">' +
-        '<div class="mode-art">' + this.art(id === 'duel' ? 'duel' + this.duelSize : id) + '</div><div class="mode-shine"></div>' +
+        '<div class="mode-art" data-art="' + this.artId(id) + '">' + this.artHtml(this.artId(id)) + '</div><div class="mode-shine"></div>' +
         '<span class="mode-tag">' + m.tag + '</span>' + (sel ? '<span class="mode-check">✓ SELECIONADO</span>' : '') +
         '<div class="mode-title"><b>' + m.name + (m.vs ? ' <em>' + m.vs + '</em>' : '') + '</b><span>' + m.place + ' · ' + m.players + ' jogadores</span></div>' +
         '<div class="mode-info"><p>' + m.desc + '</p>' + sizes + '</div></button>';
@@ -73,7 +73,14 @@ LS.Modes = {
     cards.push('<div class="mode-card locked"><div class="mode-art">' + this.art('soon') + '</div>' +
       '<div class="mode-title"><b>EM BREVE</b><span>Novo modo chegando</span></div><div class="mode-info"><p>Fique de olho nas novidades!</p></div></div>');
     document.getElementById('modes-grid').innerHTML = cards.join('');
+    // banners 3D com os modelos do jogo: enquanto não ficam prontos, mostra o desenho
+    if (LS.Banners && LS.Game.renderer) LS.Banners.generate(Object.keys(LS.MODES).map(id => this.artId(id)), (art, url) => {
+      const el = document.querySelector('#modes-grid [data-art="' + art + '"]');
+      if (el) el.innerHTML = '<img class="banner3d fresh" src="' + url + '" alt="">';
+    });
   },
+  artId(id) { return id === 'duel' ? 'duel' + this.duelSize : id; },
+  artHtml(art) { const u = LS.Banners && LS.Banners.cached(art); return u ? '<img class="banner3d" src="' + u + '" alt="">' : this.art(art); },
 
   // boneco de blocos (estilo do jogo) segurando uma arma. x,y = pés; s = escala; dir = 1 olha pra direita, -1 pra esquerda
   fig(x, y, s, c, dir) {

@@ -29,7 +29,7 @@
 
 ## 🎮 Modos de Jogo
 
-No lobby, toque em **MODOS** pra escolher (o jogo lembra a sua escolha):
+No lobby, toque em **MODOS** pra escolher (o jogo lembra a sua escolha). Os banners são **3D, feitos com os modelos do próprio jogo**, e o herói do banner é o **seu personagem**:
 
 | Modo | Como funciona |
 |:---:|:---|

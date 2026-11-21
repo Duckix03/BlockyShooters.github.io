@@ -433,7 +433,7 @@ LS.Duel = {
         for (let i = -2; i < 4; i++) { g.beginPath(); g.moveTo(i * 32, 0); g.lineTo(i * 32 + 16, 0); g.lineTo(i * 32 + 16 + h, h); g.lineTo(i * 32 + h, h); g.fill(); } }, 1, 1),
       sign: this.canvasTex(1024, 160, (g, w, h) => {
         g.fillStyle = '#1b2a3a'; g.fillRect(0, 0, w, h); g.fillStyle = '#ff8a1f'; g.fillRect(0, h - 16, w, 16);
-        g.font = 'bold 84px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#fff'; g.fillText('GALPÃO 7 · ZONA DE DUELO', w / 2, h / 2 - 6); })
+        g.font = 'bold 66px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#fff'; g.fillText('GALPÃO 7 · ZONA DE DUELO', w / 2, h / 2 - 6, w - 40); })
     };
     return this.tex;
   },
@@ -540,6 +540,7 @@ LS.Duel = {
     warm.position.set(A.x, fy + 1, A.z);
   },
   contMat(color) {
+    this.contMats = this.contMats || {}; // (os banners 3D usam antes do galpão existir)
     if (this.contMats[color]) return this.contMats[color];
     const T = this.textures(), c = new THREE.Color(color);
     const side = this.lambert({ color: c, map: T.side }), door = this.lambert({ color: c, map: T.door }), top = this.lambert({ color: c.clone().multiplyScalar(0.9), map: T.top });
