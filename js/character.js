@@ -86,6 +86,24 @@ LS.CharacterModel = class {
     if (look.hat === 'gorro') { add(8.8, 3, 8.8, 0, 7.6, 0, M(acc)); add(9, 1, 9, 0, 6.2, 0, M(new THREE.Color(acc).multiplyScalar(0.75).getHex())); }
     else if (look.hat === 'chapéu') { add(12, 0.6, 12, 0, 6.8, 0, M(0x6a4a2a)); add(7.6, 2.6, 7.6, 0, 8.4, 0, M(0x6a4a2a)); add(7.8, 0.7, 7.8, 0, 7.4, 0, M(acc)); }
     else if (look.hat === 'faixa') add(8.5, 1, 8.5, 0, 6.6, 0, M(acc));
+    // ---- itens da loja ----
+    const gold = 0xffc531, hairC = new THREE.Color(look.hair).getHex(), glow = c => new THREE.MeshBasicMaterial({ color: c });
+    if (look.hat === 'coroa') {
+      add(9, 1.4, 9, 0, 6.7, 0, M(gold));
+      [[-3.9, -3.9], [3.9, -3.9], [-3.9, 3.9], [3.9, 3.9], [0, 3.9], [0, -3.9], [3.9, 0], [-3.9, 0]].forEach(([x, z]) => add(1.2, 2, 1.2, x, 8.3, z, M(gold)));
+      add(1.4, 1.2, 0.5, 0, 6.8, 4.6, glow(0xff2a4a)); add(0.5, 1.2, 1.4, 4.6, 6.8, 0, glow(0x2a8aff)); add(0.5, 1.2, 1.4, -4.6, 6.8, 0, glow(0x2aff8a));
+    }
+    else if (look.hat === 'cartola') { add(11.4, 0.6, 11.4, 0, 6.6, 0, M(0x151515)); add(7.4, 6, 7.4, 0, 9.9, 0, M(0x151515)); add(7.6, 1, 7.6, 0, 7.5, 0, M(0xb02020)); }
+    else if (look.hat === 'orelhas de gato') { add(8.6, 0.8, 1.2, 0, 7.9, 0, M(acc)); [-1, 1].forEach(s => { add(2.4, 2.6, 1.4, s * 2.6, 9.2, 0, M(acc)); add(1.2, 1.4, 0.4, s * 2.6, 9.0, 0.6, M(0xff9ab8)); }); }
+    else if (look.hat === 'chifres') { [-1, 1].forEach(s => { const a = add(1.6, 3, 1.6, s * 3.1, 8.6, 0.6, M(0xb01818)); a.rotation.z = -s * 0.45; const b = add(1.1, 1.8, 1.1, s * 4.0, 10.5, 0.6, M(0xd83030)); b.rotation.z = -s * 0.75; }); }
+    else if (look.hat === 'fones') { add(9.6, 1, 2, 0, 8.5, 0, M(0x222428)); [-1, 1].forEach(s => { add(1, 4.6, 2, s * 4.8, 6.3, 0, M(0x222428)); add(1.6, 3, 3, s * 4.9, 3.9, 0, M(acc)); add(0.4, 1.6, 1.6, s * 5.8, 3.9, 0, glow(0x20f0ff)); }); }
+    else if (look.hat === 'auréola') { const B = glow(0xfff1a0); add(7, 0.6, 1, 0, 10.6, 3, B); add(7, 0.6, 1, 0, 10.6, -3, B); add(1, 0.6, 5, 3, 10.6, 0, B); add(1, 0.6, 5, -3, 10.6, 0, B); }
+    else if (look.hat === 'boné reto') { add(8.8, 2.4, 8.8, 0, 7.2, 0, M(acc)); add(8.8, 0.5, 4.2, 0, 6.2, 5.9, M(acc)); add(2, 1.4, 0.3, 0, 7.4, 4.5, M(0xffffff)); }
+    if (look.hairStyle === 'black power' && (!look.hat || look.hat === 'nenhum')) { add(10.4, 5, 10.4, 0, 7.6, -0.4, M(hairC)); add(8.4, 1.6, 2, 0, 9.6, 3.6, M(hairC)); }
+    else if (look.hairStyle === 'rabo') { add(2.2, 2.2, 2, 0, 5.6, -4.8, M(hairC)); add(1.6, 4.4, 1.6, 0, 3.0, -5.4, M(hairC)); }
+    if (look.glasses === 'cyber') add(8.8, 1.3, 0.9, 0, 3.6, 4.35, glow(0x20f0ff));
+    else if (look.glasses === 'aviador') add(8.4, 1.2, 0.6, 0, 3.6, 4.3, M(0x3a2a10));
+    if (look.mask === 'gás') { add(4.2, 3, 2, 0, 1.6, 4.9, M(0x2a2d32)); [-1, 1].forEach(s => add(1.8, 1.8, 1.8, s * 2.6, 1.2, 5.3, M(0x50555c))); }
     if (look.glasses === 'escuros') add(8.4, 1.2, 0.6, 0, 3.6, 4.3, M(0x111111));
     else if (look.glasses === 'viseira') add(8.6, 1.2, 0.8, 0, 3.6, 4.3, new THREE.MeshBasicMaterial({ color: acc }));
     if (look.beard === 'cheia') add(7, 2.5, 1.2, 0, 0.6, 4.4, M(new THREE.Color(look.hair).getHex()));

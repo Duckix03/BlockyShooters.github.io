@@ -22,6 +22,12 @@ LS.ICONS = {
   dice: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h.01M15 15h.01M15 9h.01M9 15h.01M12 12h.01"/>',
   play: '<path d="M7 4l13 8-13 8z" fill="currentColor"/>',
   back: '<path d="M15 5l-7 7 7 7"/>',
+  bag: '<path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
+  crown: '<path d="M3 18h18l-2-10-5 4-2-7-2 7-5-4z" fill="currentColor" fill-opacity=".25"/>',
+  shirt: '<path d="M8 4l-5 3 2 4 3-1v10h8V10l3 1 2-4-5-3c-1 2-2 3-4 3S9 6 8 4z"/>',
+  friends: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.8 2.9-6.5 6.5-6.5s6.5 2.7 6.5 6.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14c2 .9 3 3 3 6"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  pause: '<path d="M8 5v14M16 5v14"/>',
   modes: '<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><path d="M17 13v8M13 17h8"/>'
 };
 LS.icon = (n, cls) => '<svg class="svgi' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + (LS.ICONS[n] || '') + '</svg>';
