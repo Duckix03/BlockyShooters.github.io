@@ -115,11 +115,8 @@ LS.LobbyScene = {
     if (glow.length) sc.add(new THREE.Mesh(LS.Items.merge(glow), new THREE.MeshBasicMaterial({ vertexColors: true })));
 
     // ---------- avião do BR cruzando o céu + pássaros ----------
-    const plane = new THREE.Group(), PM = c => new THREE.MeshBasicMaterial({ color: c, fog: false });
-    const pb = (w, h, d, x, y, z, c) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), PM(c)); m.position.set(x, y, z); plane.add(m); };
-    pb(16, 3, 3, 0, 0, 0, 0x2a1e3a); pb(3.5, 0.4, 22, 1, 0, 0, 0x2a1e3a); pb(2.5, 4, 0.4, -7, 2.5, 0, 0x2a1e3a); pb(2, 0.3, 8, -7, 0.5, 0, 0x2a1e3a);
-    const nav = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), PM(0xff4040)); nav.position.set(1, 0, 11.2); plane.add(nav);
-    plane.position.set(-260, 75, -180); plane.scale.setScalar(0.9); sc.add(plane); L.plane = { g: plane, nav, x: -260 };
+    const pm = LS.PlaneModel.build({ silhouette: 0x2a1e3a }), plane = pm.root; // o mesmo avião do jogo, em silhueta contra o pôr do sol
+    plane.rotation.y = Math.PI / 2; plane.position.set(-260, 75, -180); plane.scale.setScalar(0.62); sc.add(plane); L.plane = { g: plane, m: pm, x: -260 };
     const birdTex = tex(64, 32, g => { g.strokeStyle = '#1a1028'; g.lineWidth = 5; g.lineCap = 'round'; g.beginPath(); g.moveTo(6, 10); g.quadraticCurveTo(20, 8, 32, 20); g.quadraticCurveTo(44, 8, 58, 10); g.stroke(); });
     L.birds = [];
     for (let i = 0; i < 7; i++) { const b = new THREE.Sprite(new THREE.SpriteMaterial({ map: birdTex, fog: false, transparent: true, depthWrite: false })); b.scale.set(2.4, 1.2, 1); sc.add(b);
@@ -134,7 +131,7 @@ LS.LobbyScene = {
     for (const b of L.bulbs) b.m.material.color.setRGB(1, 0.75 + Math.sin(t * 3 + b.ph) * 0.06, 0.44);
     // avião passa a cada ~40 s
     const p = L.plane; p.x += dt * 16; if (p.x > 300) p.x = -300;
-    p.g.position.x = p.x; p.nav.visible = Math.sin(t * 6) > 0;
+    p.g.position.x = p.x; LS.PlaneModel.animate(p.m, t, dt, false);
     // pássaros em V atravessando devagar
     const bx = ((t * 3.2) % 240) - 120;
     for (const b of L.birds) { b.m.position.set(bx + b.off[0], 34 + b.off[1] + Math.sin(t * 0.8) * 1.5, -90); b.m.scale.y = 1.2 * (0.75 + 0.25 * Math.abs(Math.sin(t * 8 + b.ph))); }

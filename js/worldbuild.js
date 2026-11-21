@@ -108,7 +108,7 @@ Object.assign(LS.World, {
     const tris = new Float32Array(V.length * 3); V.forEach((v, i) => { tris[i * 3] = v.x; tris[i * 3 + 1] = v.y; tris[i * 3 + 2] = v.z; });
     let yMin = Infinity, yMax = -Infinity, xMax = -Infinity;
     for (const v of V) { yMin = Math.min(yMin, v.y); yMax = Math.max(yMax, v.y); xMax = Math.max(xMax, v.x); }
-    const y0 = Math.max(yMin, h - 1);
+    const y0 = Math.max(yMin, h - 1), field = this.rockField(V, yMin);
     for (let k = 0; k < layers; k++) {
       const a = y0 + (yMax - y0) * k / layers, b = y0 + (yMax - y0) * (k + 1) / layers;
       let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
@@ -120,9 +120,31 @@ Object.assign(LS.World, {
       }
       if (x0 > x1) continue;
       const sh = 0.04; // um fio menor que a pedra: sem parede invisível nas quinas
-      const col = this.addCollider(x0 + sh, k === 0 ? Math.min(a, h - 1) : a, z0 + sh, x1 - sh, b, z1 - sh); col.climb = true; col.rockTris = tris;
+      const col = this.addCollider(x0 + sh, k === 0 ? Math.min(a, h - 1) : a, z0 + sh, x1 - sh, b, z1 - sh); col.climb = true; col.rockTris = tris; col.rock = field;
     }
     return xMax;
+  },
+  // mapa de altura da superfície da pedra (células de 20 cm): a colisão e o chão vêm do formato de verdade,
+  // não das caixas das camadas (que sobram nas quinas e empurravam/deixavam atravessar)
+  rockField(V, yMin) {
+    const cs = 0.2;
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (const v of V) { x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); z0 = Math.min(z0, v.z); z1 = Math.max(z1, v.z); }
+    const nx = Math.max(1, Math.ceil((x1 - x0) / cs)), nz = Math.max(1, Math.ceil((z1 - z0) / cs)), h = new Float32Array(nx * nz).fill(-Infinity);
+    for (let t = 0; t < V.length; t += 3) {
+      const A = V[t], B = V[t + 1], Cc = V[t + 2];
+      const d = (B.z - Cc.z) * (A.x - Cc.x) + (Cc.x - B.x) * (A.z - Cc.z); if (Math.abs(d) < 1e-9) continue;
+      const i0 = Math.max(0, Math.floor((Math.min(A.x, B.x, Cc.x) - x0) / cs)), i1 = Math.min(nx - 1, Math.floor((Math.max(A.x, B.x, Cc.x) - x0) / cs));
+      const k0 = Math.max(0, Math.floor((Math.min(A.z, B.z, Cc.z) - z0) / cs)), k1 = Math.min(nz - 1, Math.floor((Math.max(A.z, B.z, Cc.z) - z0) / cs));
+      for (let k = k0; k <= k1; k++) for (let i = i0; i <= i1; i++) {
+        const x = x0 + (i + 0.5) * cs, z = z0 + (k + 0.5) * cs;
+        const u = ((B.z - Cc.z) * (x - Cc.x) + (Cc.x - B.x) * (z - Cc.z)) / d, w = ((Cc.z - A.z) * (x - Cc.x) + (A.x - Cc.x) * (z - Cc.z)) / d, q = 1 - u - w;
+        if (u < -1e-3 || w < -1e-3 || q < -1e-3) continue;
+        const y = u * A.y + w * B.y + q * Cc.y, idx = i + k * nx; if (y > h[idx]) h[idx] = y;
+      }
+    }
+    let maxH = -Infinity; for (const y of h) if (y > maxH) maxH = y;
+    return { x0, z0, cs, nx, nz, h, maxH, minY: yMin, stamp: 0 };
   },
   insideTown(x, z, pad) {
     for (const t of this.towns) if (Math.hypot(x - t.x, z - t.z) < t.r + (pad || 0)) return t;

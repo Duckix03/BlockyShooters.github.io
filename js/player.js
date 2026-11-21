@@ -4,6 +4,11 @@
 // ---------- Física comum (jogador e bots) ----------
 // wish: {x,z} direção desejada (normalizada ou zero), opts: {speed, jump}
 LS.Fighter.prototype.physics = function (dt, wish, opts) {
+  const W = LS.World;
+  W._rockBudget = 2.5 * dt + 0.01; // quanto a pedra pode empurrar neste quadro (empurrão suave, ~3 m/s)
+  try { this._physics(dt, wish, opts); } finally { W._rockBudget = Infinity; }
+};
+LS.Fighter.prototype._physics = function (dt, wish, opts) {
   const W = LS.World, p = this.pos, v = this.vel, R = 0.38;
   if (this.state === 'plane') return;
   if (this.state === 'fall' || this.state === 'chute') {
@@ -43,7 +48,7 @@ LS.Fighter.prototype.physics = function (dt, wish, opts) {
   prev.x = p.x; prev.z = p.z;
   // anda em passos de no máximo 0,15 m, testando a colisão em cada um: rápido demais (speed, lag) não atravessa parede
   const hx = v.x * dt, hz = v.z * dt, steps = Math.min(40, Math.max(1, Math.ceil(Math.hypot(hx, hz) / 0.15)));
-  this.blocked = false; p.y += v.y * dt;
+  this.blocked = false; p.y += v.y * dt; W._rockHit = null;
   for (let i = 0; i < steps; i++) {
     prev.x = p.x; prev.z = p.z;
     p.x += hx / steps; p.z += hz / steps;
@@ -59,18 +64,20 @@ LS.Fighter.prototype.physics = function (dt, wish, opts) {
     p.y = g; v.y = 0; this.onGround = true; this.safeLand = false;
   } else if (this.onGround && p.y - g < 0.6 && v.y <= 0) { p.y = g; v.y = 0; } // desce rampas sem "voar"
   else this.onGround = false;
-  // escalar pedras: andando contra uma pedra, sobe por ela até o topo (como no Roblox)
+  // escalar pedras: só quando a pedra de verdade barrou o passo e a pessoa está andando contra ela
+  // (como no Roblox). Sobe até o ponto da frente ficar na altura de um degrau; aí passa pra cima dela.
   this.climbing = false;
-  if (!swimming && (wish.x || wish.z)) for (const b of W.nearBoxes(p.x, p.z, R + 1)) {
-    if (!b.climb || p.y >= b.maxY - 0.05 || b.maxY - p.y > 3.4) continue;
-    const cx = LS.util.clamp(p.x, b.minX, b.maxX), cz = LS.util.clamp(p.z, b.minZ, b.maxZ), dx = cx - p.x, dz = cz - p.z, dist = Math.hypot(dx, dz);
-    if (dist > R + 0.12 || (dist > 1e-3 && (dx * wish.x + dz * wish.z) / dist < 0.35)) continue;
-    v.y = Math.max(v.y, 4.2); this.climbing = true; this.onGround = false;
-    if (b.maxY - p.y < 0.6) { v.x += wish.x * 2; v.z += wish.z * 2; } // empurrãozinho para subir na beirada
-    break;
+  const rh = W._rockHit;
+  if (!swimming && rh && (wish.x || wish.z) && -(wish.x * rh.nx + wish.z * rh.nz) > 0.35) {
+    const hA = W.rockH(rh.R, p.x - rh.nx * (R + 0.3), p.z - rh.nz * (R + 0.3)); // altura da pedra logo à frente
+    if (hA - p.y <= 3.4) {
+      v.y = Math.max(v.y, 4.2); this.climbing = true; this.onGround = false;
+      if (hA - p.y < 0.8) { const sp = Math.max(2.5, Math.min(Math.hypot(v.x, v.z), 4)); v.x = wish.x * sp; v.z = wish.z * sp; } // passa da beirada (sem acelerar)
+    }
   }
-  // bate a cabeça em tetos
+  // bate a cabeça em tetos (as caixas das pedras não contam: a pedra é tratada pela superfície)
   for (const b of W.nearBoxes(p.x, p.z, 1)) {
+    if (b.rock) continue;
     if (p.x > b.minX && p.x < b.maxX && p.z > b.minZ && p.z < b.maxZ && p.y + 1.8 > b.minY && p.y < b.minY && v.y > 0) { v.y = 0; p.y = b.minY - 1.8; }
   }
 };
@@ -296,7 +303,7 @@ LS.Player = class extends LS.Fighter {
 
     let target, dist;
     if (this.state === 'plane') {
-      target = LS.Game.plane.mesh.position.clone(); dist = 26;
+      target = LS.Game.plane.mesh.position.clone(); target.y += 2; dist = 32;
     } else {
       target = this.eyePos(new THREE.Vector3());
       target.y += this.state === 'ground' ? 0.15 : 1.5;

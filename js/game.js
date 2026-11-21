@@ -141,9 +141,9 @@ LS.Game = {
   },
 
   jumpFromPlane(f) {
-    const pp = this.plane.mesh.position;
     f.state = 'fall';
-    f.pos.set(pp.x + LS.util.rand(-2, 2), pp.y - 3, pp.z + LS.util.rand(-2, 2));
+    this.plane.exitPoint(f.pos); // sai pela rampa traseira
+    f.pos.x += LS.util.rand(-0.8, 0.8); f.pos.z += LS.util.rand(-0.8, 0.8);
     const dir = new THREE.Vector3().subVectors(this.plane.end, this.plane.start).normalize();
     f.vel.copy(dir).multiplyScalar(12); f.vel.y = 0;
     f.model.root.visible = true;
