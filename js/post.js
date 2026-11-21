@@ -21,7 +21,7 @@ LS.Post = {
       uniforms: {
         tColor: { value: this.rt.texture }, tDepth: { value: this.rt.depthTexture },
         res: { value: new THREE.Vector2(size.x, size.y) }, near: { value: 0.25 }, far: { value: 1000 },
-        projScale: { value: 500 }, aoStrength: { value: 1.2 }, edge: { value: 0.38 }, vignette: { value: 0.16 }, fogFar: { value: 400 },
+        projScale: { value: 500 }, aoStrength: { value: 1.15 }, edge: { value: 0.38 }, vignette: { value: 0.16 }, fogFar: { value: 400 },
       },
       depthTest: false, depthWrite: false,
       vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
@@ -51,21 +51,23 @@ LS.Post = {
             float dN = depthAt(vUv + vec2(0.0, px.y)), dS = depthAt(vUv - vec2(0.0, px.y)), dE = depthAt(vUv + vec2(px.x, 0.0)), dW = depthAt(vUv - vec2(px.x, 0.0));
             // inclinação da superfície (por pixel): usa o lado mais suave, pra não errar nas bordas
             float gx = abs(dE - z) < abs(z - dW) ? dE - z : z - dW, gy = abs(dN - z) < abs(z - dS) ? dN - z : z - dS;
-            // ---- oclusão de ambiente: 12 amostras em espiral; só conta o que fica NA FRENTE do plano da superfície ----
-            float rad = clamp(0.8 * projScale / z, 3.0, 70.0), occ = 0.0, ang = ign(gl_FragCoord.xy) * 6.2831;
-            for (int i = 0; i < 12; i++) {
+            // ---- oclusão de ambiente: 16 amostras em espiral FIXA (sem ruído/granulado); só conta o que fica NA FRENTE
+            //      do plano da superfície e com uma folga que cresce com a distância (dobrinhas do terreno não contam) ----
+            float rad = clamp(0.8 * projScale / z, 3.0, 64.0), occ = 0.0, ang = 0.0;
+            float th0 = 0.06 + z * 0.015, th1 = 0.35 + z * 0.012;
+            for (int i = 0; i < 16; i++) {
               float fi = float(i) + 1.0;
               ang += 2.39996;
-              vec2 op = vec2(cos(ang), sin(ang)) * rad * sqrt(fi / 12.0);   // em pixels
+              vec2 op = vec2(cos(ang), sin(ang)) * rad * sqrt(fi / 16.0);   // em pixels
               float expect = z + op.x * gx + op.y * gy;                       // onde o próprio plano estaria
               float d = expect - depthAt(vUv + op * px);                      // > 0: algo na frente (canto/fresta)
-              occ += smoothstep(0.04 + z * 0.004, 0.3, d) * (1.0 - smoothstep(0.7, 1.8, d));
+              occ += smoothstep(th0, th1, d) * (1.0 - smoothstep(0.8, 2.0, d));
             }
-            float ao = clamp(1.0 - (occ / 12.0) * 0.8 * aoStrength, 0.25, 1.0);
-            // ---- contorno suave: bordas de profundidade (silhuetas de personagens, casas, árvores) ----
+            float ao = clamp(1.0 - (occ / 16.0) * 0.8 * aoStrength, 0.35, 1.0);
+            // ---- contorno suave: bordas de profundidade, só de perto (de longe vira serrilhado no morro) ----
             float jump = max(max(abs(dN - z), abs(dS - z)), max(abs(dE - z), abs(dW - z))) / z;
-            float ed = smoothstep(0.05, 0.14, jump) * edge;
-            float fade = 1.0 - smoothstep(fogFar * 0.25, fogFar * 0.6, z); // some de longe (junto com a neblina)
+            float ed = smoothstep(0.06, 0.16, jump) * edge * (1.0 - smoothstep(18.0, 55.0, z));
+            float fade = 1.0 - smoothstep(25.0, min(90.0, fogFar * 0.5), z);  // efeito só perto, some aos poucos
             col *= mix(1.0, ao * (1.0 - ed), fade);
           }
           // ---- vinheta ----

@@ -196,7 +196,7 @@ LS.Game = {
   // cores vivas: contraste e saturação só na imagem 3D (o HUD fica igual); filtro feito pela GPU, praticamente não pesa
   applyColors() {
     const v = LS.settings.vivid === undefined ? 0.6 : LS.settings.vivid;
-    this.renderer.domElement.style.filter = v > 0 ? 'contrast(' + (1 + 0.22 * v).toFixed(3) + ') saturate(' + (1 + 0.5 * v).toFixed(3) + ') brightness(' + (1 + 0.04 * v).toFixed(3) + ')' : '';
+    this.renderer.domElement.style.filter = v > 0 ? 'contrast(' + (1 + 0.15 * v).toFixed(3) + ') saturate(' + (1 + 0.3 * v).toFixed(3) + ')' : '';
   },
   applySettings() {
     const s = LS.settings, r = this.renderer;
