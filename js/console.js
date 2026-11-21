@@ -1,6 +1,6 @@
 // Console de desenvolvedor: abre/fecha com a tecla ' (a que fica à esquerda do 1) ou F2.
-// Fica escondido pros jogadores: só abre no "modo dev". Pra ligar, abra o jogo uma vez com ?dev no fim do
-// link (ex.: lastsurvivor.pages.dev/?dev) — fica salvo nesse navegador. Pra desligar: ?dev=0.
+// Fica escondido pros jogadores: só abre no "modo dev". Pra ligar: no PAINEL ADMIN do perfil (só o owner vê),
+// ou abrindo o jogo uma vez com ?dev no fim do link — fica salvo nesse navegador. Pra desligar: painel ou ?dev=0.
 // (No localhost ele sempre abre.) Não é proteção de verdade: o online é protegido pelo servidor.
 // Mostra os logs do jogo (console.log/warn/error e erros não tratados) e aceita comandos (digite "help").
 'use strict';
@@ -18,6 +18,13 @@ LS.Console = {
       }
       return localStorage.getItem('ls_dev') === '1' || /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
     } catch (e) { return false; }
+  },
+
+  // liga/desliga o modo dev neste navegador (usado pelo painel admin)
+  setDev(on) {
+    try { localStorage.setItem('ls_dev', on ? '1' : '0'); } catch (e) { /* ignora */ }
+    this.dev = !!on;
+    if (!on && this.open) this.toggle(false);
   },
 
   init() {

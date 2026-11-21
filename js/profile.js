@@ -254,9 +254,25 @@ LS.Profile = {
   },
   // ---------- painel do owner: dar selos ----------
   openAdmin() {
+    const on = LS.Console.dev;
     this.modal('<h3>PAINEL ADMIN</h3><p class="pf-hint">Dê ou tire selos de qualquer conta pelo ID.</p><div class="pf-row"><input id="pf-adm-id" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="ID da conta"><button class="btn small" data-pf="adm-find">BUSCAR</button></div>' +
-      '<div id="pf-adm-box"></div><p id="pf-err" class="pf-err hidden"></p><div class="pf-modal-btns"><button class="btn btn-primary" data-pf="close">FECHAR</button></div>');
+      '<div id="pf-adm-box"></div><p id="pf-err" class="pf-err hidden"></p>' +
+      '<div class="pf-adm-sec"><label class="pf-switch"><input type="checkbox" id="pf-dev-chk"' + (on ? ' checked' : '') + '><span></span></label>' +
+      '<div><b>Console de dev</b><small id="pf-dev-st">' + (on ? 'Ligado neste navegador. Abra com a tecla <kbd>\'</kbd> (do lado do 1) ou <kbd>F2</kbd>.' : 'Desligado. Comandos de teste (dar armas, voar, modo deus...). Só funcionam offline.') + '</small></div></div>' +
+      '<div id="pf-dev-confirm" class="pf-confirm hidden"><b>Ativar o console de dev?</b><p>Ele tem comandos de trapaça pra testar o jogo (dar itens, voar, invencível, ver todos). Só fica ligado <b>neste navegador</b> e os comandos não funcionam nas partidas online.</p>' +
+      '<div class="pf-modal-btns"><button class="btn" data-pf="dev-no">CANCELAR</button><button class="btn btn-primary" data-pf="dev-yes">SIM, ATIVAR</button></div></div>' +
+      '<div class="pf-modal-btns"><button class="btn btn-primary" data-pf="close">FECHAR</button></div>');
+    document.getElementById('pf-dev-chk').addEventListener('change', e => {
+      if (e.target.checked) { e.target.checked = false; document.getElementById('pf-dev-confirm').classList.remove('hidden'); } // só liga depois de confirmar
+      else { LS.Console.setDev(false); this.devStatus(); }
+    });
     document.getElementById('pf-adm-id').focus();
+  },
+  devStatus() {
+    const on = LS.Console.dev, chk = document.getElementById('pf-dev-chk'), st = document.getElementById('pf-dev-st');
+    if (chk) chk.checked = on;
+    if (st) st.innerHTML = on ? 'Ligado neste navegador. Abra com a tecla <kbd>\'</kbd> (do lado do 1) ou <kbd>F2</kbd>.' : 'Desligado. Comandos de teste (dar armas, voar, modo deus...). Só funcionam offline.';
+    document.getElementById('pf-dev-confirm').classList.add('hidden');
   },
   async admFind() {
     const id = document.getElementById('pf-adm-id').value.replace(/\D/g, '');
@@ -303,6 +319,8 @@ LS.Profile = {
         case 'admin': this.openAdmin(); break;
         case 'adm-find': this.admFind(); break;
         case 'adm-save': this.admSave(); break;
+        case 'dev-yes': LS.Console.setDev(true); this.devStatus(); break;
+        case 'dev-no': this.devStatus(); break;
         case 'cover': LS.Banners.generate(['br', 'duel1', 'duel2'], () => { if (!document.getElementById('pf-modal').classList.contains('hidden')) this.openCover(); }); this.openCover(); break;
         case 'cv': this.setCover(el.dataset.v); break;
         case 'like': this.like(); break;
