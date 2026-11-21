@@ -103,6 +103,22 @@ Os 30 bots jogam de verdade, sempre no nível **normal**:
 
 ---
 
+## 🪪 Perfil
+
+No estilo Free Fire (toque no seu nome no topo do lobby):
+
+- 🧍 **Seu personagem em 3D** do lado, com a arma do lobby, em cima da **capa** que você escolher (banners do jogo ou cores)
+- 📸 **Foto de perfil de verdade**: uma foto 3D do rosto do seu personagem (8 fundos, acompanha o seu visual) ou **uma imagem sua**
+- 🆔 **ID** de 10 dígitos (botão de copiar), **nível**, **patente** (Bronze → Desafiante) e estatísticas
+- ❤️ **Curtidas**: você ganha no fim das partidas quando joga bem
+- ✏️ **Recado** (bio) e nome editáveis
+- 🏅 **Selos**: Verificado, Criador de Conteúdo, Dev e Owner (com o "verificado" azul do lado do nome)
+- 👀 No fim da partida dá pra ver o **perfil do oponente** (duelo) ou de **quem te eliminou**, e curtir
+
+> Selos oficiais: coloque o seu ID em `LS.Profile.OFFICIAL` (em `js/profile.js`). Pra testar, use o comando `badge` no console (`?dev`).
+
+---
+
 ## 🧱 Personagens e Lobby
 
 O menu inicial **é o lobby**, com o seu personagem em 3D.

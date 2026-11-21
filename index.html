@@ -6,8 +6,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LAST SURVIVOR</title>
 <link rel="preload" href="fonts/lilita-one-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=44">
-<link rel="stylesheet" href="css/ui.css?v=44">
+<link rel="stylesheet" href="css/style.css?v=45">
+<link rel="stylesheet" href="css/ui.css?v=45">
 <link rel="icon" href="data:,">
 </head>
 <body>
@@ -19,7 +19,7 @@
   <div class="lb-top">
     <div class="lb-profile" data-action="stats" title="Perfil">
       <div class="lb-avatar" id="lb-avatar">J</div>
-      <div class="lb-pinfo"><b id="lb-name">Jogador</b><div class="lb-lvl">NV. <span id="lb-level">1</span><div class="lb-xp"><div id="lb-xp"></div></div></div></div>
+      <div class="lb-pinfo"><b><span id="lb-name">Jogador</span><span id="lb-verified"></span></b><div class="lb-lvl">NV. <span id="lb-level">1</span><div class="lb-xp"><div id="lb-xp"></div></div></div></div>
     </div>
     <div class="lb-currency coin" title="Moedas ganhas nas partidas"><i data-icon="coin"></i><span id="lb-coins">0</span></div>
     <div class="lb-currency trophy" title="Vitórias"><i data-icon="trophy"></i><span id="lb-wins">0</span></div>
@@ -80,10 +80,11 @@
 
 <!-- PERFIL -->
 <div id="panel-stats" class="screen panel-screen">
-  <div class="panel">
-    <h2>PERFIL</h2>
+  <div class="panel wide pf-panel">
+    <h2>MEU PERFIL</h2>
     <div id="stats-body"></div>
-    <div class="panel-buttons"><button class="btn" data-action="stats-reset">ZERAR ESTATÍSTICAS</button><button class="btn btn-primary" data-action="back">VOLTAR</button></div>
+    <div class="panel-buttons" id="pf-buttons"></div>
+    <div id="pf-modal" class="hidden"></div>
   </div>
 </div>
 
@@ -92,6 +93,7 @@
   <div class="panel">
     <h2>NOVIDADES</h2>
     <div class="news-list">
+      <div><b>Perfil novo</b><span>Personagem 3D, foto de perfil de verdade, ID, curtidas, recado, capa, patente e selos.</span></div>
       <div><b>Banners 3D</b><span>Os banners dos modos agora são feitos com os modelos do jogo, e o herói é o seu personagem!</span></div>
       <div><b>Duelo 2v2</b><span>Modo equipes no galpão: você e um parceiro contra 2 inimigos. Escolha 1v1 ou 2v2 no banner do Duelo.</span></div>
       <div><b>Banners novos</b><span>Os modos de jogo ganharam banners redesenhados.</span></div>
@@ -371,6 +373,7 @@
       <div><b id="end-time">00:00</b><span>TEMPO</span></div>
     </div>
     <div class="menu-buttons">
+      <button class="btn hidden" id="end-foe">PERFIL DO OPONENTE</button>
       <button class="btn btn-primary" data-action="play">JOGAR NOVAMENTE</button>
       <button class="btn" data-action="quit">MENU PRINCIPAL</button>
     </div>
@@ -378,42 +381,43 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="js/config.js?v=44"></script>
-<script src="js/icons.js?v=44"></script>
-<script src="js/post.js?v=44"></script>
-<script src="js/console.js?v=44"></script>
-<script src="js/audio.js?v=44"></script>
-<script src="js/gunsound.js?v=44"></script>
-<script src="js/input.js?v=44"></script>
-<script src="js/world.js?v=44"></script>
-<script src="js/sky.js?v=44"></script>
-<script src="js/worldbuild.js?v=44"></script>
-<script src="js/housekit.js?v=44"></script>
-<script src="js/houses.js?v=44"></script>
-<script src="js/skin.js?v=44"></script>
-<script src="js/character.js?v=44"></script>
-<script src="js/animlib.js?v=44"></script>
-<script src="js/itemmodels.js?v=44"></script>
-<script src="js/itemicons.js?v=44"></script>
-<script src="js/textures.js?v=44"></script>
-<script src="js/flora.js?v=44"></script>
-<script src="js/effects.js?v=44"></script>
-<script src="js/loot.js?v=44"></script>
-<script src="js/combat.js?v=44"></script>
-<script src="js/player.js?v=44"></script>
-<script src="js/bot.js?v=44"></script>
-<script src="js/zone.js?v=44"></script>
-<script src="js/plane.js?v=44"></script>
-<script src="js/net.js?v=44"></script>
-<script src="js/duel.js?v=44"></script>
-<script src="js/hud.js?v=44"></script>
-<script src="js/esp.js?v=44"></script>
-<script src="js/lobbyscene.js?v=44"></script>
-<script src="js/lobby.js?v=44"></script>
-<script src="js/banners.js?v=44"></script>
-<script src="js/modes.js?v=44"></script>
-<script src="js/menu.js?v=44"></script>
-<script src="js/game.js?v=44"></script>
-<script src="js/main.js?v=44"></script>
+<script src="js/config.js?v=45"></script>
+<script src="js/icons.js?v=45"></script>
+<script src="js/post.js?v=45"></script>
+<script src="js/console.js?v=45"></script>
+<script src="js/audio.js?v=45"></script>
+<script src="js/gunsound.js?v=45"></script>
+<script src="js/input.js?v=45"></script>
+<script src="js/world.js?v=45"></script>
+<script src="js/sky.js?v=45"></script>
+<script src="js/worldbuild.js?v=45"></script>
+<script src="js/housekit.js?v=45"></script>
+<script src="js/houses.js?v=45"></script>
+<script src="js/skin.js?v=45"></script>
+<script src="js/character.js?v=45"></script>
+<script src="js/animlib.js?v=45"></script>
+<script src="js/itemmodels.js?v=45"></script>
+<script src="js/itemicons.js?v=45"></script>
+<script src="js/textures.js?v=45"></script>
+<script src="js/flora.js?v=45"></script>
+<script src="js/effects.js?v=45"></script>
+<script src="js/loot.js?v=45"></script>
+<script src="js/combat.js?v=45"></script>
+<script src="js/player.js?v=45"></script>
+<script src="js/bot.js?v=45"></script>
+<script src="js/zone.js?v=45"></script>
+<script src="js/plane.js?v=45"></script>
+<script src="js/net.js?v=45"></script>
+<script src="js/duel.js?v=45"></script>
+<script src="js/hud.js?v=45"></script>
+<script src="js/esp.js?v=45"></script>
+<script src="js/lobbyscene.js?v=45"></script>
+<script src="js/lobby.js?v=45"></script>
+<script src="js/banners.js?v=45"></script>
+<script src="js/profile.js?v=45"></script>
+<script src="js/modes.js?v=45"></script>
+<script src="js/menu.js?v=45"></script>
+<script src="js/game.js?v=45"></script>
+<script src="js/main.js?v=45"></script>
 </body>
 </html>
