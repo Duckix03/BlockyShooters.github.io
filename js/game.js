@@ -276,8 +276,7 @@ LS.Game = {
     document.getElementById('end-sub').textContent = duel ? (LS.Duel.size > 1 ? (win ? 'Seu time venceu o 2v2!' : 'Seu time perdeu o 2v2. Tente de novo!') : (win ? 'Você venceu o duelo contra ' : 'Você perdeu o duelo contra ') + LS.Duel.opp.name + '!')
       : win ? 'Você é o último sobrevivente da ilha!' : 'Você foi eliminado. Tente novamente!';
     const rw = LS.Menu.award(P, win);
-    const likes = LS.Profile.earnLikes(P, win);
-    document.getElementById('end-xp').textContent = '+' + rw.xp + ' XP · +' + rw.coins + ' moedas' + (likes ? ' · +' + likes + ' curtida' + (likes > 1 ? 's' : '') + ' ♥' : '') + (rw.levelUp ? ' · SUBIU PARA O NÍVEL ' + rw.level + '!' : '');
+    document.getElementById('end-xp').textContent = '+' + rw.xp + ' XP · +' + rw.coins + ' moedas' + (rw.levelUp ? ' · SUBIU PARA O NÍVEL ' + rw.level + '!' : '');
     // botão pra ver o perfil do oponente (duelo) ou de quem te eliminou (bot)
     const foe = duel ? LS.Duel.opp : (this.lastKiller && this.lastKiller instanceof LS.Bot ? this.lastKiller : null), fb = document.getElementById('end-foe');
     LS.Profile.endFoe = foe; fb.classList.toggle('hidden', !foe);

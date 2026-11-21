@@ -540,3 +540,34 @@ kbd { font-family: var(--display); font-weight: 400; letter-spacing: 0.5px; bord
 @media (max-width: 860px) { .pf { grid-template-columns: 1fr; } .pf-left { height: 300px; } }
 .pf-char { height: calc(100% - 66px); bottom: 58px; }
 .pf-cover { position: absolute; inset: -8px; background-size: cover; background-position: center; filter: blur(2.5px) brightness(0.72) saturate(1.15); }
+
+/* ---------- CONTAS ---------- */
+.lb-guest { margin-left: 6px; font-family: var(--body); font-size: 9px; font-weight: 800; letter-spacing: 1px; padding: 1px 6px; border-radius: 5px; background: rgba(255, 255, 255, 0.12); color: #c9d2e3; vertical-align: 2px; }
+.lb-open { margin-left: 6px; font-family: var(--display); font-size: 12px; letter-spacing: 0.5px; color: var(--accent2); opacity: 0.85; white-space: nowrap; }
+.lb-profile:hover .lb-open { opacity: 1; }
+#pf-buttons { flex-wrap: wrap; align-items: center; }
+#pf-buttons .btn { width: auto; min-width: 104px; padding-left: 16px; padding-right: 16px; }
+.btn-admin { background: linear-gradient(135deg, #ffd34d, #ff9a1f) !important; color: #3a1f00 !important; }
+.pf-botnote { margin-right: auto; font-size: 12px; color: var(--mut); font-style: italic; }
+.pf-guest { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: linear-gradient(135deg, rgba(255, 138, 31, 0.18), rgba(255, 77, 109, 0.12)); border: 1px solid rgba(255, 138, 31, 0.5); }
+.pf-guest div { flex: 1; min-width: 0; }
+.pf-guest b { font-family: var(--display); font-weight: 400; font-size: 15px; letter-spacing: 0.5px; color: var(--accent2); display: block; }
+.pf-guest span { font-size: 12px; color: #dfe5f3; }
+.pf-guest span b { display: inline; font-family: var(--body); font-weight: 700; font-size: 12px; color: #fff; }
+.pf-guest .btn { flex: none; width: auto !important; padding: 8px 12px; font-size: 14px; }
+.pf-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.pf-tabs button { flex: 1; font-family: var(--display); font-size: 17px; letter-spacing: 1px; padding: 9px; border-radius: 10px; cursor: pointer; border: 2px solid rgba(255, 255, 255, 0.14); background: rgba(255, 255, 255, 0.04); color: var(--mut); }
+.pf-tabs button.on { background: var(--grad); color: #2a1400; border-color: #ffd36a; }
+.pf-row { display: flex; gap: 8px; align-items: stretch; }
+.pf-row input { flex: 1; }
+.pf-row .btn { width: auto; flex: none; }
+.pf-err { margin-top: 10px; padding: 8px 10px; border-radius: 8px; font-size: 13px; background: rgba(255, 59, 59, 0.15); border: 1px solid rgba(255, 59, 59, 0.5); color: #ffb3bd; }
+.pf-err.ok { background: rgba(140, 240, 96, 0.12); border-color: rgba(140, 240, 96, 0.5); color: #c8ffb0; }
+.pf-warn { margin-top: 8px; color: #ffd36a; }
+.pf-adm-name { margin: 12px 0 6px; font-family: var(--display); font-size: 20px; }
+.pf-adm-name small { font-family: var(--body); font-size: 12px; color: var(--mut); }
+.pf-adm-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.pf-chk { display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0 !important; }
+.pf-chk input { width: 18px !important; height: 18px; accent-color: #ffc531; }
+.pf-chk input:not(:checked) + .pf-badge { filter: grayscale(1); opacity: 0.45; }
+input:disabled#lobby-name { opacity: 0.6; cursor: not-allowed; }

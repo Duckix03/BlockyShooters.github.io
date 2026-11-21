@@ -12,7 +12,17 @@ class_name = "Matchmaker"
 name = "MATCH"
 class_name = "Match"
 
+# contas (nome único, senha, curtidas, selos). A chave de admin NÃO fica aqui: use
+#   npx wrangler secret put ADMIN_KEY
+[[durable_objects.bindings]]
+name = "ACCOUNTS"
+class_name = "Accounts"
+
 # o plano grátis só aceita Durable Objects com SQLite
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Matchmaker", "Match"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Accounts"]

@@ -7,8 +7,11 @@
 //                        recusa teleporte/velocidade impossível, decide quem pegou cada item, mortes e vencedor.
 //                        Os bots que completam as 31 vagas rodam no navegador do "host" (um dos jogadores).
 //                        Anti-wallhack: cada jogador só recebe a posição de quem ele poderia ver (vis.js).
+//  /api/...            → Accounts (um só no mundo): contas com nome único, senha, curtidas e selos (accounts.js).
 'use strict';
 import { viewPoints, bodyPoints, canSee } from './vis.js';
+import { Accounts } from './accounts.js';
+export { Accounts };
 
 const SEARCH_MS = 30000;   // tempo procurando jogadores
 const MAX_PLAYERS = 31;    // vagas da partida (jogadores + bots)
@@ -48,6 +51,7 @@ export default {
     const url = new URL(req.url);
     if (url.pathname === '/' || url.pathname === '/health') return new Response('Last Survivor server ok', { headers: cors });
     if (url.pathname === '/ws/find') return env.MATCHMAKER.get(env.MATCHMAKER.idFromName('global')).fetch(req);
+    if (url.pathname.startsWith('/api/')) return env.ACCOUNTS.get(env.ACCOUNTS.idFromName('global')).fetch(req);
     const m = url.pathname.match(/^\/ws\/match\/([a-z0-9]{8,32})$/);
     if (m) return env.MATCH.get(env.MATCH.idFromName(m[1])).fetch(req);
     return new Response('not found', { status: 404, headers: cors });
@@ -66,16 +70,26 @@ export class Matchmaker {
     server.addEventListener('message', ev => {
       let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
       if (m.t === 'hello' && !p.ready) {
-        p.ready = true; p.name = cleanName(m.name); p.look = m.look && typeof m.look === 'object' ? m.look : null;
-        this.queue.push(p);
-        if (!this.deadline) this.armTimer();
-        this.broadcastQueue();
-        if (this.queue.length >= MAX_PLAYERS) this.flush();
+        p.ready = true; p.look = m.look && typeof m.look === 'object' ? m.look : null;
+        this.joinQueue(p, m);
       }
     });
-    const drop = () => { const i = this.queue.indexOf(p); if (i >= 0) { this.queue.splice(i, 1); this.broadcastQueue(); } if (!this.queue.length) this.reset(); };
+    const drop = () => { p.gone = true; const i = this.queue.indexOf(p); if (i >= 0) { this.queue.splice(i, 1); this.broadcastQueue(); } if (!this.queue.length) this.reset(); };
     server.addEventListener('close', drop); server.addEventListener('error', drop);
     return new Response(null, { status: 101, webSocket: client });
+  }
+  // nome de verdade: quem tem conta joga com o nome da conta; sem conta não dá pra usar o nome de uma conta
+  async joinQueue(p, m) {
+    p.name = cleanName(m.name);
+    try {
+      const r = await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName('global')).fetch('https://accounts/internal/resolve', { method: 'POST', body: JSON.stringify({ token: m.auth, name: p.name }) });
+      const d = await r.json(); if (d && d.name) { p.name = cleanName(d.name); p.accId = d.id || null; p.badges = d.badges || []; }
+    } catch (e) { /* contas fora do ar: segue com o nome mandado */ }
+    if (p.gone) return;
+    this.queue.push(p);
+    if (!this.deadline) this.armTimer();
+    this.broadcastQueue();
+    if (this.queue.length >= MAX_PLAYERS) this.flush();
   }
   armTimer() {
     this.deadline = Date.now() + SEARCH_MS;

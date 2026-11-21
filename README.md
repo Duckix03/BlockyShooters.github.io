@@ -108,14 +108,20 @@ Os 30 bots jogam de verdade, sempre no nível **normal**:
 No estilo Free Fire (toque no seu nome no topo do lobby):
 
 - 🧍 **Seu personagem em 3D** do lado, com a arma do lobby, em cima da **capa** que você escolher (banners do jogo ou cores)
-- 📸 **Foto de perfil de verdade**: uma foto 3D do rosto do seu personagem (8 fundos, acompanha o seu visual) ou **uma imagem sua**
+- 📸 **Foto de perfil**: uma foto 3D do rosto do seu personagem (8 fundos, acompanha o seu visual)
 - 🆔 **ID** de 10 dígitos (botão de copiar), **nível**, **patente** (Bronze → Desafiante) e estatísticas
-- ❤️ **Curtidas**: você ganha no fim das partidas quando joga bem
+- ❤️ **Curtidas** de verdade, dadas por outros jogadores com conta
 - ✏️ **Recado** (bio) e nome editáveis
-- 🏅 **Selos**: Verificado, Criador de Conteúdo, Dev e Owner (com o "verificado" azul do lado do nome)
-- 👀 No fim da partida dá pra ver o **perfil do oponente** (duelo) ou de **quem te eliminou**, e curtir
+- 🏅 **Selos**: Verificado, Criador de Conteúdo, Dev e Owner (com o "verificado" azul do lado do nome), dados só pelo dono do jogo no **painel ADMIN**
+- 🔎 **Buscar jogador pelo ID** e curtir o perfil (1 curtida por conta)
+- 👀 No fim da partida dá pra ver o **perfil do oponente** (duelo) ou de **quem te eliminou**
 
-> Selos oficiais: coloque o seu ID em `LS.Profile.OFFICIAL` (em `js/profile.js`). Pra testar, use o comando `badge` no console (`?dev`).
+### 👤 Contas
+
+- **CRIAR CONTA** no perfil: nome **único** com senha. Ninguém mais consegue usar o seu nome (nem no online, onde vira `Convidado1234`)
+- O perfil, o visual e as estatísticas ficam salvos na conta: entre em qualquer computador e está tudo lá
+- Sem conta você joga como **convidado** (nome não protegido, sem curtidas e sem selos)
+- Como virar owner e dar selos: veja [server/LEIAME.md](server/LEIAME.md)
 
 ---
 

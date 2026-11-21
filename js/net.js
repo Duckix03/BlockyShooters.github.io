@@ -67,7 +67,7 @@ LS.Net = {
     try { ws = new WebSocket(this.wsUrl('/ws/find')); } catch (e) { fail('erro'); return; }
     this.findWs = ws;
     const to = setTimeout(() => fail('sem resposta'), 45000);
-    ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', name: LS.playerProfile.name, look: LS.playerProfile.look }));
+    ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', name: LS.playerProfile.name, look: LS.playerProfile.look, auth: LS.Account && LS.Account.token }));
     ws.onerror = () => { clearTimeout(to); fail('erro'); };
     ws.onclose = () => { clearTimeout(to); if (!done && !this._matching) fail('fechou'); };
     ws.onmessage = ev => {
