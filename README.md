@@ -22,7 +22,8 @@
 - 🪂 **Paraquedas**: asa de células com as linhas presas nas mãos; abre sozinho perto do chão, ou quando você quiser
 - 🔵 **Zona segura**: encolhe em **6 fases**, e o dano fora dela aumenta a cada fase
 - 💀 **Eliminações**: lista de abates ao vivo e contador de jogadores vivos
-- 🏆 **Vitória ou derrota**: tela final com colocação, abates, dano causado e tempo
+- 🏆 **Vitória**: comemoração **"LAST SURVIVOR!"** dourada com confete e a câmera girando em volta de você (também no duelo), depois a tela final com colocação, abates, dano e tempo
+- 🎯 **Indicador de tiro**: quando alguém atira perto, aparece na tela de onde vem o tiro, com a distância (ou uma seta na borda), por ~1 s depois do último tiro
 - 🌅 **Ciclo do dia**: a partida começa de manhã e termina ao anoitecer
 
 ---
@@ -182,7 +183,7 @@ Seu visual fica salvo para as próximas partidas.
 
 - ❤️ Barra de **vida** e 🛡️ barra de **colete**
 - 🔫 **Arma equipada** e munição no pente e na reserva
-- 🗺️ **Minimapa** e mapa grande com a zona atual e a próxima
+- 🗺️ **Minimapa redondo** que gira com a câmera: bússola na borda, cone de visão, nomes das cidades, gás animado, próxima zona tracejada e ondas vermelhas onde alguém atirou. Mapa grande com tudo isso também
 - ⏱️ **Cronômetro**, 👤 **jogadores vivos** e 💀 **abates**
 - 🔴 Indicador de direção de dano e aviso de **fora da zona**
 - 🎒 **Inventário** com botões para equipar, recarregar, curar e largar itens
