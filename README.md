@@ -43,7 +43,9 @@ No lobby, toque em **MODOS** pra escolher (o jogo lembra a sua escolha):
 - 🧍‍♂️🧍 Cada um **nasce num lado, de frente pro outro** (os lados trocam a cada round)
 - ⏱️ Contagem de 3 segundos antes de cada round
 - 🟣 **Gás** que fecha em 3 fases: ficar escondido não adianta
-- 🔫 Os dois recebem as **mesmas armas** a cada round (M4A1 + M1887, AK-47 + Desert Eagle, MP5 + SPAS-12, Kar98k + UMP, AWM + MP5), colete e capacete nível 2 e cura
+- 🛒 **Loja de armas a cada 2 rounds**: um escolhe as **2 armas que os dois vão usar** e o outro fica assistindo (a arma escolhida ganha borda amarela). Na loja seguinte inverte quem escolhe
+- 🚫 Arma escolhida fica **"JÁ USADA"** nas próximas lojas, então dá pra ver todas as 10 armas numa partida
+- 🦺 Todo round os dois nascem com colete e capacete nível 2 e cura
 - 🔁 Todo mundo **revive** no começo de cada round, até alguém chegar a 5
 - Por enquanto o duelo é contra um bot (offline)
 

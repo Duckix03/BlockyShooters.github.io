@@ -2,6 +2,8 @@
 // - 5 mapas (o mapa muda a cada round), sempre simétricos: os dois lados têm a mesma cobertura
 // - cada um nasce num lado do galpão, de frente pro outro (os lados trocam a cada round)
 // - gás que fecha (senão ninguém dá rush), primeiro a fazer 5 rounds vence
+// - LOJA a cada 2 rounds: um escolhe as 2 armas (os dois usam), o outro assiste; na próxima loja inverte.
+//   Arma escolhida fica "JÁ USADA" nas próximas lojas (10 armas, no máximo 5 lojas: todas aparecem)
 // O galpão fica no mar, longe da ilha (z = -600): mesmo mundo, mesma física e mesmos tiros do battle royale.
 'use strict';
 
@@ -38,11 +40,9 @@ LS.DuelZone = class extends LS.Zone {
 
 LS.Duel = {
   ARENA: { x: 0, z: -600, w: 50, d: 32, fy: 0.5, h: 10 }, // centro, largura (x), fundo (z), altura do piso, pé-direito
-  WIN: 5, SPAWN_X: 21.5, COUNTDOWN: 3,
+  WIN: 5, SPAWN_X: 21.5, COUNTDOWN: 3, SHOP_TIME: 15, SHOP_EVERY: 2,
   CW: 6.06, CD: 2.44, CH: 2.6, // contêiner de 20 pés
   COLORS: [0xb03a2e, 0x2e6bb0, 0x3a8a3a, 0xc98a1e, 0x6a6e74, 0x2a8a8a, 0xd8d6cc, 0x7a3a8a],
-  // as duas armas de cada round (iguais pros dois)
-  LOADOUTS: [['m4a1', 'm1887'], ['ak47', 'deagle'], ['mp5', 'spas12'], ['kar98', 'ump'], ['awm', 'mp5']],
   // mapas: 'center' fica no meio; 'half' é espelhado no outro lado (x,z → -x,-z), então os dois lados são iguais.
   // ['c', x, z, girado(0 = comprido em x, 1 = em z), andares, cor] · ['k', x, z, tamanho, quantas empilhadas] caixa de madeira · ['b', x, z] barril
   // x vai de -25 a 25 e z de -16 a 16; quem nasce fica em x = ±21,5, z = 0
@@ -87,6 +87,8 @@ LS.Duel = {
     this.zone.wall.visible = true; this.hemi.intensity = 0.18;
     G.zone = this.zone;
     this.active = true; this.score = [0, 0]; this.round = 0; this.kills = 0; this.dmg = 0;
+    this.loadout = null; this.used = []; this.shopN = 0;
+    this.firstPicker = Math.random() < 0.5 ? 'me' : 'foe'; // quem escolhe primeiro é sorteado
     // ordem dos mapas sorteada a cada partida (os 5 aparecem antes de repetir)
     this.order = [0, 1, 2, 3, 4].sort(() => Math.random() - 0.5);
     document.getElementById('hud').classList.add('duel');
@@ -106,6 +108,7 @@ LS.Duel = {
     document.getElementById('hud').classList.remove('duel');
     document.getElementById('duel-score').classList.add('hidden');
     document.getElementById('duel-count').className = 'hidden';
+    this.hideShop();
   },
 
   // ---------- rounds ----------
@@ -115,15 +118,29 @@ LS.Duel = {
     this.mapIdx = this.order[(this.round - 1) % this.order.length];
     this.buildMap(this.mapIdx);
     LS.Effects.clear(); LS.Loot.clear();
-    const side = this.round % 2 ? -1 : 1, L = this.LOADOUTS[(this.round - 1) % this.LOADOUTS.length]; // lados trocam a cada round
+    const side = this.round % 2 ? -1 : 1, L = this.loadout || []; // lados trocam a cada round
     this.spawn(G.player, side, L); this.spawn(this.opp, -side, L);
     const P = G.player;
     P.camYaw = P.yaw; P.camPitch = -0.05; P.recoilX = P.recoilY = 0; P.recoilPend = { x: 0, y: 0 };
     const o = this.opp; o.target = P; o.alertPos = P.pos.clone(); o.alertT = 3; o.ai = 'investigate'; o.lockT = 0;
     this.zone.reset(); this.zone.update(0, []);
-    G.frozen = true; this.phase = 'countdown'; this.t = this.COUNTDOWN + 0.6; this.lastShown = null;
-    LS.HUD.centerMsg('ROUND ' + this.round, 'Mapa: ' + this.MAPS[this.mapIdx].name + ' · ' + L.map(id => LS.WEAPONS[id].name).join(' + '), 2.2);
+    G.frozen = true;
     this.renderScore();
+    if (!this.loadout || (this.round - 1) % this.SHOP_EVERY === 0) this.openShop(); // loja nos rounds 1, 3, 5...
+    else this.beginCountdown();
+  },
+  beginCountdown() {
+    this.phase = 'countdown'; this.t = this.COUNTDOWN + 0.6; this.lastShown = null;
+    const L = this.loadout || [];
+    LS.HUD.centerMsg('ROUND ' + this.round, 'Mapa: ' + this.MAPS[this.mapIdx].name + ' · ' + L.map(id => LS.WEAPONS[id].name).join(' + ') +
+      (LS.Input.locked ? '' : '<br>Clique na tela para mirar'), 2.4);
+  },
+  // dá as armas do round (as mesmas pros dois), com o pente cheio e 3 pentes de reserva
+  equip(f, L) {
+    f.weapons = [L[0] ? { id: L[0], mag: LS.WEAPONS[L[0]].mag } : null, L[1] ? { id: L[1], mag: LS.WEAPONS[L[1]].mag } : null];
+    f.slot = 0; f.model.setGun(L[0] || null); f.reloadT = 0;
+    f.ammo = { light: 0, rifle: 0, sniper: 0, shell: 0 };
+    L.forEach(id => { const d = LS.WEAPONS[id]; f.ammo[d.ammo] += d.mag * 3; });
   },
   // coloca o lutador no lado dele, olhando pro outro, com as armas do round
   spawn(f, side, L) {
@@ -132,9 +149,7 @@ LS.Duel = {
     f.state = 'ground'; f.onGround = true; f.safeLand = true;
     f.pos.set(A.x + side * this.SPAWN_X, A.fy, A.z); f.vel.set(0, 0, 0);
     f.yaw = side > 0 ? -Math.PI / 2 : Math.PI / 2; f.pitch = 0;
-    f.weapons = L.map(id => ({ id, mag: LS.WEAPONS[id].mag }));
-    f.slot = 0; f.model.setGun(L[0]);
-    L.forEach(id => { const d = LS.WEAPONS[id]; f.ammo[d.ammo] += d.mag * 3; });
+    this.equip(f, L);
     f.vest = { level: 2, dur: LS.GEAR.vest.levels[2].dur }; f.helmet = { level: 2, dur: LS.GEAR.helmet.levels[2].dur }; f.bag = 1;
     f.model.setGear(2, 2, 1);
     f.meds = { medkit: 1, bandage: 3 };
@@ -158,6 +173,8 @@ LS.Duel = {
     } else if (this.phase === 'resolve') {
       this.t -= dt;
       if (this.t <= 0) this.resolve();
+    } else if (this.phase === 'shop') {
+      this.updateShop(dt);
     } else if (this.phase === 'roundEnd') {
       this.t -= dt;
       if (this.t <= 0) {
@@ -185,6 +202,126 @@ LS.Duel = {
     P.kills = this.kills; P.damageDealt = this.dmg; P.placement = win ? 1 : 2;
     document.getElementById('duel-count').className = 'hidden';
     G.endMatch(win);
+  },
+
+  // ---------- LOJA (a cada 2 rounds) ----------
+  openShop() {
+    const G = LS.Game;
+    this.phase = 'shop'; this.shopOpen = true; G.frozen = true;
+    this.picker = (this.shopN % 2 === 0) === (this.firstPicker === 'me') ? 'me' : 'foe'; // alterna quem escolhe
+    this.shopN++;
+    let avail = LS.WEAPON_IDS.filter(id => !this.used.includes(id));
+    if (avail.length < 2) { this.used = []; avail = LS.WEAPON_IDS.slice(); } // (só com muitos empates) libera todas de novo
+    this.avail = avail; this.picks = []; this.shopT = this.SHOP_TIME; this.shopDone = 0; this.hoverId = null;
+    if (this.picker === 'foe') { this.botPlan = this.botChoose(avail); this.botT = LS.util.rand(2.2, 3.4); this.hoverT = 0; }
+    G.setInventory(false);
+    LS.Input.enabled = false; LS.Input.unlock(); // mouse solto pra clicar
+    this.bindShop();
+    const r = this.round, last = r + this.SHOP_EVERY - 1;
+    document.getElementById('shop-rounds').textContent = 'ROUNDS ' + r + ' E ' + last;
+    document.getElementById('duel-shop').classList.remove('hidden');
+    LS.Audio.alert();
+    this.renderShop();
+  },
+  hideShop() {
+    this.shopOpen = false;
+    const el = document.getElementById('duel-shop'); if (el) el.classList.add('hidden');
+  },
+  // bot: uma de longe/média (rifle ou sniper) + uma de perto (escopeta ou SMG), quando tem
+  botChoose(avail) {
+    const U = LS.util, cat = id => LS.WEAPONS[id].cat;
+    const far = avail.filter(id => cat(id) === 'Rifle' || cat(id) === 'Sniper');
+    const a = far.length && Math.random() < 0.85 ? U.pick(far) : U.pick(avail);
+    const rest = avail.filter(id => id !== a), near = rest.filter(id => cat(id) === 'Escopeta' || cat(id) === 'SMG');
+    const b = near.length && Math.random() < 0.8 ? U.pick(near) : U.pick(rest);
+    return [a, b];
+  },
+  bindShop() {
+    if (this._shopBound) return; this._shopBound = true;
+    document.getElementById('shop-grid').addEventListener('click', e => {
+      const c = e.target.closest('[data-wid]'); if (!c || this.picker !== 'me' || this.shopDone) return;
+      const id = c.dataset.wid; if (!this.avail.includes(id)) return;
+      const i = this.picks.indexOf(id);
+      if (i >= 0) this.picks.splice(i, 1); else if (this.picks.length < 2) this.picks.push(id); else { this.picks[1] = id; }
+      LS.Audio.init(); LS.Audio.click(); this.renderShop();
+    });
+    document.getElementById('shop-ok').addEventListener('click', () => {
+      if (this.picker !== 'me' || this.picks.length < 2 || this.shopDone) return;
+      LS.Audio.click(); this.confirmShop(true);
+    });
+  },
+  confirmShop(byClick) {
+    this.shopDone = byClick ? 0.9 : 1.6; // mostra a escolha um instante antes de fechar
+    if (byClick) { LS.Input.enabled = true; LS.Input.lock(); } // o clique conta como gesto: já prende o mouse
+    this.renderShop();
+  },
+  updateShop(dt) {
+    if (this.shopDone > 0) {
+      this.shopDone -= dt;
+      if (this.shopDone <= 0) this.closeShop();
+      return;
+    }
+    this.shopT -= dt;
+    if (this.picker === 'me') {
+      if (this.shopT <= 0) { // acabou o tempo: completa com armas aleatórias
+        const rest = this.avail.filter(id => !this.picks.includes(id)).sort(() => Math.random() - 0.5);
+        while (this.picks.length < 2) this.picks.push(rest.pop());
+        this.confirmShop(false);
+      }
+    } else {
+      // bot "passeando" o cursor pelas armas antes de escolher
+      this.hoverT -= dt;
+      if (this.hoverT <= 0) {
+        this.hoverT = LS.util.rand(0.25, 0.5);
+        const free = this.avail.filter(id => !this.picks.includes(id));
+        this.hoverId = Math.random() < 0.45 ? this.botPlan[this.picks.length] : LS.util.pick(free);
+        this.renderShop();
+      }
+      this.botT -= dt;
+      if (this.botT <= 0) {
+        this.picks.push(this.botPlan[this.picks.length]); this.hoverId = null; LS.Audio.click();
+        this.botT = LS.util.rand(1.4, 2.4);
+        if (this.picks.length >= 2) this.confirmShop(false);
+        this.renderShop();
+      }
+    }
+    const fill = document.getElementById('shop-timer-fill');
+    if (fill) fill.style.width = Math.max(0, this.shopT / this.SHOP_TIME * 100) + '%';
+  },
+  closeShop() {
+    const G = LS.Game;
+    this.hideShop();
+    this.used.push(...this.picks);
+    this.loadout = this.picks.slice();
+    this.equip(G.player, this.loadout); this.equip(this.opp, this.loadout);
+    LS.Input.enabled = true; // se não prendeu o mouse ainda, o 1º clique na tela prende
+    this.beginCountdown();
+  },
+  renderShop() {
+    const me = this.picker === 'me', foe = this.opp.name, W = LS.WEAPONS;
+    const who = document.getElementById('shop-who'), done = this.shopDone > 0;
+    const names = this.picks.map(id => W[id].name).join(' + ');
+    if (done) who.innerHTML = (me ? 'VOCÊ ESCOLHEU' : foe.toUpperCase() + ' ESCOLHEU') + ': <b>' + names + '</b>';
+    else if (me) who.innerHTML = '<b>SUA VEZ!</b> Escolha <b>2 armas</b> pra vocês dois usarem nos próximos 2 rounds';
+    else who.innerHTML = '<span class="watch">ASSISTINDO</span> <b>' + foe.toUpperCase() + '</b> está escolhendo as armas...';
+    who.className = 'shop-who ' + (me ? 'me' : 'foe');
+    const max = { dmg: 120, rate: 13, range: 600 };
+    const bar = (l, v, m) => '<div class="sw-stat"><span>' + l + '</span><i><u style="width:' + Math.round(Math.min(1, v / m) * 100) + '%"></u></i></div>';
+    document.getElementById('shop-grid').innerHTML = LS.WEAPON_IDS.map(id => {
+      const w = W[id], used = !this.avail.includes(id), sel = this.picks.includes(id), hov = this.hoverId === id && !sel;
+      const cls = 'shop-card' + (used ? ' used' : '') + (sel ? ' sel' : '') + (hov ? ' hover' : '') + (!me || done ? ' locked' : '');
+      return '<div class="' + cls + '" data-wid="' + id + '">' + (sel ? '<span class="sw-badge">' + (me ? 'VOCÊ' : foe) + '</span>' : '') + (used ? '<span class="sw-used">JÁ USADA</span>' : '') +
+        '<img src="' + LS.Icons.get('weapon', id) + '" alt=""><b>' + w.name + '</b><small>' + w.cat.toUpperCase() + '</small>' +
+        bar('Dano', w.dmg * w.pellets, max.dmg) + bar('Cadência', w.rate, max.rate) + bar('Alcance', w.range, max.range) + '</div>';
+    }).join('');
+    document.getElementById('shop-picks').innerHTML = [0, 1].map(i => {
+      const id = this.picks[i];
+      return '<div class="sp-slot' + (id ? ' on' : '') + '">' + (id ? '<img src="' + LS.Icons.get('weapon', id) + '" alt=""><span>' + W[id].name + '</span>' : '<span>ARMA ' + (i + 1) + '</span>') + '</div>';
+    }).join('');
+    const ok = document.getElementById('shop-ok');
+    ok.style.display = me ? '' : 'none';
+    ok.disabled = this.picks.length < 2 || done;
+    ok.textContent = done ? 'PRONTO!' : 'CONFIRMAR';
   },
 
   // ---------- HUD ----------

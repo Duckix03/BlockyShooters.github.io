@@ -6,8 +6,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LAST SURVIVOR</title>
 <link rel="preload" href="fonts/lilita-one-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=41">
-<link rel="stylesheet" href="css/ui.css?v=41">
+<link rel="stylesheet" href="css/style.css?v=42">
+<link rel="stylesheet" href="css/ui.css?v=42">
 <link rel="icon" href="data:,">
 </head>
 <body>
@@ -92,6 +92,7 @@
   <div class="panel">
     <h2>NOVIDADES</h2>
     <div class="news-list">
+      <div><b>Loja do Duelo</b><span>A cada 2 rounds abre a loja: um escolhe as 2 armas dos dois, o outro assiste. Depois inverte!</span></div>
       <div><b>Modo Duelo</b><span>1v1 num galpão com contêineres: 5 mapas, o mapa muda a cada round, gás fechando e primeiro a 5 vence.</span></div>
       <div><b>Menu de modos</b><span>Escolha entre Battle Royale e Duelo no botão MODOS. Os bots agora jogam sempre no normal.</span></div>
       <div><b>Casas refeitas</b><span>Telhados fechados, sobrados com escada, móveis e terreno aplainado.</span></div>
@@ -277,6 +278,15 @@
     <div class="ds-side foe"><b id="ds-sfoe">0</b><div class="ds-pips" id="ds-pips-foe"></div><span class="ds-name" id="ds-foe">BOT</span></div>
   </div>
   <div id="duel-count" class="hidden"></div>
+  <div id="duel-shop" class="hidden">
+    <div class="shop-box">
+      <div class="shop-head"><h2>LOJA DE ARMAS</h2><span id="shop-rounds">ROUNDS 1 E 2</span></div>
+      <div id="shop-who" class="shop-who"></div>
+      <div class="shop-timer"><div id="shop-timer-fill"></div></div>
+      <div id="shop-grid" class="shop-grid"></div>
+      <div class="shop-foot"><div id="shop-picks" class="shop-picks"></div><button class="btn btn-primary" id="shop-ok">CONFIRMAR</button></div>
+    </div>
+  </div>
   <div id="center-msg"></div>
   <div id="prompt"></div>
   <div id="heal-progress" class="hidden"><div id="heal-fill"></div><span id="heal-label">Curando...</span></div>
@@ -365,41 +375,41 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="js/config.js?v=41"></script>
-<script src="js/icons.js?v=41"></script>
-<script src="js/post.js?v=41"></script>
-<script src="js/console.js?v=41"></script>
-<script src="js/audio.js?v=41"></script>
-<script src="js/gunsound.js?v=41"></script>
-<script src="js/input.js?v=41"></script>
-<script src="js/world.js?v=41"></script>
-<script src="js/sky.js?v=41"></script>
-<script src="js/worldbuild.js?v=41"></script>
-<script src="js/housekit.js?v=41"></script>
-<script src="js/houses.js?v=41"></script>
-<script src="js/skin.js?v=41"></script>
-<script src="js/character.js?v=41"></script>
-<script src="js/animlib.js?v=41"></script>
-<script src="js/itemmodels.js?v=41"></script>
-<script src="js/itemicons.js?v=41"></script>
-<script src="js/textures.js?v=41"></script>
-<script src="js/flora.js?v=41"></script>
-<script src="js/effects.js?v=41"></script>
-<script src="js/loot.js?v=41"></script>
-<script src="js/combat.js?v=41"></script>
-<script src="js/player.js?v=41"></script>
-<script src="js/bot.js?v=41"></script>
-<script src="js/zone.js?v=41"></script>
-<script src="js/plane.js?v=41"></script>
-<script src="js/net.js?v=41"></script>
-<script src="js/duel.js?v=41"></script>
-<script src="js/hud.js?v=41"></script>
-<script src="js/esp.js?v=41"></script>
-<script src="js/lobbyscene.js?v=41"></script>
-<script src="js/lobby.js?v=41"></script>
-<script src="js/modes.js?v=41"></script>
-<script src="js/menu.js?v=41"></script>
-<script src="js/game.js?v=41"></script>
-<script src="js/main.js?v=41"></script>
+<script src="js/config.js?v=42"></script>
+<script src="js/icons.js?v=42"></script>
+<script src="js/post.js?v=42"></script>
+<script src="js/console.js?v=42"></script>
+<script src="js/audio.js?v=42"></script>
+<script src="js/gunsound.js?v=42"></script>
+<script src="js/input.js?v=42"></script>
+<script src="js/world.js?v=42"></script>
+<script src="js/sky.js?v=42"></script>
+<script src="js/worldbuild.js?v=42"></script>
+<script src="js/housekit.js?v=42"></script>
+<script src="js/houses.js?v=42"></script>
+<script src="js/skin.js?v=42"></script>
+<script src="js/character.js?v=42"></script>
+<script src="js/animlib.js?v=42"></script>
+<script src="js/itemmodels.js?v=42"></script>
+<script src="js/itemicons.js?v=42"></script>
+<script src="js/textures.js?v=42"></script>
+<script src="js/flora.js?v=42"></script>
+<script src="js/effects.js?v=42"></script>
+<script src="js/loot.js?v=42"></script>
+<script src="js/combat.js?v=42"></script>
+<script src="js/player.js?v=42"></script>
+<script src="js/bot.js?v=42"></script>
+<script src="js/zone.js?v=42"></script>
+<script src="js/plane.js?v=42"></script>
+<script src="js/net.js?v=42"></script>
+<script src="js/duel.js?v=42"></script>
+<script src="js/hud.js?v=42"></script>
+<script src="js/esp.js?v=42"></script>
+<script src="js/lobbyscene.js?v=42"></script>
+<script src="js/lobby.js?v=42"></script>
+<script src="js/modes.js?v=42"></script>
+<script src="js/menu.js?v=42"></script>
+<script src="js/game.js?v=42"></script>
+<script src="js/main.js?v=42"></script>
 </body>
 </html>
