@@ -209,9 +209,9 @@ LS.CharacterModel = class {
   poseChute(open, st, jolt, t, collapse) {
     const L = LS.util.lerp, ss = x => { x = LS.util.clamp(x, 0, 1); return x * x * (3 - 2 * x); };
     const eo = 1 - Math.pow(1 - LS.util.clamp(open, 0, 1), 3), cl = ss(collapse || 0);
-    // sobe da mochila até lá em cima, já abrindo; no pouso cai pra trás murchando
-    this.wing.position.set(0, L(L(1.5, 3.7, eo), 0.35, cl), L(0, -1.6, cl));
-    this.wing.rotation.set(-jolt * 0.35 + Math.sin(t * 0.9) * 0.03 - cl * 1.3, 0, Math.sin(t * 1.3) * 0.06 + st * 0.35);
+    // sobe da mochila até lá em cima, já abrindo; no pouso cai pra FRENTE murchando (não tampa a câmera, que fica atrás)
+    this.wing.position.set(0, L(L(1.5, 3.7, eo), 0.35, cl), L(0, 2.2, cl));
+    this.wing.rotation.set(-jolt * 0.35 + Math.sin(t * 0.9) * 0.03 + cl * 1.3, 0, Math.sin(t * 1.3) * 0.06 + st * 0.35);
     for (const c of this.cells) {
       const k = ss((open - Math.abs(c.u) * 0.35) / 0.65);               // enche do centro pras pontas
       const br = 1 + Math.sin(t * 3.1 + c.u * 2.2) * 0.07;               // "respira" em onda
@@ -448,10 +448,10 @@ LS.CharacterModel = class {
       this.updateChuteLines();
       return;
     }
-    // pousou: o paraquedas cai pra trás murchando e some (as linhas somem junto)
+    // pousou: o paraquedas cai pra frente murchando e some (as linhas somem junto)
     if (this.wasChute) { this.wasChute = false; this.collapseT = 1e-4; }
     if (this.collapseT > 0 && this.chute.visible) {
-      this.collapseT = Math.min(1, this.collapseT + dt / 0.9);
+      this.collapseT = Math.min(1, this.collapseT + dt / 0.7);
       this.poseChute(1, 0, 0, now + this.seed, this.collapseT);
       if (this.collapseT >= 1) { this.chute.visible = false; this.collapseT = 0; }
     } else this.chute.visible = false;
