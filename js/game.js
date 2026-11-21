@@ -44,12 +44,14 @@ LS.Game = {
         this.player = new LS.Player(); this.scene.add(this.player.model.root);
         const names = LS.BOT_NAMES.slice().sort(() => Math.random() - 0.5);
         for (let i = 0; i < LS.BOT_COUNT; i++) { const b = new LS.Bot(names[i % names.length]); this.bots.push(b); this.scene.add(b.model.root); }
+        this.botPool = this.bots.slice(); this.remotePlayers = [];
         this.fighters = [this.player].concat(this.bots);
       }
     ];
     let i = 0;
+    const rng = LS.util.seeded(LS.MAP_SEED); // mesma ilha em todos os computadores (o online precisa)
     const next = () => {
-      steps[i](); i++;
+      LS.util.withSeed(rng, steps[i]); i++;
       fill.style.width = (i / steps.length * 100) + '%';
       if (i < steps.length) setTimeout(next, 30);
       else { this.built = true; this.applySettings(); setTimeout(onDone, 150); }
@@ -71,6 +73,9 @@ LS.Game = {
     LS.UI.showScreen('loading');
     document.getElementById('loading-fill').style.width = this.built ? '100%' : '0%';
     this.build(() => {
+      LS.Net.leave(); this.zone.rng = null;
+      this.bots = this.botPool.slice(); this.fighters = [this.player].concat(this.bots);
+      this.bots.forEach(b => { b.netId = null; if (!b.model.root.parent) this.scene.add(b.model.root); }); this.player.netId = null;
       LS.Loot.spawnAll(); LS.Effects.clear();
       this.fighters.forEach(f => f.reset());
       this.player.name = LS.playerProfile.name; this.player.model.applyLook(LS.playerProfile.look);
@@ -89,6 +94,48 @@ LS.Game = {
       LS.Input.enabled = true; LS.Input.lock();
       LS.Audio.stopAll(); LS.Audio.startLoop('plane', 'plane');
       LS.HUD.centerMsg('LAST SURVIVOR', 'Pressione ESPAÇO para saltar do avião', 4);
+      LS.stats.games++; LS.saveStats();
+    });
+  },
+
+  // partida online: mesma ilha, loot/avião/zona pela semente do servidor; bots só no host
+  startOnline(d) {
+    LS.Audio.init();
+    LS.UI.showScreen('loading');
+    document.getElementById('loading-fill').style.width = this.built ? '100%' : '0%';
+    this.build(() => {
+      const N = LS.Net; N.begin(d);
+      LS.util.withSeed(d.seed, () => { LS.Loot.spawnAll(); this.plane.reset(); this.zone.reset(); });
+      this.zone.rng = LS.util.seeded(d.seed + 7); LS.Effects.clear();
+      // tira da cena os bots que não vão jogar
+      for (const b of this.botPool) { b.reset(); b.netId = null; if (b.model.root.parent) b.model.root.parent.remove(b.model.root); }
+      this.player.reset(); this.player.name = LS.playerProfile.name; this.player.model.applyLook(LS.playerProfile.look);
+      N.register(this.player, d.you);
+      const fighters = [this.player], host = d.host === d.you;
+      for (const p of d.players) if (p.pid !== d.you) {
+        const r = new LS.RemoteFighter(p.name, p.look); r.reset(); r.name = p.name; this.scene.add(r.model.root); N.register(r, p.pid); fighters.push(r);
+      }
+      const looks = LS.util.withSeed(d.seed + 99, () => d.bots.map(() => LS.Skin.randomLook())); // bots com a mesma cara pra todos
+      this.bots = [];
+      const df = LS.Menu.diff(); this.botDamageMul = df.dmg;
+      d.bots.forEach((bd, i) => {
+        let b;
+        if (host) { b = this.botPool[i]; b.reset(); b.skill = LS.util.rand(df.skill[0], df.skill[1]); this.bots.push(b); }
+        else { b = new LS.RemoteFighter(bd.name, looks[i]); b.reset(); }
+        b.name = bd.name; b.model.applyLook(looks[i]); this.scene.add(b.model.root); N.register(b, bd.id); fighters.push(b);
+      });
+      if (host) N.send({ t: 'diff', dmg: df.dmg });
+      this.fighters = fighters;
+      this.precompile();
+      this.time = 0; this.endTimer = 0; this.ended = false;
+      this.player.camYaw = Math.atan2(this.plane.end.x - this.plane.start.x, this.plane.end.z - this.plane.start.z);
+      document.getElementById('killfeed').innerHTML = '';
+      LS.UI.showScreen(null); LS.HUD.show(true); this.setInventory(false);
+      document.getElementById('bigmap').classList.add('hidden');
+      this.state = 'playing'; LS.Input.enabled = true; LS.Input.lock();
+      LS.Audio.stopAll(); LS.Audio.startLoop('plane', 'plane');
+      const humans = d.players.length;
+      LS.HUD.centerMsg('PARTIDA ONLINE', humans + ' jogadores + ' + d.bots.length + ' bots · ESPAÇO para saltar', 4);
       LS.stats.games++; LS.saveStats();
     });
   },
@@ -164,6 +211,7 @@ LS.Game = {
     this.clock.getDelta();
   },
   quitToMenu() {
+    LS.Net.leave();
     this.state = 'menu'; LS.Input.enabled = false; LS.Input.unlock();
     this.setInventory(false);
     LS.HUD.show(false); LS.Audio.stopAll();
@@ -172,6 +220,7 @@ LS.Game = {
     if (LS.Lobby.built) { LS.Lobby.model.applyLook(LS.playerProfile.look); LS.Lobby.syncUI(); }
   },
   endMatch(win) {
+    LS.Net.leave();
     this.state = 'ended'; LS.Input.enabled = false; LS.Input.unlock();
     this.setInventory(false);
     LS.Audio.stopAll();
@@ -228,7 +277,7 @@ LS.Game = {
     if (this.fpsAcc >= 0.5) { document.getElementById('fps').textContent = Math.round(this.fpsFrames / this.fpsAcc) + ' FPS'; this.fpsAcc = 0; this.fpsFrames = 0; }
     if (this.state === 'lobby' || (this.state === 'menu' && LS.Lobby.built)) { LS.Lobby.update(dt); LS.Post.render(LS.Lobby.scene, LS.Lobby.camera); LS.Input.endFrame(); return; }
     if (!this.built) return;
-    if (this.state === 'playing') this.update(dt);
+    if (this.state === 'playing' || (this.state === 'paused' && LS.Net.online)) this.update(dt);
     else if (this.state === 'menu' || this.state === 'ended') { // câmera orbitando a ilha no fundo
       const t = performance.now() * 0.00005;
       this.camera.position.set(Math.cos(t) * 260, 120, Math.sin(t) * 260);
@@ -244,10 +293,11 @@ LS.Game = {
     const P = this.player;
     this.plane.update(dt);
     if (!this.plane.active || this.plane.progress > 0.97) {
-      for (const f of this.fighters) if (f.state === 'plane') this.jumpFromPlane(f);
+      for (const f of this.fighters) if (f.state === 'plane' && !f.remote) this.jumpFromPlane(f);
     }
     P.update(dt, this.camera);
     for (const b of this.bots) b.update(dt);
+    LS.Net.update(dt); // online: jogadores remotos + envio da posição
     this.zone.update(dt, this.fighters);
     const focus = P.state === 'plane' ? this.plane.mesh.position : P.pos;
     LS.Loot.update(dt, focus);

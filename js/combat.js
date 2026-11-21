@@ -216,7 +216,9 @@ LS.Combat = {
     }
     return best ? { f: best, t: bt, head } : null;
   },
-  fire(shooter, origin, dir, wdef, spread) {
+  // visual = tiro de um jogador remoto: só efeitos (o dano vem do servidor)
+  fire(shooter, origin, dir, wdef, spread, visual) {
+    if (!visual && LS.Net.online && LS.Net.owns(shooter)) LS.Net.send({ t: 'fire', i: shooter.netId, w: shooter.weapon().id, o: [origin.x, origin.y, origin.z].map(v => Math.round(v * 100) / 100), d: [dir.x, dir.y, dir.z].map(v => Math.round(v * 1000) / 1000) });
     const muzzle = shooter.model.muzzleWorld(new THREE.Vector3());
     const listener = LS.Game.player;
     // som
@@ -259,9 +261,10 @@ LS.Combat = {
         let dmg = wdef.dmg * fall * (hit.head ? (wdef.cat === 'Sniper' ? 2.5 : 1.8) : 1);
         if (!shooter.isPlayer) dmg *= LS.Game.botDamageMul;
         LS.Effects.impact(end, true, d);
+        if (visual) continue;
         const g = hit.head ? hit.f.helmet : hit.f.vest, armored = g.level > 0 && g.dur > 0;
         const dealt = hit.f.takeDamage(dmg, shooter, hit.head, wdef.name);
-        if (shooter.isPlayer) {
+        if (shooter.isPlayer && !LS.Net.online) { // online: marcador e número só quando o servidor confirmar
           LS.Game.onPlayerHit(hit.head, !hit.f.alive);
           LS.Effects.damageNumber(end, dealt, hit.head);
           if (armored) LS.Audio.armorHit();

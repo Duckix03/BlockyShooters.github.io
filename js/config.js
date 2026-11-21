@@ -16,6 +16,9 @@ LS.VERSION = '36'; // muda a cada atualização (também no ?v= do index.html e 
 })();
 
 LS.MAP_SIZE = 800;          // tamanho do terreno (metros)
+LS.MAP_SEED = 20261120;     // semente da ilha: todo mundo gera o MESMO mapa (necessário pro online)
+// endereço do servidor online (Cloudflare). Vazio = só partidas contra bots. Ex.: 'https://last-survivor-server.SEU-USUARIO.workers.dev'
+LS.NET_URL = '';
 LS.ISLAND_RADIUS = 340;     // raio útil da ilha
 LS.WATER_LEVEL = 0;
 LS.BOT_COUNT = 30;
@@ -85,6 +88,10 @@ LS.util = {
   rand: (a, b) => a + Math.random() * (b - a),
   randInt: (a, b) => Math.floor(a + Math.random() * (b - a + 1)),
   pick: arr => arr[Math.floor(Math.random() * arr.length)],
+  // gerador de números com semente (mesma semente = mesma sequência em qualquer computador)
+  seeded(seed) { let a = seed >>> 0; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; },
+  // roda fn com Math.random trocado por um gerador com semente (rng = número ou gerador já criado)
+  withSeed(rng, fn) { const R = typeof rng === 'function' ? rng : LS.util.seeded(rng), old = Math.random; Math.random = R; try { return fn(); } finally { Math.random = old; } },
   weighted(table) {
     let total = 0; for (const t of table) total += t.w;
     let r = Math.random() * total;

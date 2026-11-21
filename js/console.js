@@ -152,6 +152,8 @@ LS.Console = {
   run(line) {
     const [name, ...args] = line.split(/\s+/), c = this.cmds[name.toLowerCase()];
     if (!c) { this.print('Comando desconhecido: "' + name + '". Digite help.', 'error'); return; }
+    // na partida online os comandos que dão vantagem ficam desligados (e o servidor recusa mesmo se forçar)
+    if (LS.Net && LS.Net.online && ['give', 'god', 'tp', 'heal', 'speed', 'fly', 'silent', 'esp', 'kill', 'clear'].includes(name.toLowerCase()) && !(name.toLowerCase() === 'clear' && (args[0] || '') !== 'inv')) { this.print('Desativado na partida online.', 'error'); return; }
     try { const r = c.fn.call(this, args); if (r) this.print(r, 'ok'); }
     catch (e) { this.print(e.message, 'error'); }
   },
