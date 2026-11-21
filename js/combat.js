@@ -18,7 +18,7 @@ LS.Fighter = class {
     this.reloadT = 0; this.fireCd = 0; this.healT = 0; this.healType = null;
     this.crouch = false; this.running = false; this.aiming = false; this.onGround = false;
     this.state = 'plane'; // plane | fall | chute | ground
-    this.recoilKick = 0; this.lastShotT = 0; this.placement = 0;
+    this.recoilKick = 0; this.lastShotT = 0; this.placement = 0; this.bloom = 0; this.sprayN = 0; this.lastFireT = -9;
     this.model.setGun(null); this.model.setGear(0, 0, 0);
     this.model.root.visible = false;
   }
@@ -98,6 +98,8 @@ LS.Fighter = class {
   updateTimers(dt) {
     this.fireCd = Math.max(0, this.fireCd - dt);
     this.recoilKick = Math.max(0, this.recoilKick - dt * 6);
+    // a mira "fecha" rápido quando para de atirar (estilo celular)
+    if (this.bloom > 0 && LS.Game.time - this.lastFireT > 0.1) { const R = this.recoilDef(); this.bloom = Math.max(0, this.bloom - dt * Math.max(0.06, R.bm * 4.5)); }
     if (this.reloadT > 0) {
       this.reloadT -= dt;
       if (this.reloadT <= 0) {
@@ -132,18 +134,41 @@ LS.Fighter = class {
     }
     return true;
   }
+  recoilDef() { const w = this.weapon(); return (w && LS.RECOIL[w.id]) || LS.RECOIL._def; }
+  // dispersão atual do jogador (rad, meio-ângulo do cone): base da arma × postura + abertura de tiro contínuo
+  currentSpread() {
+    const d = this.wdef(); if (!d) return 0;
+    const R = this.recoilDef(), moving = Math.hypot(this.vel.x, this.vel.z) > 1.2;
+    let s = d.spread;
+    if (d.cat === 'Sniper') s *= this.aiming ? 0.5 : 14;
+    else s *= this.aiming ? R.ads : R.hip;
+    if (this.crouch) s *= 0.75;
+    if (moving) s *= this.aiming ? 1.7 : 1.35;
+    if (!this.onGround) s *= 2.5;
+    return s + this.bloom * (this.aiming ? 0.55 : 1);
+  }
   // tenta atirar na direção dada; devolve true se disparou
   tryFire(origin, dir, accuracyMul) {
     const w = this.weapon(), d = this.wdef();
     if (!w || this.fireCd > 0 || this.reloadT > 0 || this.healType || this.state !== 'ground') return false;
     if (w.mag <= 0) { this.fireCd = 0.25; if (this.isPlayer) LS.Audio.empty(); this.startReload(); return false; }
     w.mag--; this.fireCd = 1 / d.rate;
-    let spread = d.spread * (accuracyMul || 1);
-    if (!this.aiming) spread *= d.cat === 'Sniper' ? 8 : 1.8;
-    if (this.crouch) spread *= 0.7;
-    if (this.vel.lengthSq() > 4) spread *= 1.6;
-    if (!this.onGround) spread *= 2.5;
+    let spread;
+    if (this.isPlayer) spread = this.currentSpread() * (accuracyMul || 1);
+    else { // bots: mesma conta de antes (a dificuldade deles continua igual)
+      spread = d.spread * (accuracyMul || 1);
+      if (!this.aiming) spread *= d.cat === 'Sniper' ? 8 : 1.8;
+      if (this.crouch) spread *= 0.7;
+      if (this.vel.lengthSq() > 4) spread *= 1.6;
+      if (!this.onGround) spread *= 2.5;
+    }
     LS.Combat.fire(this, origin, dir, d, spread);
+    if (this.isPlayer) { // sequência de tiros (pro padrão do recuo) e abertura da mira
+      const R = this.recoilDef(), now = LS.Game.time;
+      this.sprayN = now - this.lastFireT < 1 / d.rate + 0.2 ? this.sprayN + 1 : 0;
+      this.lastFireT = now;
+      this.bloom = Math.min(R.bm, this.bloom + R.b * (this.sprayN === 0 ? 0.5 : 1));
+    }
     this.model.shoot(d);
     this.recoilKick = Math.min(this.recoilKick + d.recoil, 12);
     this.lastShotT = LS.Game.time;
@@ -217,6 +242,21 @@ LS.Combat = {
     return best ? { f: best, t: bt, head } : null;
   },
   // visual = tiro de um jogador remoto: só efeitos (o dano vem do servidor)
+  // direção dentro do cone de dispersão. Uma bala: mais perto do centro (a maioria cai no meio da mira).
+  // Escopeta: desenho fixo em anéis (sempre o mesmo formato, que nem nos jogos de celular) com um pouco de variação.
+  coneDir(out, dir, spread, i, n) {
+    out.copy(dir); if (spread <= 0) return out;
+    const up = Math.abs(dir.y) > 0.95 ? this._ux || (this._ux = new THREE.Vector3(1, 0, 0)) : this._uy || (this._uy = new THREE.Vector3(0, 1, 0));
+    const r1 = (this._r1 || (this._r1 = new THREE.Vector3())).crossVectors(dir, up).normalize();
+    const r2 = (this._r2 || (this._r2 = new THREE.Vector3())).crossVectors(r1, dir).normalize();
+    let a, r;
+    if (n > 1) {
+      if (i === 0) { a = Math.random() * 6.283; r = 0.12 * Math.random(); }
+      else { const ring = i <= Math.ceil((n - 1) * 0.4) ? 0.5 : 0.95, k = i / (n - 1); a = k * 6.283 * (ring < 0.9 ? 1 : 1.0) + (ring < 0.9 ? 0.4 : 0) + (Math.random() - 0.5) * 0.35; r = ring * (0.88 + Math.random() * 0.12); }
+    } else { a = Math.random() * 6.283; r = Math.random() * (0.35 + 0.65 * Math.random()); }
+    const t = Math.tan(spread * r);
+    return out.addScaledVector(r1, Math.cos(a) * t).addScaledVector(r2, Math.sin(a) * t).normalize();
+  },
   fire(shooter, origin, dir, wdef, spread, visual) {
     if (!visual && LS.Net.online && LS.Net.owns(shooter)) LS.Net.send({ t: 'fire', i: shooter.netId, w: shooter.weapon().id, o: [origin.x, origin.y, origin.z].map(v => Math.round(v * 100) / 100), d: [dir.x, dir.y, dir.z].map(v => Math.round(v * 1000) / 1000) });
     const muzzle = shooter.model.muzzleWorld(new THREE.Vector3());
@@ -237,9 +277,9 @@ LS.Combat = {
     LS.Game.onGunshot(shooter);
     let whizzed = false;
     for (let p = 0; p < wdef.pellets; p++) {
-      const d = this._d.copy(dir);
-      d.x += (Math.random() - 0.5) * 2 * spread; d.y += (Math.random() - 0.5) * 2 * spread; d.z += (Math.random() - 0.5) * 2 * spread;
-      d.normalize();
+      let d;
+      if (shooter.isPlayer) d = this.coneDir(this._d, dir, spread, p, wdef.pellets);
+      else { d = this._d.copy(dir); d.x += (Math.random() - 0.5) * 2 * spread; d.y += (Math.random() - 0.5) * 2 * spread; d.z += (Math.random() - 0.5) * 2 * spread; d.normalize(); } // bots: como antes
       const maxR = wdef.range * 1.6;
       const wt = LS.World.raycast(origin, d, maxR);
       const hit = this.hitFighter(origin, d, wt, shooter);

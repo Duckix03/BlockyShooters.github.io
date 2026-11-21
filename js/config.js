@@ -1,7 +1,7 @@
 // LAST SURVIVOR - configuração global, dados de armas/itens e utilitários
 'use strict';
 const LS = window.LS = {};
-LS.VERSION = '38'; // muda a cada atualização (também no ?v= do index.html e no version.json)
+LS.VERSION = '39'; // muda a cada atualização (também no ?v= do index.html e no version.json)
 // a página inicial pode ficar guardada no navegador por ~10 min (GitHub Pages): confere a versão no servidor
 // e, se esta estiver velha, recarrega num endereço novo (?v=...) que o navegador ainda não guardou
 (function () {
@@ -25,7 +25,7 @@ LS.BOT_COUNT = 30;
 LS.GRAVITY = 24;
 
 // ---------- Configurações persistentes ----------
-LS.defaultSettings = { sensitivity: 1, quality: 'medium', volume: 0.6, renderDistance: 400, fullscreen: false, showFps: false, resScale: 1, perfMode: false, vivid: 0.6, postfx: true };
+LS.defaultSettings = { sensitivity: 1, quality: 'medium', volume: 0.6, renderDistance: 400, fullscreen: false, showFps: false, resScale: 1, perfMode: false, vivid: 0.6, postfx: true, aimAssist: true };
 LS.settings = Object.assign({}, LS.defaultSettings);
 try {
   const saved = JSON.parse(localStorage.getItem('lastsurvivor_settings') || '{}');
@@ -64,6 +64,25 @@ LS.WEAPONS = {
   spas12: { name: 'SPAS-12',    cat: 'Escopeta', ammo: 'shell',  dmg: 12, rate: 1.6, mag: 6,  reload: 3.0, recoil: 4.5, spread: 0.1,   range: 35,  pellets: 8, auto: false, zoom: 1.2,  color: 0x1c1c1c, len: 0.95, snd: { freq: 340, dur: 0.26, body: 70, vol: 0.9 }, rarity: 2 }
 };
 LS.WEAPON_IDS = Object.keys(LS.WEAPONS);
+
+// Recuo e dispersão no estilo jogo de celular (Free Fire): 1º tiro certeiro, a mira "abre" atirando sem parar
+// e fecha rápido quando solta; a câmera sobe com o tiro e volta sozinha (só um pouco fica).
+//  v = subida por tiro (graus) · h = balanço lateral (graus, segue um padrão fixo da arma, dá pra aprender)
+//  hip/ads = multiplicador da dispersão base sem mirar / mirando · b = abertura por tiro (rad) · bm = abertura máxima (rad)
+//  keep = parte do chute que fica na mira (o resto volta sozinho) · rec = rapidez com que a câmera volta · shake = tremida da tela (só visual) · seed = desenho do padrão lateral
+LS.RECOIL = {
+  m1911:  { v: 1.30, h: 0.30, hip: 0.85, ads: 0.35, b: 0.0070, bm: 0.030, keep: 0.2, rec: 10, shake: 0.25, seed: 0.3 },
+  deagle: { v: 3.20, h: 0.60, hip: 1.00, ads: 0.30, b: 0.0180, bm: 0.050, keep: 0.2, rec: 8,  shake: 0.55, seed: 1.1 },
+  mp5:    { v: 0.28, h: 0.26, hip: 0.70, ads: 0.50, b: 0.0030, bm: 0.032, keep: 0.28, rec: 12, shake: 0.12, seed: 2.0 },
+  ump:    { v: 0.36, h: 0.22, hip: 0.75, ads: 0.45, b: 0.0035, bm: 0.034, keep: 0.28, rec: 11, shake: 0.15, seed: 2.7 },
+  ak47:   { v: 0.80, h: 0.38, hip: 1.00, ads: 0.28, b: 0.0045, bm: 0.042, keep: 0.3, rec: 8,  shake: 0.24, seed: 3.6 },
+  m4a1:   { v: 0.55, h: 0.20, hip: 0.95, ads: 0.25, b: 0.0032, bm: 0.032, keep: 0.28, rec: 9,  shake: 0.17, seed: 4.4 },
+  awm:    { v: 4.80, h: 0.70, hip: 1.00, ads: 0.40, b: 0,      bm: 0,     keep: 0.06, rec: 6,  shake: 0.80, seed: 5.2 },
+  kar98:  { v: 4.00, h: 0.60, hip: 1.00, ads: 0.40, b: 0,      bm: 0,     keep: 0.06, rec: 6,  shake: 0.70, seed: 5.9 },
+  m1887:  { v: 3.80, h: 0.70, hip: 1.00, ads: 0.80, b: 0,      bm: 0,     keep: 0.1, rec: 7,  shake: 0.75, seed: 6.4 },
+  spas12: { v: 2.80, h: 0.55, hip: 1.00, ads: 0.80, b: 0,      bm: 0,     keep: 0.12, rec: 8,  shake: 0.55, seed: 7.1 },
+  _def:   { v: 0.80, h: 0.30, hip: 1.00, ads: 0.35, b: 0.0040, bm: 0.035, keep: 0.28, rec: 9,  shake: 0.20, seed: 0 }
+};
 
 // Pesos de spawn (armas de raridade maior aparecem menos)
 LS.weaponSpawnTable = LS.WEAPON_IDS.map(id => ({ id, w: LS.WEAPONS[id].rarity === 1 ? 5 : LS.WEAPONS[id].rarity === 2 ? 3 : 1.2 }));
