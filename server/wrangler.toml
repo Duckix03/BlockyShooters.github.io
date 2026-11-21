@@ -26,3 +26,7 @@ new_sqlite_classes = ["Matchmaker", "Match"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["Accounts"]
+
+# login com Google: o mesmo ID de cliente OAuth que está em LS.GOOGLE_CLIENT_ID (js/config.js). Vazio = desligado.
+[vars]
+GOOGLE_CLIENT_ID = ""

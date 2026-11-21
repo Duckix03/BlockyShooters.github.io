@@ -99,7 +99,10 @@ LS.Player = class extends LS.Fighter {
   }
   update(dt, camera) {
     const I = LS.Input, k = I.keys;
-    const sens = 0.0022 * LS.settings.sensitivity * (70 / camera.fov) ** -0.9;
+    // sensibilidade: a geral vale sempre; mirando/luneta multiplica pela do red dot ou da luneta (4x/6x/8x).
+    // O (70/fov)^-0.9 deixa a mira mais lenta quanto maior o zoom, e o ajuste do jogador vai por cima
+    const S = LS.settings, sk = LS.sensKey(this.aiming && !!this.wdef(), !!this.scopeUp, this.scopeZoom || 1);
+    const sens = 0.0022 * LS.sensMult(S.sensGeneral) * (sk === 'sensGeneral' ? 1 : LS.sensMult(S[sk])) * (70 / camera.fov) ** -0.9;
     if (!LS.Game.inventoryOpen) {
       const aa = this.aimAssist(dt);
       this.camYaw -= I.mouse.dx * sens * aa.slow + aa.yaw;
@@ -217,15 +220,20 @@ LS.Player = class extends LS.Fighter {
   // ---------- assistência de mira (bem leve, quase imperceptível) ----------
   // só quando está atirando ou mirando e o inimigo já está quase na mira (cone de 2–3°):
   // a sensibilidade cai um pouco em cima dele (fica "grudento") e a mira escorrega devagar pro peito.
-  // Nunca puxa de longe, nunca trava, não ajuda com a luneta e não atravessa parede.
+  // Nunca puxa de longe, nunca trava e não atravessa parede.
+  // No CELULAR é bem mais forte (dedo é menos preciso que mouse, como nos jogos de celular): cone maior,
+  // gruda mais, puxa mais rápido e ajuda um pouco até na luneta.
   aimAssist(dt) {
     const out = this._aa || (this._aa = { slow: 1, yaw: 0, pitch: 0 });
     out.slow = 1; out.yaw = 0; out.pitch = 0;
     const d = this.wdef(), I = LS.Input;
-    if (LS.settings.aimAssist === false || !this.alive || this.state !== 'ground' || !d || this.reloadT > 0 || this.healType || this.scopeUp) return out;
+    const mob = !!(LS.Touch && LS.Touch.active);
+    const A = mob ? { cone: [4.5, 6.5], slow: 0.45, pull: [4.5, 2.6], range: 220 } : { cone: [2.2, 3.0], slow: 0.16, pull: [1.2, 0.6], range: 160 };
+    if (LS.settings.aimAssist === false || !this.alive || this.state !== 'ground' || !d || this.reloadT > 0 || this.healType || (this.scopeUp && !mob)) return out;
+    if (this.scopeUp) { A.cone = [1.6, 1.6]; A.slow = 0.3; A.pull = [1.0, 0.6]; A.range = d.range; } // celular na luneta: só um pouquinho
     const firing = I.mouse.left;
     if (!firing && !this.aiming) { this._aaTarget = null; return out; }
-    const cone = (this.aiming ? 2.2 : 3.0) * Math.PI / 180;
+    const cone = (this.aiming ? A.cone[0] : A.cone[1]) * Math.PI / 180;
     const eye = this.camPos, aim = this.aimDir;
     const errOf = f => {
       const ty = f.pos.y + (f.crouch ? 0.8 : 1.1), dx = f.pos.x - eye.x, dy = ty - eye.y, dz = f.pos.z - eye.z;
@@ -238,7 +246,7 @@ LS.Player = class extends LS.Fighter {
     this._aaT -= dt;
     if (this._aaT <= 0) { // escolhe o alvo ~10x por segundo
       this._aaT = 0.1; this._aaTarget = null;
-      const maxD = Math.min(d.range, 160), cands = [];
+      const maxD = Math.min(d.range, A.range), cands = [];
       for (const f of LS.Game.fighters) {
         if (f === this || !f.alive || f.netHidden || f.state !== 'ground' || LS.sameTeam(this, f)) continue;
         if (f.pos.distanceToSquared(this.pos) > maxD * maxD) continue;
@@ -252,10 +260,10 @@ LS.Player = class extends LS.Fighter {
     const f = this._aaTarget; if (!f || !f.alive || f.netHidden) return out;
     const e = errOf(f); if (!e || e.err > cone) return out;
     const k = 1 - e.err / cone; // 0 na borda do cone, 1 no centro
-    out.slow = 1 - 0.16 * k;    // até 16% menos sensível em cima do alvo
-    // escorrega pro peito: no máximo ~1,2°/s atirando, ~0,6°/s só mirando
-    const maxStep = (firing ? 1.2 : 0.6) * Math.PI / 180 * dt * (0.4 + 0.6 * k);
-    const step = Math.min(e.err * dt * 1.5, maxStep), inv = e.err > 1e-5 ? step / e.err : 0;
+    out.slow = 1 - A.slow * k;  // menos sensível em cima do alvo (16% no PC, 45% no celular)
+    // escorrega pro peito: no PC no máximo ~1,2°/s atirando e ~0,6°/s mirando; no celular ~4,5°/s e ~2,6°/s
+    const maxStep = (firing ? A.pull[0] : A.pull[1]) * Math.PI / 180 * dt * (0.4 + 0.6 * k);
+    const step = Math.min(e.err * dt * (mob ? 3 : 1.5), maxStep), inv = e.err > 1e-5 ? step / e.err : 0;
     out.yaw = -e.ey * inv; out.pitch = e.ep * inv;
     return out;
   }

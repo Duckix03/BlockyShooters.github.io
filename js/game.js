@@ -329,10 +329,24 @@ LS.Game = {
   },
 
   // ---------- Configurações gráficas ----------
-  // cores vivas: contraste e saturação só na imagem 3D (o HUD fica igual); filtro feito pela GPU, praticamente não pesa
+  // filtro de cor: só na imagem 3D (a HUD fica igual), feito pela GPU, praticamente não pesa.
+  // Cada filtro é um alvo (contraste, saturação, brilho, sépia, matiz); a intensidade ("vivid", 0 a 1) vai do normal até ele.
+  FILTERS: {
+    classico: { c: 1.15, s: 1.3,  b: 1,    sep: 0,    hue: 0 },
+    vivido:   { c: 1.14, s: 1.65, b: 1.04, sep: 0,    hue: 0 },
+    suave:    { c: 0.94, s: 0.88, b: 1.06, sep: 0,    hue: 0 },
+    cinema:   { c: 1.22, s: 0.82, b: 0.96, sep: 0.2,  hue: 0 },
+    quente:   { c: 1.06, s: 1.25, b: 1.02, sep: 0.28, hue: -6 },
+    frio:     { c: 1.08, s: 1.1,  b: 1.02, sep: 0,    hue: 14 },
+    nitido:   { c: 1.3,  s: 1.15, b: 1.05, sep: 0,    hue: 0 }, // mais contraste: ajuda a ver gente na sombra
+    pb:       { c: 1.18, s: 0,    b: 1.02, sep: 0,    hue: 0 },
+  },
   applyColors() {
-    const v = LS.settings.vivid === undefined ? 0.6 : LS.settings.vivid;
-    this.renderer.domElement.style.filter = v > 0 ? 'contrast(' + (1 + 0.15 * v).toFixed(3) + ') saturate(' + (1 + 0.3 * v).toFixed(3) + ')' : '';
+    const S = LS.settings, v = S.vivid === undefined ? 0.6 : S.vivid, F = this.FILTERS[S.filter] || this.FILTERS.classico;
+    const m = (a, t) => (1 + (t - 1) * v).toFixed(3);
+    const f = v > 0 ? 'contrast(' + m(1, F.c) + ') saturate(' + m(1, F.s) + ') brightness(' + m(1, F.b) + ')' +
+      (F.sep ? ' sepia(' + (F.sep * v).toFixed(3) + ')' : '') + (F.hue ? ' hue-rotate(' + (F.hue * v).toFixed(1) + 'deg)' : '') : '';
+    this.renderer.domElement.style.filter = f;
   },
   applySettings() {
     const s = LS.settings, r = this.renderer;
