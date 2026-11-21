@@ -54,7 +54,7 @@ LS.Bot = class extends LS.Fighter {
     }
   }
   hearShot(shooter) {
-    if (this.target && this.target.alive) return;
+    if ((this.target && this.target.alive) || LS.sameTeam(this, shooter)) return;
     if (this.pos.distanceTo(shooter.pos) < 110) { this.alertPos = shooter.pos.clone(); this.alertT = 8; }
   }
 
@@ -66,7 +66,7 @@ LS.Bot = class extends LS.Fighter {
     const range = this.wdef() && this.wdef().cat === 'Sniper' ? 160 : 100;
     const cands = [];
     for (const f of G.fighters) {
-      if (f === this || !f.alive || f.state !== 'ground' || f.netHidden) continue;
+      if (f === this || !f.alive || f.state !== 'ground' || f.netHidden || LS.sameTeam(this, f)) continue;
       const d = this.pos.distanceTo(f.pos);
       let r = range * (f.crouch ? 0.6 : 1) * (f.lastShotT > G.time - 1.5 ? 1.5 : 1);
       if (d < r) cands.push({ f, d });
@@ -90,9 +90,11 @@ LS.Bot = class extends LS.Fighter {
       this.lastSeenT = G.time; this.targetVisible = seen === this.target;
     } else this.targetVisible = false;
     if (this.target && G.time - this.lastSeenT > 6) this.target = null;
-    // duelo: sempre sabe mais ou menos onde o oponente está (vai caçar em vez de vagar)
+    // duelo: sempre sabe mais ou menos onde o oponente mais perto está (vai caçar em vez de vagar)
     if (G.mode === 'duel' && !this.targetVisible) {
-      const o = G.fighters.find(f => f !== this && f.alive);
+      let o = null, od = Infinity;
+      for (const f of G.fighters) { if (f === this || !f.alive || LS.sameTeam(this, f)) continue; const d = this.pos.distanceToSquared(f.pos); if (d < od) { od = d; o = f; } }
+      if (this.target && (!this.target.alive || LS.sameTeam(this, this.target))) this.target = null;
       if (o) { this.alertPos = o.pos.clone(); this.alertT = 2; if (!this.target) this.target = o; this.lastSeenT = Math.max(this.lastSeenT, G.time - 5); }
     }
 

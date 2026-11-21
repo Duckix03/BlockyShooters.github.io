@@ -143,7 +143,7 @@ LS.Game = {
     });
   },
 
-  // modo DUELO: 1v1 contra um bot no galpão (offline). As regras dos rounds ficam em js/duel.js
+  // modo DUELO: 1v1 contra um bot, ou 2v2 (você + bot parceiro contra 2 bots) no galpão (offline). Regras em js/duel.js
   startDuel() {
     LS.Audio.init();
     LS.UI.showScreen('loading');
@@ -151,23 +151,30 @@ LS.Game = {
     this.build(() => {
       LS.Net.leave(); LS.Duel.exit(); this.mode = 'duel'; this.zone.rng = null;
       for (const b of this.botPool) { b.reset(); b.netId = null; if (b.model.root.parent) b.model.root.parent.remove(b.model.root); }
-      const opp = this.botPool[0], df = LS.BOT_LEVEL;
-      opp._origName = opp.name; opp.name = LS.util.pick(LS.BOT_NAMES);
-      opp.model.applyLook(LS.Skin.randomLook()); opp.skill = LS.util.rand(df.skill[0], df.skill[1]);
-      this.scene.add(opp.model.root);
-      this.bots = [opp]; this.botDamageMul = df.dmg;
+      const size = LS.Modes.duelSize, df = LS.BOT_LEVEL, n = size * 2 - 1;
+      const names = LS.BOT_NAMES.slice().sort(() => Math.random() - 0.5);
+      const bots = this.botPool.slice(0, n);
+      bots.forEach((b, i) => {
+        b._origName = b.name; b.name = names[i];
+        b.model.applyLook(LS.Skin.randomLook()); b.skill = LS.util.rand(df.skill[0], df.skill[1]);
+        this.scene.add(b.model.root);
+      });
+      this.bots = bots; this.botDamageMul = df.dmg;
       this.player.netId = null; this.player.reset();
       this.player.name = LS.playerProfile.name; this.player.model.applyLook(LS.playerProfile.look);
-      this.fighters = [this.player, opp];
+      const mine = [this.player].concat(bots.slice(0, size - 1)), foes = bots.slice(size - 1);
+      this.fighters = mine.concat(foes);
       LS.Loot.clear(); LS.Effects.clear();
       this.plane.active = false; this.plane.mesh.visible = false;
       this.time = 0; this.endTimer = 0; this.ended = false;
-      LS.Duel.enter(this.scene, opp); // monta o galpão, o 1º mapa e começa o round 1
+      LS.Duel.enter(this.scene, mine, foes); // monta o galpão, o 1º mapa e começa o round 1
       this.precompile();
       document.getElementById('killfeed').innerHTML = '';
       LS.UI.showScreen(null); LS.HUD.show(true); this.setInventory(false);
       document.getElementById('bigmap').classList.add('hidden');
-      this.state = 'playing'; LS.Input.enabled = true; LS.Input.lock();
+      this.state = 'playing';
+      if (LS.Duel.shopOpen) { LS.Input.enabled = false; LS.Input.unlock(); } // loja do round 1 aberta: mouse solto pra clicar nas armas
+      else { LS.Input.enabled = true; LS.Input.lock(); }
       LS.Audio.stopAll();
       LS.stats.games++; LS.saveStats();
     });
@@ -265,7 +272,7 @@ LS.Game = {
     const t = document.getElementById('end-title'), duel = this.mode === 'duel', sc = LS.Duel.score;
     t.textContent = win ? 'VITÓRIA!' : duel ? 'DERROTA' : 'FIM DE JOGO';
     t.className = win ? 'win' : 'lose';
-    document.getElementById('end-sub').textContent = duel ? (win ? 'Você venceu o duelo contra ' : 'Você perdeu o duelo contra ') + LS.Duel.opp.name + '!'
+    document.getElementById('end-sub').textContent = duel ? (LS.Duel.size > 1 ? (win ? 'Seu time venceu o 2v2!' : 'Seu time perdeu o 2v2. Tente de novo!') : (win ? 'Você venceu o duelo contra ' : 'Você perdeu o duelo contra ') + LS.Duel.opp.name + '!')
       : win ? 'Você é o último sobrevivente da ilha!' : 'Você foi eliminado. Tente novamente!';
     const rw = LS.Menu.award(P, win);
     document.getElementById('end-xp').textContent = '+' + rw.xp + ' XP · +' + rw.coins + ' moedas' + (rw.levelUp ? ' · SUBIU PARA O NÍVEL ' + rw.level + '!' : '');

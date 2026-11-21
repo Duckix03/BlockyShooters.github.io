@@ -34,7 +34,7 @@ No lobby, toque em **MODOS** pra escolher (o jogo lembra a sua escolha):
 | Modo | Como funciona |
 |:---:|:---|
 | 🪂 **Battle Royale** | O clássico: 31 jogadores na ilha, o último em pé vence |
-| ⚔️ **Duelo** | 1 contra 1 num galpão cheio de contêineres. **Primeiro a 5 rounds vence** |
+| ⚔️ **Duelo** | **1v1** ou **2v2 em equipes** num galpão cheio de contêineres. **Primeiro a 5 rounds vence** |
 
 ### ⚔️ Duelo
 
@@ -47,7 +47,9 @@ No lobby, toque em **MODOS** pra escolher (o jogo lembra a sua escolha):
 - 🚫 Arma escolhida fica **"JÁ USADA"** nas próximas lojas, então dá pra ver todas as 10 armas numa partida
 - 🦺 Todo round os dois nascem com colete e capacete nível 2 e cura
 - 🔁 Todo mundo **revive** no começo de cada round, até alguém chegar a 5
-- Por enquanto o duelo é contra um bot (offline)
+- 👥 **2v2 (equipes)**: você e um bot parceiro (nome azul em cima da cabeça) contra 2 bots. O round só acaba quando um time inteiro cai; se você morrer, a câmera acompanha o parceiro. Não tem fogo amigo
+- Escolha **1V1** ou **2V2** no banner do Duelo, no menu de modos
+- Por enquanto o duelo é contra bots (offline)
 
 ---
 
