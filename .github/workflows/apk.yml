@@ -1,0 +1,88 @@
+# Gera o APK do Last Survivor sozinho.
+#  - todo push na main: compila e publica em Releases → "LastSurvivor.apk" (link fixo, sempre o mais novo)
+#  - outras branches / botão "Run workflow": só compila (o APK fica em "Artifacts" do run)
+name: APK Android
+
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Copiar o jogo pro app (www → android)
+        run: npm run sync
+
+      - name: Chave de assinatura própria (opcional, segredos do repositório)
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        if: env.KS_B64 != ''
+        run: |
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+
+      - name: Compilar APK
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          APP_VERSION_CODE: ${{ github.run_number }}
+        run: |
+          GAME_V=$(node -p "require('../version.json').v")
+          export APP_VERSION_NAME="1.${{ github.run_number }} (jogo v$GAME_V)"
+          echo "GAME_V=$GAME_V" >> "$GITHUB_ENV"
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk ../LastSurvivor.apk
+
+      - name: Conferir o APK (jogo dentro, plugin do botão voltar, assinatura)
+        run: |
+          unzip -l LastSurvivor.apk > conteudo.txt
+          for f in assets/public/index.html assets/public/js/vendor/three.min.js assets/public/js/app.js assets/public/js/main.js assets/public/version.json; do
+            grep -q "$f" conteudo.txt || { echo "faltando no APK: $f"; exit 1; }
+          done
+          unzip -p LastSurvivor.apk assets/capacitor.plugins.json | grep -q AppPlugin || { echo "plugin App faltando"; exit 1; }
+          "$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -1)/apksigner" verify --print-certs LastSurvivor.apk | head -3
+          ls -lh LastSurvivor.apk
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: LastSurvivor-apk
+          path: LastSurvivor.apk
+
+      - name: Publicar em Releases (só na main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete app-latest --yes --cleanup-tag || true
+          gh release create app-latest LastSurvivor.apk \
+            --title "Last Survivor para Android (build ${{ github.run_number }}, jogo v$GAME_V)" \
+            --notes "Baixe o **LastSurvivor.apk** abaixo e abra no celular (permita instalar de fontes desconhecidas). Joga online junto com quem está no navegador." \
+            --latest

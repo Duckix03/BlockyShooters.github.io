@@ -1,0 +1,8 @@
+{
+  "appId": "com.duckix03.lastsurvivor",
+  "appName": "Last Survivor",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#0b0f1c"
+  }
+}

@@ -13,6 +13,9 @@ import { viewPoints, bodyPoints, canSee } from './vis.js';
 import { Accounts } from './accounts.js';
 export { Accounts };
 
+// versão mínima do jogo pro online (LS.NET_PROTO em js/config.js). Navegador e app (APK) jogam juntos (crossplay),
+// mas só se estiverem na mesma versão das regras. Subiu o LS.NET_PROTO? Suba aqui também e rode "npx wrangler deploy".
+const MIN_PROTO = 1;
 const SEARCH_MS = 30000;   // tempo procurando jogadores
 const MAX_PLAYERS = 31;    // vagas da partida (jogadores + bots)
 const JOIN_MS = 12000;     // tempo pra todos entrarem na sala depois do matchmaking
@@ -70,7 +73,9 @@ export class Matchmaker {
     server.addEventListener('message', ev => {
       let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
       if (m.t === 'hello' && !p.ready) {
-        p.ready = true; p.look = m.look && typeof m.look === 'object' ? m.look : null;
+        p.ready = true;
+        if (num(m.proto) < MIN_PROTO) { send(server, { t: 'outdated', min: MIN_PROTO }); try { server.close(1000, 'outdated'); } catch (e) { } return; }
+        p.app = !!m.app; p.look = m.look && typeof m.look === 'object' ? m.look : null;
         this.joinQueue(p, m);
       }
     });

@@ -867,3 +867,6 @@ body.mobile kbd { display: none; }
   #rotate-msg span { font-size: 14px; color: var(--mut); }
 }
 @keyframes rotPhone { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+
+/* app Android (APK): já abre em tela cheia, então some com as opções de tela cheia */
+.is-app [data-action="fullscreen"], .is-app .setting.no-app { display: none !important; }

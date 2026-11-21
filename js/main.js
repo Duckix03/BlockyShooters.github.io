@@ -92,6 +92,7 @@ window.addEventListener('load', () => {
     return;
   }
   LS.Game.init();
+  LS.App.init(); // app Android (APK): botão voltar etc. No navegador não faz nada
   LS.Touch.init(); // celular: controles de toque (só liga em tela de toque)
   LS.Cosmetics.init(); // itens grátis / da loja (antes do guarda-roupa)
   LS.Lobby.build();
