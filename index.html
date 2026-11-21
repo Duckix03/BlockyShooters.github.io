@@ -6,8 +6,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LAST SURVIVOR</title>
 <link rel="preload" href="fonts/lilita-one-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=40">
-<link rel="stylesheet" href="css/ui.css?v=40">
+<link rel="stylesheet" href="css/style.css?v=41">
+<link rel="stylesheet" href="css/ui.css?v=41">
 <link rel="icon" href="data:,">
 </head>
 <body>
@@ -32,10 +32,11 @@
   </div>
   <div class="lb-news" data-action="news">
     <div class="lb-news-tag">NOVIDADES</div>
-    <div class="lb-news-title">Casas novas, luneta de verdade e céu dinâmico</div>
-    <div class="lb-news-sub">Toque para ver tudo o que mudou</div>
+    <div class="lb-news-title">Novo modo: DUELO 1v1 no galpão</div>
+    <div class="lb-news-sub">5 mapas com contêineres, gás e primeiro a 5 rounds</div>
   </div>
   <div class="lb-menu">
+    <button class="lb-item" data-action="modes"><span><i data-icon="modes"></i></span>MODOS</button>
     <button class="lb-item" data-action="customize"><span><i data-icon="user"></i></span>PERSONAGEM</button>
     <button class="lb-item" data-action="arsenal"><span><i data-icon="gun"></i></span>ARSENAL</button>
     <button class="lb-item" data-action="stats"><span><i data-icon="chart"></i></span>PERFIL</button>
@@ -48,13 +49,23 @@
   </div>
   <div class="menu-player"><div id="menu-player-name">Jogador</div><div class="menu-player-sub">Arraste para girar</div></div>
   <div class="lb-play">
-    <div class="lb-mode" data-action="difficulty" title="Trocar dificuldade">
-      <div class="lb-mode-txt"><b>BATTLE ROYALE</b><span>Ilha · Solo · 31 jogadores</span></div>
-      <div class="lb-diff">BOTS: <b id="lb-diff">NORMAL</b></div>
+    <div class="lb-mode" data-action="modes" title="Escolher modo de jogo">
+      <div class="lb-mode-txt"><b id="lb-mode-name">BATTLE ROYALE</b><span id="lb-mode-sub">Ilha · Solo · 31 jogadores</span></div>
+      <div class="lb-diff">MODOS <b>TROCAR ▸</b></div>
     </div>
     <button class="lb-play-btn" data-action="play">JOGAR</button>
   </div>
   <div class="lb-chat"><span class="lb-chat-tag">[Dica]</span> <span id="lb-tip"></span></div>
+</div>
+
+<!-- MODOS DE JOGO -->
+<div id="panel-modes" class="screen panel-screen">
+  <div class="panel wide">
+    <h2>MODOS DE JOGO</h2>
+    <p class="panel-sub">Escolha o modo e depois aperte JOGAR.</p>
+    <div id="modes-grid" class="modes-grid"></div>
+    <div class="panel-buttons"><button class="btn btn-primary" data-action="back">VOLTAR</button></div>
+  </div>
 </div>
 
 <!-- ARSENAL -->
@@ -81,6 +92,8 @@
   <div class="panel">
     <h2>NOVIDADES</h2>
     <div class="news-list">
+      <div><b>Modo Duelo</b><span>1v1 num galpão com contêineres: 5 mapas, o mapa muda a cada round, gás fechando e primeiro a 5 vence.</span></div>
+      <div><b>Menu de modos</b><span>Escolha entre Battle Royale e Duelo no botão MODOS. Os bots agora jogam sempre no normal.</span></div>
       <div><b>Casas refeitas</b><span>Telhados fechados, sobrados com escada, móveis e terreno aplainado.</span></div>
       <div><b>Luneta de verdade</b><span>Snipers com retículo, zoom na roda do mouse e SHIFT para prender a respiração.</span></div>
       <div><b>Céu dinâmico</b><span>Nuvens que se movem, pôr do sol e estrelas no fim da partida.</span></div>
@@ -111,7 +124,7 @@
   </div>
   <div class="lobby-hint">Arraste para girar o personagem</div>
   <div class="lobby-actions">
-    <div class="lobby-mode">MODO: <b>SOLO</b> · 31 JOGADORES · ILHA</div>
+    <div class="lobby-mode" id="lobby-mode-txt">MODO: <b>SOLO</b> · 31 JOGADORES · ILHA</div>
     <button class="btn btn-primary big" data-action="lobby-start">INICIAR PARTIDA</button>
     <button class="btn" data-action="lobby-back">VOLTAR AO MENU</button>
   </div>
@@ -258,6 +271,12 @@
   <div id="zone-vignette"></div>
   <div id="dmg-indicators"></div>
 
+  <div id="duel-score" class="hidden">
+    <div class="ds-side me"><span class="ds-name" id="ds-me">VOCÊ</span><div class="ds-pips" id="ds-pips-me"></div><b id="ds-sme">0</b></div>
+    <div class="ds-mid"><small>ROUND</small><b id="ds-round">1</b><span id="ds-map"></span></div>
+    <div class="ds-side foe"><b id="ds-sfoe">0</b><div class="ds-pips" id="ds-pips-foe"></div><span class="ds-name" id="ds-foe">BOT</span></div>
+  </div>
+  <div id="duel-count" class="hidden"></div>
   <div id="center-msg"></div>
   <div id="prompt"></div>
   <div id="heal-progress" class="hidden"><div id="heal-fill"></div><span id="heal-label">Curando...</span></div>
@@ -333,7 +352,7 @@
     <p id="end-sub"></p>
     <p id="end-xp" class="end-xp"></p>
     <div class="end-stats">
-      <div><b id="end-place">#1</b><span>COLOCAÇÃO</span></div>
+      <div><b id="end-place">#1</b><span id="end-place-l">COLOCAÇÃO</span></div>
       <div><b id="end-kills">0</b><span>ABATES</span></div>
       <div><b id="end-dmg">0</b><span>DANO</span></div>
       <div><b id="end-time">00:00</b><span>TEMPO</span></div>
@@ -346,39 +365,41 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="js/config.js?v=40"></script>
-<script src="js/icons.js?v=40"></script>
-<script src="js/post.js?v=40"></script>
-<script src="js/console.js?v=40"></script>
-<script src="js/audio.js?v=40"></script>
-<script src="js/gunsound.js?v=40"></script>
-<script src="js/input.js?v=40"></script>
-<script src="js/world.js?v=40"></script>
-<script src="js/sky.js?v=40"></script>
-<script src="js/worldbuild.js?v=40"></script>
-<script src="js/housekit.js?v=40"></script>
-<script src="js/houses.js?v=40"></script>
-<script src="js/skin.js?v=40"></script>
-<script src="js/character.js?v=40"></script>
-<script src="js/animlib.js?v=40"></script>
-<script src="js/itemmodels.js?v=40"></script>
-<script src="js/itemicons.js?v=40"></script>
-<script src="js/textures.js?v=40"></script>
-<script src="js/flora.js?v=40"></script>
-<script src="js/effects.js?v=40"></script>
-<script src="js/loot.js?v=40"></script>
-<script src="js/combat.js?v=40"></script>
-<script src="js/player.js?v=40"></script>
-<script src="js/bot.js?v=40"></script>
-<script src="js/zone.js?v=40"></script>
-<script src="js/plane.js?v=40"></script>
-<script src="js/net.js?v=40"></script>
-<script src="js/hud.js?v=40"></script>
-<script src="js/esp.js?v=40"></script>
-<script src="js/lobbyscene.js?v=40"></script>
-<script src="js/lobby.js?v=40"></script>
-<script src="js/menu.js?v=40"></script>
-<script src="js/game.js?v=40"></script>
-<script src="js/main.js?v=40"></script>
+<script src="js/config.js?v=41"></script>
+<script src="js/icons.js?v=41"></script>
+<script src="js/post.js?v=41"></script>
+<script src="js/console.js?v=41"></script>
+<script src="js/audio.js?v=41"></script>
+<script src="js/gunsound.js?v=41"></script>
+<script src="js/input.js?v=41"></script>
+<script src="js/world.js?v=41"></script>
+<script src="js/sky.js?v=41"></script>
+<script src="js/worldbuild.js?v=41"></script>
+<script src="js/housekit.js?v=41"></script>
+<script src="js/houses.js?v=41"></script>
+<script src="js/skin.js?v=41"></script>
+<script src="js/character.js?v=41"></script>
+<script src="js/animlib.js?v=41"></script>
+<script src="js/itemmodels.js?v=41"></script>
+<script src="js/itemicons.js?v=41"></script>
+<script src="js/textures.js?v=41"></script>
+<script src="js/flora.js?v=41"></script>
+<script src="js/effects.js?v=41"></script>
+<script src="js/loot.js?v=41"></script>
+<script src="js/combat.js?v=41"></script>
+<script src="js/player.js?v=41"></script>
+<script src="js/bot.js?v=41"></script>
+<script src="js/zone.js?v=41"></script>
+<script src="js/plane.js?v=41"></script>
+<script src="js/net.js?v=41"></script>
+<script src="js/duel.js?v=41"></script>
+<script src="js/hud.js?v=41"></script>
+<script src="js/esp.js?v=41"></script>
+<script src="js/lobbyscene.js?v=41"></script>
+<script src="js/lobby.js?v=41"></script>
+<script src="js/modes.js?v=41"></script>
+<script src="js/menu.js?v=41"></script>
+<script src="js/game.js?v=41"></script>
+<script src="js/main.js?v=41"></script>
 </body>
 </html>

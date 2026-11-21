@@ -1,7 +1,7 @@
 // LAST SURVIVOR - configuração global, dados de armas/itens e utilitários
 'use strict';
 const LS = window.LS = {};
-LS.VERSION = '40'; // muda a cada atualização (também no ?v= do index.html e no version.json)
+LS.VERSION = '41'; // muda a cada atualização (também no ?v= do index.html e no version.json)
 // a página inicial pode ficar guardada no navegador por ~10 min (GitHub Pages): confere a versão no servidor
 // e, se esta estiver velha, recarrega num endereço novo (?v=...) que o navegador ainda não guardou
 (function () {
@@ -22,6 +22,8 @@ LS.NET_URL = 'https://lastsurvivor.lastsurvivorbr.workers.dev';
 LS.ISLAND_RADIUS = 340;     // raio útil da ilha
 LS.WATER_LEVEL = 0;
 LS.BOT_COUNT = 30;
+// bots sempre no NORMAL, de propósito (não tem mais escolha de dificuldade): dano dos tiros deles × dmg, mira entre skill[0] e skill[1]
+LS.BOT_LEVEL = { dmg: 0.55, skill: [0.35, 1] };
 LS.GRAVITY = 24;
 
 // ---------- Configurações persistentes ----------

@@ -204,12 +204,14 @@ LS.Fighter = class {
       const it = LS.Loot.spawn(type, id, lv, amt, p.x + Math.cos(a) * r, gy, p.z + Math.sin(a) * r);
       if (extra !== undefined) it.ammoInMag = extra;
     };
-    this.weapons.forEach(w => { if (w) drop('weapon', w.id, 0, 1, w.mag); });
-    for (const t in this.ammo) if (this.ammo[t] > 0) drop('ammo', t, 0, this.ammo[t]);
-    for (const t in this.meds) if (this.meds[t] > 0) drop('med', t, 0, this.meds[t]);
-    if (this.vest.level && this.vest.dur > 10) drop('vest', null, this.vest.level, 1);
-    if (this.helmet.level && this.helmet.dur > 10) drop('helmet', null, this.helmet.level, 1);
-    if (this.bag) drop('bag', null, this.bag, 1);
+    if (LS.Game.mode !== 'duel') { // no duelo não cai loot: cada round começa com as armas do round
+      this.weapons.forEach(w => { if (w) drop('weapon', w.id, 0, 1, w.mag); });
+      for (const t in this.ammo) if (this.ammo[t] > 0) drop('ammo', t, 0, this.ammo[t]);
+      for (const t in this.meds) if (this.meds[t] > 0) drop('med', t, 0, this.meds[t]);
+      if (this.vest.level && this.vest.dur > 10) drop('vest', null, this.vest.level, 1);
+      if (this.helmet.level && this.helmet.dur > 10) drop('helmet', null, this.helmet.level, 1);
+      if (this.bag) drop('bag', null, this.bag, 1);
+    }
     this.weapons = [null, null]; this.model.setGun(null);
     LS.Game.onKill(this, killer, weaponName, head);
   }

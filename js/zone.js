@@ -79,7 +79,7 @@ LS.Zone = class {
       if (!this.shrinking && this.timer <= 0) {
         this.shrinking = true; this.timer = ph.shrink;
         this.startC = this.center.clone(); this.startR = this.radius;
-        LS.HUD.centerMsg('A ZONA ESTÁ ENCOLHENDO!', 'Vá para a área segura', 3); LS.Audio.alert();
+        LS.HUD.centerMsg(this.msgTitle || 'A ZONA ESTÁ ENCOLHENDO!', this.msgSub || 'Vá para a área segura', 3); LS.Audio.alert();
       } else if (this.shrinking) {
         const k = 1 - Math.max(0, this.timer) / ph.shrink;
         this.center.lerpVectors(this.startC, this.next, k);
