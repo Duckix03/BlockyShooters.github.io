@@ -1,7 +1,7 @@
 // LAST SURVIVOR - configuração global, dados de armas/itens e utilitários
 'use strict';
 const LS = window.LS = {};
-LS.VERSION = '27'; // muda a cada atualização (também no ?v= do index.html e no version.json)
+LS.VERSION = '28'; // muda a cada atualização (também no ?v= do index.html e no version.json)
 // a página inicial pode ficar guardada no navegador por ~10 min (GitHub Pages): confere a versão no servidor
 // e, se esta estiver velha, recarrega num endereço novo (?v=...) que o navegador ainda não guardou
 (function () {

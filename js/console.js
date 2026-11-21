@@ -218,7 +218,17 @@ LS.Console = {
       if (sub === 'bones') return 'Esqueleto ' + (A.toggleBones(m) ? 'visível' : 'escondido');
       throw new Error('Use: anim list · anim load url [nome] · anim play nome · anim stop · anim bones');
     } },
-    clear: { desc: 'limpa o console', fn() { this.lines = []; this.redraw(); } },
+    clear: { use: '[inv]', desc: 'limpa o console · clear inv: esvazia seu inventário', args: () => ['inv'], fn(a) {
+      if ((a[0] || '').toLowerCase() !== 'inv') { this.lines = []; this.redraw(); return; }
+      const P = this.P();
+      P.weapons = [null, null]; P.slot = 0; P.reloadT = 0; P.healT = 0; P.healType = null;
+      for (const k in P.ammo) P.ammo[k] = 0;
+      for (const k in P.meds) P.meds[k] = 0;
+      P.vest = { level: 0, dur: 0 }; P.helmet = { level: 0, dur: 0 }; P.bag = 0;
+      P.model.setGun(null); P.model.pendingGun = undefined; P.model.setGear(0, 0, 0);
+      if (LS.Game.inventoryOpen) LS.HUD.renderInventory();
+      return 'Inventário limpo 🧹 (armas, munição, cura, colete, capacete e mochila)';
+    } },
     fps: { desc: 'liga/desliga o contador de FPS', fn() { LS.settings.showFps = !LS.settings.showFps; LS.saveSettings(); return 'FPS ' + (LS.settings.showFps ? 'ligado' : 'desligado'); } },
     stats: { desc: 'desempenho e posição', fn() {
       const G = LS.Game, i = G.renderer.info;
