@@ -110,37 +110,3 @@ LS.Zone = class {
     this.nextRing.scale.set(Math.max(this.nextR, 0.5), 1, Math.max(this.nextR, 0.5));
   }
 };
-
-LS.Plane = class {
-  constructor(scene) {
-    const g = new THREE.Group(), M = c => LS.lambert(c);
-    const body = new THREE.Mesh(LS.boxGeo(3, 3, 16), M(0xd8d8d8)); g.add(body);
-    const nose = new THREE.Mesh(LS.boxGeo(2.4, 2.4, 2), M(0xff8a1f)); nose.position.z = 9; g.add(nose);
-    const wing = new THREE.Mesh(LS.boxGeo(22, 0.4, 3.5), M(0xbfbfbf)); wing.position.set(0, 0, 1); g.add(wing);
-    const tail = new THREE.Mesh(LS.boxGeo(0.4, 4, 2.5), M(0xff8a1f)); tail.position.set(0, 2.5, -7); g.add(tail);
-    const tailW = new THREE.Mesh(LS.boxGeo(8, 0.3, 2), M(0xbfbfbf)); tailW.position.set(0, 0.5, -7); g.add(tailW);
-    [-6, 6].forEach(x => { const e = new THREE.Mesh(LS.boxGeo(1.4, 1.4, 3), M(0x555555)); e.position.set(x, -1, 2); g.add(e); });
-    this.mesh = g; scene.add(g);
-    this.speed = 38;
-  }
-  reset() {
-    // trajeto aleatório atravessando a ilha
-    const a = Math.random() * Math.PI * 2, off = LS.util.rand(-120, 120);
-    const dir = new THREE.Vector3(Math.cos(a), 0, Math.sin(a)), perp = new THREE.Vector3(-dir.z, 0, dir.x);
-    this.start = dir.clone().multiplyScalar(-420).addScaledVector(perp, off); this.start.y = 190;
-    this.end = dir.clone().multiplyScalar(420).addScaledVector(perp, off); this.end.y = 190;
-    this.length = this.start.distanceTo(this.end);
-    this.progress = 0; this.active = true;
-    this.mesh.visible = true;
-    this.mesh.position.copy(this.start);
-    this.mesh.lookAt(this.end);
-  }
-  // só é possível saltar com o avião sobre a ilha
-  canJump() { return this.active && this.progress > 0.08 && this.progress < 0.97; }
-  update(dt) {
-    if (!this.active) return;
-    this.progress += this.speed * dt / this.length;
-    this.mesh.position.lerpVectors(this.start, this.end, Math.min(1, this.progress));
-    if (this.progress >= 1.1) { this.active = false; this.mesh.visible = false; }
-  }
-};

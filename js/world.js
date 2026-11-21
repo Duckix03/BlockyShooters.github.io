@@ -81,10 +81,10 @@ LS.World = {
   // altura real do topo de um colisor em (x,z): telhado inclinado, superfície da pedra ou topo da caixa
   topAt(b, x, z, r) {
     if (b.roof) return this.roofY(b, x, z);
-    if (b.rockTris) { // o centro e 4 pontos em volta (o pé tem largura): pega o mais alto
+    if (b.rock) { // o centro e 4 pontos em volta (o pé tem largura): pega o mais alto
       let t = -Infinity; const k = (r || 0) * 0.35;
-      for (const [dx, dz] of [[0, 0], [k, 0], [-k, 0], [0, k], [0, -k]]) t = Math.max(t, this.rockY(b.rockTris, x + dx, z + dz));
-      return Math.min(t, b.maxY);
+      for (const [dx, dz] of [[0, 0], [k, 0], [-k, 0], [0, k], [0, -k]]) t = Math.max(t, this.rockH(b.rock, x + dx, z + dz));
+      return t;
     }
     return b.maxY;
   },
@@ -92,7 +92,7 @@ LS.World = {
   sphereHits(x, y, z, r) {
     for (const b of this.nearBoxes(x, z, r + 0.5)) {
       if (b.glass) continue;
-      if ((b.roof || b.rockTris) && x > b.minX - r && x < b.maxX + r && z > b.minZ - r && z < b.maxZ + r) { if (y - r < this.topAt(b, x, z) && y + r > b.minY) return true; continue; }
+      if ((b.roof || b.rock) && x > b.minX - r && x < b.maxX + r && z > b.minZ - r && z < b.maxZ + r) { if (y - r < this.topAt(b, x, z) && y + r > b.minY) return true; continue; }
       const cx = Math.max(b.minX, Math.min(x, b.maxX)), cy = Math.max(b.minY, Math.min(y, b.maxY)), cz = Math.max(b.minZ, Math.min(z, b.maxZ));
       if ((cx - x) ** 2 + (cy - y) ** 2 + (cz - z) ** 2 < r * r) return true;
     }
@@ -127,11 +127,15 @@ LS.World = {
     return hit;
   },
   _collideOnce(pos, r, height, prev) {
-    let hit = false;
+    let hit = false; const stamp = ++this._rockStamp;
     for (const b of this.nearBoxes(pos.x, pos.z, r + 1)) {
       if (b.roof) continue;
+      if (b.rock) { // pedra: colide com a superfície de verdade (uma vez por pedra, não por camada)
+        if (b.rock.stamp === stamp) continue; b.rock.stamp = stamp;
+        if (this.rockPush(pos, r, height, b.rock, prev)) hit = true;
+        continue;
+      }
       if (pos.y + height <= b.minY || pos.y >= b.maxY - 0.5) continue;
-      if (b.rockTris && pos.y >= this.rockY(b.rockTris, pos.x, pos.z) - 0.2) continue; // em cima da pedra
       const cx = LS.util.clamp(pos.x, b.minX, b.maxX), cz = LS.util.clamp(pos.z, b.minZ, b.maxZ);
       let dx = pos.x - cx, dz = pos.z - cz;
       const d2 = dx * dx + dz * dz;
@@ -151,6 +155,46 @@ LS.World = {
       }
     }
     return hit;
+  },
+
+  // altura da pedra em (x,z) pelo mapa de altura; -Infinity fora dela
+  rockH(R, x, z) {
+    const i = Math.floor((x - R.x0) / R.cs), k = Math.floor((z - R.z0) / R.cs);
+    if (i < 0 || k < 0 || i >= R.nx || k >= R.nz) return -Infinity;
+    return R.h[i + k * R.nx];
+  },
+  _rockStamp: 0, _rockHit: null, _rockBudget: Infinity,
+  ROCK_DIRS: Array.from({ length: 16 }, (_, i) => [Math.cos(i / 16 * Math.PI * 2), Math.sin(i / 16 * Math.PI * 2)]),
+  // empurra o cilindro pra fora da pedra: qualquer ponto do círculo dos pés mais alto que um degrau (55 cm)
+  // conta como parede. Em cima da pedra (superfície suave) nada empurra; numa encosta íngreme escorrega pra baixo.
+  rockPush(pos, r, height, R, prev) {
+    const lim = pos.y + 0.55;
+    if (R.maxH <= lim || R.minY >= pos.y + height) return false;
+    if (pos.x + r < R.x0 || pos.x - r > R.x0 + R.nx * R.cs || pos.z + r < R.z0 || pos.z - r > R.z0 + R.nz * R.cs) return false;
+    if (this.rockH(R, pos.x, pos.z) > lim) { // o centro entrou na pedra: volta pro passo anterior (nunca atravessa)
+      if (prev && this.rockH(R, prev.x, prev.z) <= lim) { pos.x = prev.x; pos.z = prev.z; return true; }
+      for (let d = 0.2; d < 12; d += 0.2) for (const [c, s] of this.ROCK_DIRS) { // nasceu dentro: sai pelo lado mais perto
+        if (this.rockH(R, pos.x + c * d, pos.z + s * d) <= lim) { pos.x += c * (d + r * 0.5); pos.z += s * (d + r * 0.5); return true; }
+      }
+      return true;
+    }
+    let nx = 0, nz = 0, depth = 0;
+    for (const [c, s] of this.ROCK_DIRS) {
+      if (this.rockH(R, pos.x + c * r, pos.z + s * r) <= lim) continue;
+      let lo = 0, hi = r;
+      for (let k = 0; k < 5; k++) { const m = (lo + hi) / 2; if (this.rockH(R, pos.x + c * m, pos.z + s * m) > lim) hi = m; else lo = m; }
+      const d = r - lo; nx -= c * d; nz -= s * d; if (d > depth) depth = d;
+    }
+    if (depth <= 1e-4) return false;
+    const l = Math.hypot(nx, nz);
+    if (l < 1e-6) { if (prev) { pos.x = prev.x; pos.z = prev.z; } return true; }
+    // empurrão suave: no máximo ~3 m/s (descer encosta íngreme escorrega, não dá "tranco");
+    // se ainda sobrar muito pra dentro, só não deixa avançar (volta pro passo anterior)
+    const move = Math.min(depth, this._rockBudget); this._rockBudget -= move;
+    if (depth - move > 0.12 && prev) { pos.x = prev.x; pos.z = prev.z; }
+    else { pos.x += nx / l * move; pos.z += nz / l * move; }
+    this._rockHit = { nx: nx / l, nz: nz / l, R };
+    return true;
   },
 
   // ---------- Raycast contra caixas + terreno ----------
