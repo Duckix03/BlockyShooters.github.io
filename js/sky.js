@@ -2,9 +2,9 @@
 'use strict';
 Object.assign(LS.World, {
   buildSky(scene) {
-    this.hemi = new THREE.HemisphereLight(0xbfd9ff, 0x3a3428, 0.5); // chão mais escuro: faces de baixo e sombras com profundidade
+    this.hemi = new THREE.HemisphereLight(0xcfe4ff, 0x6a6050, 0.6); // luz do céu (de cima) e reflexo do chão (de baixo)
     scene.add(this.hemi);
-    this.ambient = new THREE.AmbientLight(0xdfe8ff, 0.12); scene.add(this.ambient); // pouca luz "chapada": as faces ganham lado claro e escuro
+    this.ambient = new THREE.AmbientLight(0xe4ecff, 0.2); scene.add(this.ambient); // preenchimento: sombra azulada e clara, nunca preta
     this.sun = new THREE.DirectionalLight(0xffffff, 0.9);
     Object.assign(this.sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 1, far: 400 });
     this.sun.shadow.bias = -0.0008; this.sun.shadow.normalBias = 0.03; // sem "acne" de sombra tremendo nas paredes
@@ -123,11 +123,11 @@ Object.assign(LS.World, {
 
     // paleta ao longo da partida: manhã → dia → tarde → pôr do sol → anoitecer
     this.skyKeys = [
-      { t: 0, top: 0x4a6fa5, hor: 0xf2c4a0, sun: 0xffc890, i: 0.7, night: 0 },
-      { t: 0.22, top: 0x2f7fd6, hor: 0xbfe3ff, sun: 0xfff4e0, i: 1.0, night: 0 },
-      { t: 0.7, top: 0x3a86d8, hor: 0xcfe6f5, sun: 0xfff0d8, i: 0.95, night: 0 },
-      { t: 0.88, top: 0x3b4f8a, hor: 0xff9a5a, sun: 0xff9a50, i: 0.7, night: 0.05 },
-      { t: 1, top: 0x0f1530, hor: 0x6a4a7a, sun: 0xd08060, i: 0.4, night: 0.9 }
+      { t: 0, top: 0x2f86f0, hor: 0xb4defc, sun: 0xfff6e6, i: 0.95, night: 0 },    // começa de dia: céu azul limpo
+      { t: 0.3, top: 0x1f7cf2, hor: 0xbfe6ff, sun: 0xffffff, i: 1.05, night: 0 },  // meio-dia: azul forte
+      { t: 0.7, top: 0x2a82ea, hor: 0xc6e8fb, sun: 0xfff3dc, i: 1.0, night: 0 },
+      { t: 0.88, top: 0x3b5a9a, hor: 0xffa060, sun: 0xffa050, i: 0.8, night: 0.05 }, // pôr do sol
+      { t: 1, top: 0x18224a, hor: 0x7a5a8a, sun: 0xd08060, i: 0.5, night: 0.85 }     // anoitecer
     ].map(k => Object.assign(k, { top: new THREE.Color(k.top), hor: new THREE.Color(k.hor), sun: new THREE.Color(k.sun) }));
   },
 
@@ -145,11 +145,11 @@ Object.assign(LS.World, {
     scene.background.copy(U.horizonColor.value);
     scene.fog.color.copy(U.horizonColor.value).lerp(U.topColor.value, 0.15);
     this.sun.color.copy(U.sunColor.value);
-    this.sun.intensity = LS.util.lerp(a.i, b.i, k) * 1.25;          // sol mais forte (contraste luz/sombra)
-    this.hemi.intensity = 0.24 + this.sun.intensity * 0.26;
-    this.hemi.color.copy(U.topColor.value).lerp(new THREE.Color(0xffffff), 0.5);
+    this.sun.intensity = LS.util.lerp(a.i, b.i, k) * 1.15;          // sol forte (contraste luz/sombra)
+    this.hemi.intensity = 0.38 + this.sun.intensity * 0.3;          // céu ilumina bem as sombras (de dia não fica escuro)
+    this.hemi.color.copy(U.topColor.value).lerp(new THREE.Color(0xffffff), 0.6);
     // trajetória do sol (nasce, passa alto e se põe no fim da partida)
-    const ang = 0.3 + t * 2.75;
+    const ang = 0.8 + t * 2.05; // sol já alto no começo (sombras curtas), se põe no fim
     const dir = new THREE.Vector3(Math.cos(ang) * 0.75, Math.sin(ang), -0.45).normalize();
     U.sunDir.value.copy(dir);
     this.sun.position.copy(focus).addScaledVector(dir, 200);

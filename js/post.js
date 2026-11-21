@@ -21,7 +21,7 @@ LS.Post = {
       uniforms: {
         tColor: { value: this.rt.texture }, tDepth: { value: this.rt.depthTexture },
         res: { value: new THREE.Vector2(size.x, size.y) }, near: { value: 0.25 }, far: { value: 1000 },
-        projScale: { value: 500 }, aoStrength: { value: 1.45 }, edge: { value: 0.45 }, vignette: { value: 0.28 }, fogFar: { value: 400 },
+        projScale: { value: 500 }, aoStrength: { value: 1.2 }, edge: { value: 0.38 }, vignette: { value: 0.16 }, fogFar: { value: 400 },
       },
       depthTest: false, depthWrite: false,
       vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
