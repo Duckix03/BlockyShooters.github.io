@@ -4,7 +4,7 @@ Object.assign(LS.World, {
   buildSky(scene) {
     this.hemi = new THREE.HemisphereLight(0xcfe4ff, 0x6a6050, 0.6); // luz do céu (de cima) e reflexo do chão (de baixo)
     scene.add(this.hemi);
-    this.ambient = new THREE.AmbientLight(0xe4ecff, 0.2); scene.add(this.ambient); // preenchimento: sombra azulada e clara, nunca preta
+    this.ambient = new THREE.AmbientLight(0xe4ecff, 0.16); scene.add(this.ambient); // preenchimento: sombra azulada e clara, nunca preta
     this.sun = new THREE.DirectionalLight(0xffffff, 0.9);
     Object.assign(this.sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 1, far: 400 });
     this.sun.shadow.bias = -0.0008; this.sun.shadow.normalBias = 0.03; // sem "acne" de sombra tremendo nas paredes
@@ -145,8 +145,8 @@ Object.assign(LS.World, {
     scene.background.copy(U.horizonColor.value);
     scene.fog.color.copy(U.horizonColor.value).lerp(U.topColor.value, 0.15);
     this.sun.color.copy(U.sunColor.value);
-    this.sun.intensity = LS.util.lerp(a.i, b.i, k) * 1.15;          // sol forte (contraste luz/sombra)
-    this.hemi.intensity = 0.38 + this.sun.intensity * 0.3;          // céu ilumina bem as sombras (de dia não fica escuro)
+    this.sun.intensity = LS.util.lerp(a.i, b.i, k);                 // sol (contraste luz/sombra sem estourar o branco)
+    this.hemi.intensity = 0.3 + this.sun.intensity * 0.22;          // céu ilumina as sombras (de dia não fica escuro)
     this.hemi.color.copy(U.topColor.value).lerp(new THREE.Color(0xffffff), 0.6);
     // trajetória do sol (nasce, passa alto e se põe no fim da partida)
     const ang = 0.8 + t * 2.05; // sol já alto no começo (sombras curtas), se põe no fim
