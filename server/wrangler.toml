@@ -1,6 +1,6 @@
 # Servidor online do Last Survivor (Cloudflare Workers + Durable Objects, plano grátis)
 # Publicar: cd server && npx wrangler login && npx wrangler deploy
-name = "last-survivor-server"
+name = "lastsurvivor222"
 main = "src/worker.js"
 compatibility_date = "2026-01-01"
 
