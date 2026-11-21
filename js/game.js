@@ -273,7 +273,7 @@ LS.Game = {
     document.getElementById('bigmap').classList.add('hidden');
     const P = this.player, duel = this.mode === 'duel';
     P.running = false; P.aiming = false; P.vel.set(0, 0, 0);
-    this.vicYaw = P.camYaw + Math.PI; // a câmera vem pra frente do jogador
+    this.vicBase = P.camYaw + Math.PI + 0.35; this.vicYaw = this.vicBase; // a câmera vem pra frente do jogador (um pouco de lado)
     const sub = duel ? (LS.Duel.size > 1 ? 'SEU TIME VENCEU O 2V2' : 'VOCÊ VENCEU O DUELO') + ' · ' + LS.Duel.score[0] + ' x ' + LS.Duel.score[1]
       : 'VITÓRIA #1 · ' + P.kills + ' ABATE' + (P.kills === 1 ? '' : 'S');
     LS.Victory.show(sub, () => this.endMatch(true, true));
@@ -283,19 +283,18 @@ LS.Game = {
   updateVictory(dt) {
     this.victoryT += dt;
     const P = this.player, m = P.model, t = this.victoryT;
-    this.vicYaw += dt * 0.35;
-    let d = 4.2 - Math.min(1, t * 0.6) * 0.8; const cy = P.pos.y + 1.6 + Math.sin(t * 0.7) * 0.2;
+    this.vicYaw = this.vicBase + Math.sin(t * 0.35) * 0.22; // balança de leve, sempre de frente
+    let d = 4.6 - Math.min(1, t * 0.5) * 0.9; const cy = P.pos.y + 1.45;
     const head = this._vh || (this._vh = new THREE.Vector3()), dir = this._vd || (this._vd = new THREE.Vector3());
     head.set(P.pos.x, P.pos.y + 1.4, P.pos.z); dir.set(Math.sin(this.vicYaw) * d, cy - head.y, Math.cos(this.vicYaw) * d);
     const len = dir.length(); dir.divideScalar(len);
     d *= Math.max(0.35, Math.min(1, (LS.World.raycast(head, dir, len) - 0.3) / len)); // não atravessa parede
     const cx = P.pos.x + Math.sin(this.vicYaw) * d, cz = P.pos.z + Math.cos(this.vicYaw) * d;
-    this.camera.position.set(cx, cy, cz); this.camera.lookAt(P.pos.x, P.pos.y + 1.15, P.pos.z);
-    this.camera.fov = LS.util.lerp(this.camera.fov, 55, Math.min(1, dt * 3)); this.camera.updateProjectionMatrix();
+    this.camera.position.set(cx, cy, cz); this.camera.lookAt(P.pos.x, P.pos.y + 1.0, P.pos.z);
+    this.camera.fov = LS.util.lerp(this.camera.fov, 50, Math.min(1, dt * 3)); this.camera.updateProjectionMatrix();
     P.yaw += LS.util.angleDiff(P.yaw, Math.atan2(cx - P.pos.x, cz - P.pos.z)) * Math.min(1, dt * 4); // olha pra câmera
-    const hop = Math.max(0, Math.sin(t * 7)) * 0.38 * (t > 0.4 ? 1 : 0); // pulinhos de comemoração
-    m.root.position.set(P.pos.x, P.pos.y + hop, P.pos.z); m.root.rotation.y = P.yaw; m.root.visible = true;
-    m.animate({ dt, speed: 0, aimPitch: 0.5, armed: !!P.weapon(), armedAim: false, running: false, idle: true, air: hop > 0.05, vy: hop > 0.05 ? 3 : 0 });
+    m.root.position.set(P.pos.x, P.pos.y, P.pos.z); m.root.rotation.y = P.yaw; m.root.visible = true;
+    m.animate({ dt, speed: 0, aimPitch: 0, armed: !!P.weapon(), armedAim: false, running: !!P.weapon(), idle: true });
     for (const b of this.bots) if (b.alive) b.finishFrame(dt, 0);
     LS.Effects.update(dt);
     LS.World.updateSky(this.mode === 'duel' ? 0.33 : this.time / 430, this.scene, P.pos, dt);

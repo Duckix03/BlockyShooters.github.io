@@ -271,7 +271,8 @@ LS.HUD = {
   toggleBigMap() { this.el.bigmap.classList.toggle('hidden'); },
 
   // ---------- indicador de tiro na tela ----------
-  // alguém atirou perto: aparece um ícone em cima dele (ou uma seta na borda da tela) com a distância, por ~1 s depois do último tiro
+  // alguém atirou perto: um arco vermelho em volta da mira aponta a DIREÇÃO do tiro (como nos jogos de celular),
+  // sem mostrar onde a pessoa está exatamente. Some ~1 s depois do último tiro.
   shots: new Map(),
   gunshot(f) {
     const G = LS.Game, P = G.player;
@@ -284,34 +285,20 @@ LS.HUD = {
     for (const s of this.shots.values()) if (s.el) s.el.remove();
     this.shots.clear();
   },
-  shotIcon: '<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="rgba(10,10,14,.55)" stroke="#fff" stroke-width="2.4"/><path d="M8 20l9-9M12 23l9-9M16 25l7-7" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><circle cx="23" cy="9" r="2.4" fill="#ff4d4d"/></svg>',
   updateShots(G) {
-    const box = document.getElementById('shot-ind'), cam = G.camera, P = G.player, now = performance.now();
-    const W = window.innerWidth, H = window.innerHeight, M = 64, v = this._sv || (this._sv = new THREE.Vector3());
+    const box = document.getElementById('shot-ind'), P = G.player, now = performance.now();
     for (const [f, s] of this.shots) {
       const age = (now - s.t) / 1000;
       if (age > 1.1 || !f.alive || !P.alive) { if (s.el) s.el.remove(); this.shots.delete(f); continue; }
-      if (!s.el) { s.el = document.createElement('div'); s.el.className = 'si'; s.el.innerHTML = '<div class="si-ico">' + this.shotIcon + '</div><span></span><i class="si-arrow"></i>'; box.appendChild(s.el); }
-      v.set(f.pos.x, f.pos.y + 1.3, f.pos.z).project(cam);
-      const behind = v.z > 1;
-      let x = (v.x * 0.5 + 0.5) * W, y = (-v.y * 0.5 + 0.5) * H;
-      const onScreen = !behind && x > M && x < W - M && y > M && y < H - M;
-      if (!onScreen) { // fora da tela: gruda na borda apontando pra ele
-        let dx = x - W / 2, dy = y - H / 2;
-        if (behind) { dx = -dx; dy = -dy; if (Math.abs(dy) < 1 && Math.abs(dx) < 1) dy = 1; }
-        const k = Math.min((W / 2 - M) / Math.max(Math.abs(dx), 1e-3), (H / 2 - M) / Math.max(Math.abs(dy), 1e-3));
-        x = W / 2 + dx * k; y = H / 2 + dy * k;
-        s.el.querySelector('.si-arrow').style.transform = 'rotate(' + Math.atan2(dy, dx) + 'rad) translateX(22px)';
-      }
-      s.el.classList.toggle('edge', !onScreen);
-      s.el.style.transform = 'translate(' + x.toFixed(0) + 'px,' + y.toFixed(0) + 'px)';
-      s.el.style.opacity = age < 0.7 ? 1 : Math.max(0, 1 - (age - 0.7) / 0.4);
-      const d = Math.round(f.pos.distanceTo(P.pos)) + 'm', sp = s.el.querySelector('span');
-      if (sp.textContent !== d) sp.textContent = d;
+      if (!s.el) { s.el = document.createElement('div'); s.el.className = 'si'; s.el.innerHTML = '<b></b><i></i>'; box.appendChild(s.el); }
+      const rel = LS.util.angleDiff(P.camYaw, Math.atan2(f.pos.x - P.pos.x, f.pos.z - P.pos.z));
+      const d = f.pos.distanceTo(P.pos), near = 1 - Math.min(1, d / 160); // mais perto = arco mais grosso e forte
+      s.el.style.transform = 'rotate(' + (-rel).toFixed(3) + 'rad)';
+      s.el.style.setProperty('--w', (4 + near * 6).toFixed(1) + 'px');
+      s.el.style.opacity = (age < 0.6 ? 1 : Math.max(0, 1 - (age - 0.6) / 0.5)) * (0.55 + near * 0.45);
       if (s.fresh !== s.t) { s.fresh = s.t; s.el.classList.remove('pop'); void s.el.offsetWidth; s.el.classList.add('pop'); } // pulsa a cada tiro
     }
   },
-
   renderInventory() {
     const P = LS.Game.player, E = this.el;
     let h = '';
