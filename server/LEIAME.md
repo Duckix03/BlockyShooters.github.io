@@ -31,12 +31,12 @@ Os comandos de trapaça do console (`give`, `god`, `tp`, `esp`...) ficam desliga
    ```
 
    O primeiro comando abre o navegador pra você autorizar. O segundo publica e mostra um endereço parecido com
-   `https://lastsurvivor222.lastsurvivorbr.workers.dev`.
+   `https://lastsurvivor.lastsurvivorbr.workers.dev`.
 4. Abra esse endereço no navegador: tem que aparecer **"Last Survivor server ok"**.
 5. Em **`js/config.js`**, coloque o endereço:
 
    ```js
-   LS.NET_URL = 'https://lastsurvivor222.lastsurvivorbr.workers.dev'; // já configurado
+   LS.NET_URL = 'https://lastsurvivor.lastsurvivorbr.workers.dev'; // já configurado
    ```
 
    Faça commit e espere o GitHub Pages atualizar. Pronto: o **JOGAR** já procura jogadores de verdade.

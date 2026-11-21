@@ -18,7 +18,7 @@ LS.VERSION = '37'; // muda a cada atualização (também no ?v= do index.html e 
 LS.MAP_SIZE = 800;          // tamanho do terreno (metros)
 LS.MAP_SEED = 20261120;     // semente da ilha: todo mundo gera o MESMO mapa (necessário pro online)
 // endereço do servidor online (Cloudflare). Vazio = só partidas contra bots. Ex.: 'https://last-survivor-server.SEU-USUARIO.workers.dev'
-LS.NET_URL = 'https://lastsurvivor222.lastsurvivorbr.workers.dev';
+LS.NET_URL = 'https://lastsurvivor.lastsurvivorbr.workers.dev';
 LS.ISLAND_RADIUS = 340;     // raio útil da ilha
 LS.WATER_LEVEL = 0;
 LS.BOT_COUNT = 30;
