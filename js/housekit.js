@@ -261,7 +261,9 @@ LS.HouseKit = {
       box(px, base, pz, 0.7, ch, 0.7, 0x8a4a3a, false);
       box(px, base + ch, pz, 0.84, 0.12, 0.84, 0x5a3a2a, false); // topo da chaminé
     }
-    out.colliders.push({ minX: -w / 2 - 0.2, minY: top, minZ: -d / 2 - 0.2, maxX: w / 2 + 0.2, maxY: top + r * 0.6, maxZ: d / 2 + 0.2 });
+    // telhado: colisor com a inclinação de verdade (quem pisa fica em cima das telhas, sem flutuar nem afundar)
+    { const ex = alongX ? hl : hs, ez = alongX ? hs : hl;
+      out.colliders.push({ minX: -ex, minY: top, minZ: -ez, maxX: ex, maxY: ridge + th, maxZ: ez, roof: { alongX, ridge: ridge + th, tanA } }); }
     for (const b of out.boxes) if (b.color === wallCol) b.tex = wallTex;
     out.top = top; out.ridge = ridge; out.doorPos = doorPos;
     return out;

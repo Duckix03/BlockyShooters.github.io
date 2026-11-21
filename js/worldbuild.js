@@ -104,6 +104,8 @@ Object.assign(LS.World, {
   rockColliders(geo, mtx, h, layers = 5) {
     const pa = geo.attributes.position, V = [];
     for (let i = 0; i < pa.count; i++) V.push(new THREE.Vector3().fromBufferAttribute(pa, i).applyMatrix4(mtx));
+    // triângulos da pedra no mundo: a altura de quem pisa vem da superfície de verdade (não do topo das camadas)
+    const tris = new Float32Array(V.length * 3); V.forEach((v, i) => { tris[i * 3] = v.x; tris[i * 3 + 1] = v.y; tris[i * 3 + 2] = v.z; });
     let yMin = Infinity, yMax = -Infinity, xMax = -Infinity;
     for (const v of V) { yMin = Math.min(yMin, v.y); yMax = Math.max(yMax, v.y); xMax = Math.max(xMax, v.x); }
     const y0 = Math.max(yMin, h - 1);
@@ -118,7 +120,7 @@ Object.assign(LS.World, {
       }
       if (x0 > x1) continue;
       const sh = 0.04; // um fio menor que a pedra: sem parede invisível nas quinas
-      this.addCollider(x0 + sh, k === 0 ? Math.min(a, h - 1) : a, z0 + sh, x1 - sh, b, z1 - sh).climb = true;
+      const col = this.addCollider(x0 + sh, k === 0 ? Math.min(a, h - 1) : a, z0 + sh, x1 - sh, b, z1 - sh); col.climb = true; col.rockTris = tris;
     }
     return xMax;
   },

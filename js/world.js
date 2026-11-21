@@ -64,10 +64,35 @@ LS.World = {
       }
     return b;
   },
+  // altura do telhado inclinado em (x,z)
+  roofY(b, x, z) { const R = b.roof; return R.ridgeY - Math.abs(R.alongX ? z - R.cz : x - R.cx) * R.tanA; },
+  // altura da superfície da pedra em (x,z) (raio vertical nos triângulos); -Infinity se (x,z) não está em cima dela
+  rockY(T, x, z) {
+    let best = -Infinity;
+    for (let i = 0; i < T.length; i += 9) {
+      const ax = T[i], ay = T[i + 1], az = T[i + 2], bx = T[i + 3], by = T[i + 4], bz = T[i + 5], cx = T[i + 6], cy = T[i + 7], cz = T[i + 8];
+      const d = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz); if (Math.abs(d) < 1e-9) continue;
+      const u = ((bz - cz) * (x - cx) + (cx - bx) * (z - cz)) / d, v = ((cz - az) * (x - cx) + (ax - cx) * (z - cz)) / d, w = 1 - u - v;
+      if (u < -1e-4 || v < -1e-4 || w < -1e-4) continue;
+      const y = u * ay + v * by + w * cy; if (y > best) best = y;
+    }
+    return best;
+  },
+  // altura real do topo de um colisor em (x,z): telhado inclinado, superfície da pedra ou topo da caixa
+  topAt(b, x, z, r) {
+    if (b.roof) return this.roofY(b, x, z);
+    if (b.rockTris) { // o centro e 4 pontos em volta (o pé tem largura): pega o mais alto
+      let t = -Infinity; const k = (r || 0) * 0.35;
+      for (const [dx, dz] of [[0, 0], [k, 0], [-k, 0], [0, k], [0, -k]]) t = Math.max(t, this.rockY(b.rockTris, x + dx, z + dz));
+      return Math.min(t, b.maxY);
+    }
+    return b.maxY;
+  },
   // verdadeiro se uma esfera (x,y,z,r) encosta em algum colisor
   sphereHits(x, y, z, r) {
     for (const b of this.nearBoxes(x, z, r + 0.5)) {
       if (b.glass) continue;
+      if ((b.roof || b.rockTris) && x > b.minX - r && x < b.maxX + r && z > b.minZ - r && z < b.maxZ + r) { if (y - r < this.topAt(b, x, z) && y + r > b.minY) return true; continue; }
       const cx = Math.max(b.minX, Math.min(x, b.maxX)), cy = Math.max(b.minY, Math.min(y, b.maxY)), cz = Math.max(b.minZ, Math.min(z, b.maxZ));
       if ((cx - x) ** 2 + (cy - y) ** 2 + (cz - z) ** 2 < r * r) return true;
     }
@@ -87,7 +112,9 @@ LS.World = {
     let g = this.heightAt(x, z);
     for (const b of this.nearBoxes(x, z, r + 1)) {
       if (b.glass) continue;
-      if (x + r * 0.5 > b.minX && x - r * 0.5 < b.maxX && z + r * 0.5 > b.minZ && z - r * 0.5 < b.maxZ && b.maxY <= y + 0.55 && b.maxY > g) g = b.maxY;
+      if (!(x + r * 0.5 > b.minX && x - r * 0.5 < b.maxX && z + r * 0.5 > b.minZ && z - r * 0.5 < b.maxZ)) continue;
+      const top = this.topAt(b, x, z, r); // telhado inclinado / pedra: a superfície de verdade
+      if (top <= y + 0.55 && top > g) g = top;
     }
     return g;
   },
@@ -102,7 +129,9 @@ LS.World = {
   _collideOnce(pos, r, height, prev) {
     let hit = false;
     for (const b of this.nearBoxes(pos.x, pos.z, r + 1)) {
+      if (b.roof) continue;
       if (pos.y + height <= b.minY || pos.y >= b.maxY - 0.5) continue;
+      if (b.rockTris && pos.y >= this.rockY(b.rockTris, pos.x, pos.z) - 0.2) continue; // em cima da pedra
       const cx = LS.util.clamp(pos.x, b.minX, b.maxX), cz = LS.util.clamp(pos.z, b.minZ, b.maxZ);
       let dx = pos.x - cx, dz = pos.z - cz;
       const d2 = dx * dx + dz * dz;
@@ -158,7 +187,17 @@ LS.World = {
             if (seen.has(b)) continue; seen.add(b);
             if (b.glass) continue; // vidro: tiro e visão passam
             if (b.maxX < minX || b.minX > maxX || b.maxZ < minZ || b.minZ > maxZ) continue;
-            const tb = this.rayBox(o, d, b, best); if (tb >= 0 && tb < best) best = tb;
+            let tb = this.rayBox(o, d, b, best);
+            if (tb >= 0 && b.roof) { // dentro da caixa do telhado: só acerta abaixo das telhas
+              let hitT = -1;
+              for (let t = tb; t < Math.min(best, tb + 30); t += 0.2) {
+                const px = o.x + d.x * t, py = o.y + d.y * t, pz = o.z + d.z * t;
+                if (px < b.minX || px > b.maxX || pz < b.minZ || pz > b.maxZ || py < b.minY - 0.01) break;
+                if (py <= this.roofY(b, px, pz)) { hitT = t; break; }
+              }
+              tb = hitT;
+            }
+            if (tb >= 0 && tb < best) best = tb;
           }
         }
       if (s >= horiz) break;
