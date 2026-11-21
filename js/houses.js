@@ -48,7 +48,11 @@ Object.assign(LS.World, {
     for (const b of m.boxes) this.box(scene, cx + b.x, y0 + b.y, cz + b.z, b.w, b.h, b.d, b.color, b.collide, b.shadow, b.tex);
     if (kind === 'fazenda') for (const b of LS.HouseKit.fence(m, (x, z) => this.heightAt(cx + x, cz + z) - y0))
       this.box(scene, cx + b.x, y0 + b.y, cz + b.z, b.w, b.h, b.d, b.color, b.collide, b.shadow);
-    for (const c of m.colliders) { const col = this.addCollider(cx + c.minX, y0 + c.minY, cz + c.minZ, cx + c.maxX, y0 + c.maxY, cz + c.maxZ); if (c.glass) col.glass = true; }
+    for (const c of m.colliders) {
+      const col = this.addCollider(cx + c.minX, y0 + c.minY, cz + c.minZ, cx + c.maxX, y0 + c.maxY, cz + c.maxZ);
+      if (c.glass) col.glass = true;
+      if (c.roof) col.roof = { alongX: c.roof.alongX, cx, cz, ridgeY: y0 + c.roof.ridge, tanA: c.roof.tanA };
+    }
     if (!this.roofTris) this.roofTris = { pos: [], col: [] };
     const p = m.tris.pos;
     for (let i = 0; i < p.length; i += 3) this.roofTris.pos.push(p[i] + cx, p[i + 1] + y0, p[i + 2] + cz);
