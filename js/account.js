@@ -50,6 +50,7 @@ LS.Account = {
     if (pr.bio != null) P.bio = pr.bio;
     P.avatar = { type: '3d', bg: pr.avatarBg || 0 }; P.cover = pr.cover || 'br';
     if (pr.weapon !== undefined) P.weapon = pr.weapon;
+    if (Array.isArray(pr.owned)) P.owned = [...new Set([...(P.owned || []), ...pr.owned])]; // itens da loja (junta com os deste navegador)
     if (!fromCache && acc.stats) {
       if ((acc.stats.games || 0) > 0 || (acc.stats.xp || 0) > 0) Object.assign(LS.stats, acc.stats);
       else this.saveStats(true); // conta nova: leva as estatísticas deste navegador pra ela
@@ -75,7 +76,7 @@ LS.Account = {
   },
 
   // ---------- ações ----------
-  payload() { const P = LS.playerProfile; return { look: P.look, bio: P.bio, avatarBg: (P.avatar && P.avatar.bg) || 0, cover: P.cover, weapon: P.weapon || null }; },
+  payload() { const P = LS.playerProfile; return { look: P.look, bio: P.bio, avatarBg: (P.avatar && P.avatar.bg) || 0, cover: P.cover, weapon: P.weapon || null, owned: P.owned || [] }; },
   async register(name, pass) { const d = await this.api('/api/register', { name, pass, profile: this.payload(), stats: LS.stats }); this.setToken(d.token); this.apply(d.account); },
   async login(name, pass) { const d = await this.api('/api/login', { name, pass }); this.setToken(d.token); this.apply(d.account); },
   async logout() { try { await this.api('/api/logout', {}); } catch (e) { /* tanto faz */ } this.drop(); },

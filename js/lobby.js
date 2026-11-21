@@ -35,23 +35,7 @@ LS.Lobby = {
   },
 
   buildUI() {
-    const K = LS.Skin, box = document.getElementById('lobby-options');
-    const rows = [
-      ['skin', 'Pele', K.SKINS, true], ['hairStyle', 'Cabelo', K.HAIR_STYLES, false], ['hair', 'Cor do cabelo e barba', K.HAIRS, true],
-      ['beard', 'Barba', K.BEARDS, false], ['eyes', 'Olhos', K.EYES, true], ['glasses', 'Óculos', K.GLASSES, false], ['mask', 'Máscara', K.MASKS, false],
-      ['hat', 'Chapéu', K.HATS, false], ['top', 'Roupa', K.TOPS, false], ['shirt', 'Camisa', K.SHIRTS, true], ['pattern', 'Estampa', K.PATTERNS, false],
-      ['accent', 'Cor da roupa / acessórios', K.ACCENTS, true], ['pants', 'Calça', K.PANTS, true]
-    ];
-    box.innerHTML = '<label class="lobby-label">Trajes</label><div class="presets">' + Object.keys(K.PRESETS).map(n => '<button class="chip" data-preset="' + n + '">' + n + '</button>').join('') + '</div>' + rows.map(([key, label, opts, color]) => '<label class="lobby-label">' + label + '</label><div class="swatches" data-key="' + key + '">' +
-      opts.map(o => color ? '<div class="swatch" data-v="' + o + '" style="background:' + o + '"></div>' : '<button class="chip" data-v="' + o + '">' + o + '</button>').join('') + '</div>').join('');
-    box.addEventListener('click', e => {
-      const pr = e.target.closest('[data-preset]');
-      if (pr) { Object.assign(LS.playerProfile.look, K.PRESETS[pr.dataset.preset]); this.changed(); LS.Audio.click(); return; }
-      const el = e.target.closest('[data-v]'); if (!el) return;
-      const key = el.parentElement.dataset.key;
-      LS.playerProfile.look[key] = el.dataset.v;
-      this.changed(); LS.Audio.click();
-    });
+    LS.Wardrobe.init(); // guarda-roupa em grade (js/wardrobe.js)
     const name = document.getElementById('lobby-name');
     name.addEventListener('input', () => { LS.playerProfile.name = name.value.trim().slice(0, 16) || 'Jogador'; LS.saveProfile(); });
   },
@@ -62,30 +46,25 @@ LS.Lobby = {
     this.syncUI();
   },
   syncUI() {
-    const look = LS.playerProfile.look;
-    document.querySelectorAll('#lobby-options .swatches').forEach(row => {
-      row.querySelectorAll('[data-v]').forEach(el => el.classList.toggle('sel', el.dataset.v === look[row.dataset.key]));
-    });
     document.getElementById('lobby-name').value = LS.playerProfile.name;
     document.getElementById('menu-player-name').textContent = LS.playerProfile.name;
-    const s = LS.stats;
-    document.getElementById('lobby-stats').textContent = '🏆 ' + s.wins + ' vitórias  ·  💀 ' + s.kills + ' abates  ·  🎮 ' + s.games + ' partidas';
+    const n = document.getElementById('lobby-name'); n.disabled = !!(LS.Account && LS.Account.logged());
   },
-
   open() {
     this.build();
     this.cancelSearch();
     this.model.applyLook(LS.playerProfile.look);
     this.extras.forEach(m => m.applyLook(LS.Skin.randomLook()));
-    this.syncUI();
+    this.syncUI(); LS.Wardrobe.open();
     LS.HUD.show(false);
     LS.UI.showScreen('lobby');
     LS.Game.state = 'lobby';
   },
-  random() { const n = LS.playerProfile.name; LS.playerProfile.look = LS.Skin.randomLook(); LS.playerProfile.name = n; this.changed(); },
-  reset() { LS.playerProfile.look = Object.assign({}, LS.defaultProfile.look); this.changed(); },
+  random() { const n = LS.playerProfile.name; LS.playerProfile.look = Object.assign(LS.Skin.randomLook(), { legs: 'lisa' }); LS.playerProfile.name = n; LS.Wardrobe.sel = null; LS.Wardrobe.preview = null; this.changed(); LS.Wardrobe.render(); },
+  reset() { LS.playerProfile.look = Object.assign({ legs: 'lisa' }, LS.defaultProfile.look); LS.Wardrobe.sel = null; LS.Wardrobe.preview = null; this.changed(); LS.Wardrobe.render(); },
   startSearch() {
     if (this.searching) return;
+    if (LS.Wardrobe.preview) LS.Wardrobe.leave(); // não entra em partida com item só provado
     this.searching = true; this.mmCount = 1; this.mmT = 0;
     document.getElementById('lobby-mm').classList.remove('hidden');
     this.updateCount();
@@ -132,7 +111,7 @@ LS.Lobby = {
     const aspect = window.innerWidth / window.innerHeight;
     const inMenu = LS.Game.state === 'menu';
     // menu: câmera perto e baixa, personagem grande no centro em cima do pedestal (estilo lobby de BR mobile)
-    const tx = inMenu ? 0 : -1.1, dist = (inMenu ? 4.4 : 6.4) / Math.min(1, aspect / 1.5), cy = inMenu ? 1.45 : 1.6, ly = inMenu ? 1.2 : 0.95;
+    const tx = inMenu ? 0 : -1.9, dist = (inMenu ? 4.4 : 6.4) / Math.min(1, aspect / 1.5), cy = inMenu ? 1.45 : 1.6, ly = inMenu ? 1.2 : 0.95;
     const k = Math.min(1, dt * 4);
     this.camX = LS.util.lerp(this.camX === undefined ? tx : this.camX, tx, k);
     this.camD = LS.util.lerp(this.camD === undefined ? dist : this.camD, dist, k);

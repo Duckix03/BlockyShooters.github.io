@@ -1,0 +1,116 @@
+// Catálogo de visuais: o que é grátis, o que é vendido na LOJA (moedas) e o que sai no GOLD ROYALE.
+// Os itens que já existiam continuam grátis; os novos (coroa, terno, máscara de gás, estampas...) são comprados.
+// O que você tem fica em LS.playerProfile.owned (salvo no navegador e na conta).
+'use strict';
+LS.Cosmetics = {
+  RARITY: [
+    { name: 'COMUM', color: '#9aa4b0' }, { name: 'RARO', color: '#3ab4ff' },
+    { name: 'ÉPICO', color: '#b060ff' }, { name: 'LENDÁRIO', color: '#ffc531' }
+  ],
+  // cada parte do visual: campo no "look", nome e onde a câmera foca na foto 3D
+  SLOTS: {
+    hairStyle: { label: 'Cabelo', focus: 'head', list: 'HAIR_STYLES' },
+    beard: { label: 'Barba', focus: 'head', list: 'BEARDS' },
+    glasses: { label: 'Óculos', focus: 'head', list: 'GLASSES' },
+    mask: { label: 'Máscara', focus: 'head', list: 'MASKS' },
+    hat: { label: 'Chapéu', focus: 'head', list: 'HATS' },
+    top: { label: 'Roupa', focus: 'torso', list: 'TOPS' },
+    pattern: { label: 'Estampa', focus: 'torso', list: 'PATTERNS' },
+    legs: { label: 'Calça', focus: 'legs', list: null }
+  },
+  // itens novos: [parte, valor, nome, raridade (0-3), preço]
+  PREMIUM: [
+    ['hat', 'coroa', 'Coroa Real', 3, 4000], ['hat', 'auréola', 'Auréola', 3, 3500], ['hat', 'cartola', 'Cartola', 2, 1800],
+    ['hat', 'chifres', 'Chifres', 2, 1600], ['hat', 'fones', 'Fones Neon', 1, 1000], ['hat', 'orelhas de gato', 'Orelhas de Gato', 1, 900], ['hat', 'boné reto', 'Boné Aba Reta', 0, 500],
+    ['glasses', 'cyber', 'Visor Cyber', 2, 1600], ['glasses', 'coração', 'Óculos Coração', 1, 800], ['glasses', 'aviador', 'Aviador', 0, 500],
+    ['mask', 'caveira', 'Caveira', 2, 1500], ['mask', 'gás', 'Máscara de Gás', 2, 1800], ['mask', 'ninja', 'Capuz Ninja', 1, 1000], ['mask', 'sorriso', 'Sorriso Neon', 1, 800],
+    ['top', 'armadura', 'Armadura', 3, 3200], ['top', 'terno', 'Terno', 2, 2000], ['top', 'couro', 'Jaqueta de Couro', 1, 1100], ['top', 'kimono', 'Kimono', 1, 1200],
+    ['pattern', 'galáxia', 'Galáxia', 3, 2600], ['pattern', 'chamas', 'Chamas', 2, 1500], ['pattern', 'raio', 'Raio', 1, 800], ['pattern', 'tigre', 'Tigre', 1, 900], ['pattern', 'xadrez', 'Xadrez', 0, 450],
+    ['legs', 'chamas', 'Calça Chamas', 2, 1400], ['legs', 'camuflada', 'Calça Camuflada', 1, 800], ['legs', 'listra', 'Calça Listrada', 1, 700], ['legs', 'rasgada', 'Calça Rasgada', 0, 400],
+    ['hairStyle', 'black power', 'Black Power', 1, 900], ['hairStyle', 'rabo', 'Rabo de Cavalo', 0, 500]
+  ],
+  // fantasias completas: comprar dá todas as peças de uma vez (mais barato que separado)
+  COSTUMES: [
+    { id: 'rei', name: 'Rei do Galpão', rarity: 3, price: 7500, look: { hat: 'coroa', top: 'terno', shirt: '#b03030', pattern: 'liso', pants: '#111111', legs: 'lisa', glasses: 'nenhum', mask: 'nenhuma', beard: 'cheia', accent: '#e0a020' } },
+    { id: 'ninja', name: 'Ninja das Sombras', rarity: 2, price: 3200, look: { mask: 'ninja', top: 'kimono', shirt: '#1c1c22', pattern: 'liso', accent: '#c0302a', pants: '#111111', legs: 'lisa', hat: 'nenhum', glasses: 'nenhum' } },
+    { id: 'caveira', name: 'Motoqueiro Caveira', rarity: 2, price: 3800, look: { mask: 'caveira', top: 'couro', shirt: '#2a2a2a', pattern: 'chamas', pants: '#111111', legs: 'chamas', hat: 'nenhum', glasses: 'nenhum' } },
+    { id: 'cyber', name: 'Cyber Punk', rarity: 3, price: 6000, look: { glasses: 'cyber', hat: 'fones', top: 'armadura', pattern: 'raio', accent: '#20d0e0', hairStyle: 'moicano', hair: '#d040a0', pants: '#1f2f6f', legs: 'listra', mask: 'nenhuma' } },
+    { id: 'anjo', name: 'Anjo', rarity: 3, price: 5200, look: { hat: 'auréola', top: 'camiseta', shirt: '#e0e0e0', pattern: 'galáxia', pants: '#e0e0e0', legs: 'lisa', glasses: 'nenhum', mask: 'nenhuma', accent: '#f0f0f0' } },
+    { id: 'gasmask', name: 'Sobrevivente Tóxico', rarity: 2, price: 3600, look: { mask: 'gás', hat: 'boné reto', top: 'colete', shirt: '#3a4a2a', pattern: 'camuflado', accent: '#3a5a2a', pants: '#3a4a2a', legs: 'camuflada', glasses: 'nenhum' } }
+  ],
+  ROYALE_COST: 500, ROYALE_10: 5000, // 10 giros (+1 grátis)
+
+  init() {
+    const K = LS.Skin;
+    this.items = [];
+    // grátis: tudo o que já existia
+    for (const slot in this.SLOTS) {
+      const S = this.SLOTS[slot], list = S.list ? K[S.list] : ['lisa'];
+      list.forEach(v => this.items.push({ id: slot + ':' + v, slot, val: v, name: this.cap(v), rarity: 0, price: 0, free: true }));
+    }
+    this.PREMIUM.forEach(([slot, val, name, rarity, price]) => this.items.push({ id: slot + ':' + val, slot, val, name, rarity, price, free: false }));
+    this.COSTUMES.forEach(c => this.items.push({ id: 'costume:' + c.id, slot: 'costume', val: c.id, name: c.name, rarity: c.rarity, price: c.price, free: false, look: c.look }));
+    this.byId = {}; this.items.forEach(i => { this.byId[i.id] = i; });
+    // presets antigos (Sobrevivente, Militar...) viram fantasias grátis
+    Object.keys(K.PRESETS).forEach(n => { const it = { id: 'costume:' + n, slot: 'costume', val: n, name: n, rarity: 0, price: 0, free: true, look: K.PRESETS[n] }; this.items.push(it); this.byId[it.id] = it; });
+    const P = LS.playerProfile;
+    if (!Array.isArray(P.owned)) P.owned = [];
+    if (!P.look.legs) P.look.legs = 'lisa';
+  },
+  cap(v) { return v.charAt(0).toUpperCase() + v.slice(1); },
+  coins() { return LS.stats.coins || 0; },
+  // peças que a fantasia libera
+  pieces(c) { return Object.keys(c.look).map(k => this.byId[k + ':' + c.look[k]]).filter(i => i && !i.free); },
+  owns(id) {
+    const it = this.byId[id]; if (!it) return false;
+    if (it.free) return true;
+    if (LS.playerProfile.owned.includes(id)) return true;
+    if (it.slot === 'costume') { const ps = this.pieces(it); return ps.length > 0 && ps.every(p => LS.playerProfile.owned.includes(p.id)); }
+    return false;
+  },
+  itemFor(slot, val) { return this.byId[slot + ':' + val]; },
+  ownsValue(slot, val) { const it = this.itemFor(slot, val); return !it || this.owns(it.id); },
+  give(id) {
+    const it = this.byId[id], P = LS.playerProfile;
+    if (!it) return;
+    const ids = it.slot === 'costume' ? [id].concat(this.pieces(it).map(p => p.id)) : [id];
+    ids.forEach(x => { if (!P.owned.includes(x)) P.owned.push(x); });
+    LS.saveProfile();
+  },
+  // comprar com moedas: devolve '' se deu certo, ou o motivo
+  buy(id) {
+    const it = this.byId[id];
+    if (!it || it.free) return 'Item inválido.';
+    if (this.owns(id)) return 'Você já tem esse item.';
+    if (this.coins() < it.price) return 'Moedas insuficientes: faltam ' + (it.price - this.coins()).toLocaleString('pt-BR') + '.';
+    LS.stats.coins -= it.price; LS.saveStats();
+    this.give(id);
+    return '';
+  },
+  // o visual só usa o que você tem (o resto volta pro grátis): evita usar item da loja sem comprar
+  sanitize(look) {
+    const L = Object.assign({}, look), def = { hairStyle: 'curto', beard: 'nenhuma', glasses: 'nenhum', mask: 'nenhuma', hat: 'nenhum', top: 'camiseta', pattern: 'liso', legs: 'lisa' };
+    for (const slot in this.SLOTS) if (L[slot] && !this.ownsValue(slot, L[slot])) L[slot] = def[slot];
+    return L;
+  },
+
+  // ---------- Gold Royale ----------
+  // chance por raridade (comum muito mais fácil que lendário); repetido vira moedas de volta
+  ROYALE_WEIGHT: [46, 32, 16, 6],
+  royalePool() { return this.items.filter(i => !i.free && i.slot !== 'costume'); },
+  spin() {
+    const pool = this.royalePool(), W = this.ROYALE_WEIGHT;
+    let tot = 0; pool.forEach(i => { tot += W[i.rarity]; });
+    let r = Math.random() * tot, pick = pool[0];
+    for (const i of pool) { r -= W[i.rarity]; if (r <= 0) { pick = i; break; } }
+    const dup = this.owns(pick.id), refund = dup ? Math.round(pick.price * 0.25) : 0;
+    if (dup) { LS.stats.coins = this.coins() + refund; LS.saveStats(); } else this.give(pick.id);
+    return { item: pick, dup, refund };
+  },
+  pay(n) {
+    const cost = n >= 11 ? this.ROYALE_10 : this.ROYALE_COST * n;
+    if (this.coins() < cost) return false;
+    LS.stats.coins -= cost; LS.saveStats();
+    return true;
+  }
+};

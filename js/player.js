@@ -113,6 +113,7 @@ LS.Player = class extends LS.Fighter {
     // direção de movimento relativa à câmera
     let fx = 0, fz = 0;
     if (k.KeyW) fz += 1; if (k.KeyS) fz -= 1; if (k.KeyA) fx += 1; if (k.KeyD) fx -= 1;
+    if (I.axis && (I.axis.x || I.axis.y)) { fx = -I.axis.x; fz = -I.axis.y; } // celular: joystick (direção livre)
     const sy = Math.sin(this.camYaw), cy = Math.cos(this.camYaw);
     let wx = sy * fz + cy * fx, wz = cy * fz - sy * fx;
     const wl = Math.hypot(wx, wz); if (wl > 0) { wx /= wl; wz /= wl; }

@@ -3,11 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b0f1c">
 <title>LAST SURVIVOR</title>
 <link rel="preload" href="fonts/lilita-one-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="css/style.css?v=49">
-<link rel="stylesheet" href="css/ui.css?v=49">
+<link rel="stylesheet" href="css/style.css?v=50">
+<link rel="stylesheet" href="css/ui.css?v=50">
 <link rel="icon" href="data:,">
 </head>
 <body>
@@ -22,7 +25,7 @@
       <div class="lb-pinfo"><b><span id="lb-name">Jogador</span><span id="lb-verified"></span></b><div class="lb-lvl">NV. <span id="lb-level">1</span><div class="lb-xp"><div id="lb-xp"></div></div></div></div>
       <span class="lb-open">PERFIL ›</span>
     </div>
-    <div class="lb-currency coin" title="Moedas ganhas nas partidas"><i data-icon="coin"></i><span id="lb-coins">0</span></div>
+    <div class="lb-currency coin" data-action="shop" title="Moedas: gaste na Loja e no Gold Royale"><i data-icon="coin"></i><span id="lb-coins">0</span><b class="lb-plus">+</b></div>
     <div class="lb-currency trophy" title="Vitórias"><i data-icon="trophy"></i><span id="lb-wins">0</span></div>
     <div class="lb-logo">LAST<span>SURVIVOR</span></div>
     <div class="lb-top-icons">
@@ -31,20 +34,22 @@
       <button class="lb-icon" data-action="settings" title="Configurações"><i data-icon="gear"></i></button>
     </div>
   </div>
-  <div class="lb-news" data-action="news">
-    <div class="lb-news-tag">NOVIDADES</div>
-    <div class="lb-news-title">Novo: DUELO 2v2 em equipes</div>
-    <div class="lb-news-sub">Você e um parceiro contra 2 no galpão</div>
+  <div class="lb-banners" id="lb-banners">
+    <div class="lbb-track" id="lbb-track"></div>
+    <div class="lbb-dots" id="lbb-dots"></div>
   </div>
   <div class="lb-menu">
-    <button class="lb-item" data-action="modes"><span><i data-icon="modes"></i></span>MODOS</button>
-    <button class="lb-item" data-action="customize"><span><i data-icon="user"></i></span>PERSONAGEM</button>
+    <button class="lb-item hot" data-action="shop"><span><i data-icon="bag"></i></span>LOJA<em>NOVO</em></button>
+    <button class="lb-item gold" data-action="royale"><span><i data-icon="crown"></i></span>GOLD ROYALE<em>NOVO</em></button>
+    <button class="lb-item" data-action="customize"><span><i data-icon="shirt"></i></span>GUARDA-ROUPA</button>
     <button class="lb-item" data-action="arsenal"><span><i data-icon="gun"></i></span>ARSENAL</button>
-    <button class="lb-item" data-action="stats"><span><i data-icon="chart"></i></span>PERFIL</button>
-    <button class="lb-item" data-action="news"><span><i data-icon="news"></i></span>NOVIDADES</button>
+    <button class="lb-item" data-action="friends"><span><i data-icon="friends"></i></span>AMIGOS<em class="lb-badge hidden" id="lb-fr-badge">0</em></button>
+    <button class="lb-item" data-action="modes"><span><i data-icon="modes"></i></span>MODOS</button>
   </div>
   <div class="lb-side">
+    <button class="lb-icon" data-action="friends" title="Amigos"><i data-icon="friends"></i><em class="lb-dot hidden" id="lb-fr-dot"></em></button>
     <button class="lb-icon" data-action="stats" title="Perfil"><i data-icon="medal"></i></button>
+    <button class="lb-icon" data-action="news" title="Novidades"><i data-icon="news"></i></button>
     <button class="lb-icon" data-action="controls" title="Controles"><i data-icon="keys"></i></button>
     <button class="lb-icon" data-action="credits" title="Créditos"><i data-icon="info"></i></button>
   </div>
@@ -67,6 +72,17 @@
     <div id="modes-grid" class="modes-grid"></div>
     <div class="panel-buttons"><button class="btn btn-primary" data-action="back">VOLTAR</button></div>
   </div>
+</div>
+
+<!-- LOJA / GOLD ROYALE -->
+<div id="panel-shop" class="screen panel-screen">
+  <div class="panel wide sh-panel"><div id="shop-body"></div></div>
+</div>
+
+<!-- AMIGOS -->
+<div id="panel-friends" class="screen panel-screen">
+  <div class="panel wide fr-panel"><h2>AMIGOS</h2><div id="friends-body"></div>
+    <div class="panel-buttons"><button class="btn btn-primary" data-action="back">VOLTAR</button></div></div>
 </div>
 
 <!-- ARSENAL -->
@@ -94,6 +110,10 @@
   <div class="panel">
     <h2>NOVIDADES</h2>
     <div class="news-list">
+      <div><b>Loja e Gold Royale</b><span>Gaste moedas em chapéus, máscaras, roupas, estampas, calças e fantasias completas. Ou tente a sorte no Gold Royale!</span></div>
+      <div><b>Guarda-roupa novo</b><span>Grade com a foto 3D de cada item; dá pra provar antes de comprar.</span></div>
+      <div><b>Amigos</b><span>Adicione pelo ID ou nome e veja quem está online.</span></div>
+      <div><b>Celular</b><span>Controles de toque estilo Free Fire: joystick, atirar arrastando, mirar, pular e mais.</span></div>
       <div><b>LAST SURVIVOR!</b><span>Faixa amarela "LAST SURVIVOR!" na vitória (estilo Booyah) com o botão VOLTAR, no battle royale e no duelo.</span></div>
       <div><b>Minimapa novo</b><span>Redondo, gira com a câmera, bússola, cone de visão, gás animado e ondas onde alguém atira.</span></div>
       <div><b>Indicador de tiro</b><span>Quando alguém atira perto, um arco vermelho em volta da mira mostra de que lado vem o tiro.</span></div>
@@ -118,26 +138,20 @@
 
 <!-- LOBBY -->
 <div id="lobby" class="screen">
-  <div class="lobby-top">
-    <div class="lobby-logo">LAST<span>SURVIVOR</span></div>
-    <div class="lobby-title">LOBBY</div>
-    <div class="lobby-stats" id="lobby-stats"></div>
-  </div>
-  <div class="lobby-panel">
-    <h2>PERSONAGEM</h2>
-    <label class="lobby-label">Nome</label>
-    <input id="lobby-name" maxlength="16" spellcheck="false" autocomplete="off">
-    <div id="lobby-options"></div>
-    <div class="lobby-row-btns">
-      <button class="btn small" data-action="lobby-random"><i data-icon="dice"></i> ALEATÓRIO</button>
-      <button class="btn small" data-action="lobby-reset">PADRÃO</button>
+  <div class="lobby-panel wr-panel">
+    <div class="wr-head">
+      <button class="wr-back" data-action="lobby-back" title="Voltar"><i data-icon="back"></i></button>
+      <h2>GUARDA-ROUPA</h2>
+      <div class="sh-coins" data-action="shop" title="Loja"><i>🪙</i><b id="wr-coins">0</b></div>
     </div>
+    <div class="wr-namerow"><label class="lobby-label">Nome</label><input id="lobby-name" maxlength="16" spellcheck="false" autocomplete="off">
+      <button class="btn small" data-action="lobby-random" title="Visual aleatório (itens grátis)"><i data-icon="dice"></i></button><button class="btn small" data-action="lobby-reset" title="Visual padrão">PADRÃO</button></div>
+    <div id="lobby-options"></div>
   </div>
   <div class="lobby-hint">Arraste para girar o personagem</div>
   <div class="lobby-actions">
     <div class="lobby-mode" id="lobby-mode-txt">MODO: <b>SOLO</b> · 31 JOGADORES · ILHA</div>
-    <button class="btn btn-primary big" data-action="lobby-start">INICIAR PARTIDA</button>
-    <button class="btn" data-action="lobby-back">VOLTAR AO MENU</button>
+    <button class="btn btn-primary big" data-action="lobby-start">JOGAR</button>
   </div>
   <div id="lobby-mm" class="hidden">
     <div class="mm-box">
@@ -394,45 +408,51 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="js/config.js?v=49"></script>
-<script src="js/icons.js?v=49"></script>
-<script src="js/post.js?v=49"></script>
-<script src="js/console.js?v=49"></script>
-<script src="js/audio.js?v=49"></script>
-<script src="js/gunsound.js?v=49"></script>
-<script src="js/input.js?v=49"></script>
-<script src="js/world.js?v=49"></script>
-<script src="js/sky.js?v=49"></script>
-<script src="js/worldbuild.js?v=49"></script>
-<script src="js/housekit.js?v=49"></script>
-<script src="js/houses.js?v=49"></script>
-<script src="js/skin.js?v=49"></script>
-<script src="js/character.js?v=49"></script>
-<script src="js/animlib.js?v=49"></script>
-<script src="js/itemmodels.js?v=49"></script>
-<script src="js/itemicons.js?v=49"></script>
-<script src="js/textures.js?v=49"></script>
-<script src="js/flora.js?v=49"></script>
-<script src="js/effects.js?v=49"></script>
-<script src="js/loot.js?v=49"></script>
-<script src="js/combat.js?v=49"></script>
-<script src="js/player.js?v=49"></script>
-<script src="js/bot.js?v=49"></script>
-<script src="js/zone.js?v=49"></script>
-<script src="js/plane.js?v=49"></script>
-<script src="js/net.js?v=49"></script>
-<script src="js/duel.js?v=49"></script>
-<script src="js/hud.js?v=49"></script>
-<script src="js/victory.js?v=49"></script>
-<script src="js/esp.js?v=49"></script>
-<script src="js/lobbyscene.js?v=49"></script>
-<script src="js/lobby.js?v=49"></script>
-<script src="js/banners.js?v=49"></script>
-<script src="js/account.js?v=49"></script>
-<script src="js/profile.js?v=49"></script>
-<script src="js/modes.js?v=49"></script>
-<script src="js/menu.js?v=49"></script>
-<script src="js/game.js?v=49"></script>
-<script src="js/main.js?v=49"></script>
+<script src="js/config.js?v=50"></script>
+<script src="js/icons.js?v=50"></script>
+<script src="js/post.js?v=50"></script>
+<script src="js/console.js?v=50"></script>
+<script src="js/audio.js?v=50"></script>
+<script src="js/gunsound.js?v=50"></script>
+<script src="js/input.js?v=50"></script>
+<script src="js/touch.js?v=50"></script>
+<script src="js/world.js?v=50"></script>
+<script src="js/sky.js?v=50"></script>
+<script src="js/worldbuild.js?v=50"></script>
+<script src="js/housekit.js?v=50"></script>
+<script src="js/houses.js?v=50"></script>
+<script src="js/skin.js?v=50"></script>
+<script src="js/character.js?v=50"></script>
+<script src="js/animlib.js?v=50"></script>
+<script src="js/itemmodels.js?v=50"></script>
+<script src="js/itemicons.js?v=50"></script>
+<script src="js/textures.js?v=50"></script>
+<script src="js/flora.js?v=50"></script>
+<script src="js/effects.js?v=50"></script>
+<script src="js/loot.js?v=50"></script>
+<script src="js/combat.js?v=50"></script>
+<script src="js/player.js?v=50"></script>
+<script src="js/bot.js?v=50"></script>
+<script src="js/zone.js?v=50"></script>
+<script src="js/plane.js?v=50"></script>
+<script src="js/net.js?v=50"></script>
+<script src="js/duel.js?v=50"></script>
+<script src="js/hud.js?v=50"></script>
+<script src="js/victory.js?v=50"></script>
+<script src="js/esp.js?v=50"></script>
+<script src="js/lobbyscene.js?v=50"></script>
+<script src="js/lobby.js?v=50"></script>
+<script src="js/banners.js?v=50"></script>
+<script src="js/account.js?v=50"></script>
+<script src="js/cosmetics.js?v=50"></script>
+<script src="js/thumbs.js?v=50"></script>
+<script src="js/wardrobe.js?v=50"></script>
+<script src="js/shop.js?v=50"></script>
+<script src="js/friends.js?v=50"></script>
+<script src="js/profile.js?v=50"></script>
+<script src="js/modes.js?v=50"></script>
+<script src="js/menu.js?v=50"></script>
+<script src="js/game.js?v=50"></script>
+<script src="js/main.js?v=50"></script>
 </body>
 </html>

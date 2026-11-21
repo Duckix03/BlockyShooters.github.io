@@ -17,14 +17,20 @@
 //   POST /api/like/<id>                        curte / descurte
 //   POST /api/admin/claim {key}                vira OWNER usando a chave secreta (ADMIN_KEY)
 //   POST /api/admin/badges {id, badges}        (só owner) dá/tira selos de uma conta
+//   GET  /api/friends                          amigos (com online/offline) e pedidos recebidos/enviados
+//   POST /api/friends/add {query}              manda pedido pelo ID (10 números) ou pelo nome
+//   POST /api/friends/accept|decline|remove {id}
+//   POST /api/ping                             "estou online" (o jogo manda de tempos em tempos)
 // Uso interno (só o Matchmaker chama, não fica exposto): /internal/resolve {token, name}
 'use strict';
 
 const TOKEN_DAYS = 90, RENAME_DAYS = 7, PBKDF2_ITER = 10000; // poucas iterações: o plano grátis tem só ~10 ms de CPU por pedido
 const BADGES = ['owner', 'dev', 'cc', 'verificado'];
+const MAX_FRIENDS = 200, ONLINE_MS = 150000; // online = mandou sinal nos últimos 2,5 min
 const RESERVED = ['admin', 'adm', 'moderador', 'owner', 'dono', 'dev', 'suporte', 'support', 'convidado', 'guest', 'lastsurvivor', 'last_survivor', 'sistema', 'system', 'claude', 'anthropic'];
 const NAME_RE = /^[A-Za-z0-9_.\-À-ÿ]{3,16}$/;
-const LOOK_KEYS = ['skin', 'hair', 'hairStyle', 'eyes', 'shirt', 'pattern', 'pants', 'accent', 'beard', 'glasses', 'mask', 'hat', 'top'];
+const LOOK_KEYS = ['skin', 'hair', 'hairStyle', 'eyes', 'shirt', 'pattern', 'pants', 'accent', 'beard', 'glasses', 'mask', 'hat', 'top', 'legs'];
+const ITEM_RE = /^[a-zA-Z]{2,10}:[a-zA-Z0-9À-ÿ .\-]{1,24}$/; // itens da loja: "parte:valor" (ex.: hat:coroa)
 const STAT_KEYS = ['games', 'wins', 'kills', 'xp', 'coins', 'dmg', 'best'];
 
 const H = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Content-Type': 'application/json' };
@@ -58,7 +64,7 @@ export class Accounts {
       if (m && req.method === 'GET') return await this.publicProfile(m[1], await this.auth(req, true));
       const me = await this.auth(req);
       if (!me) return fail('Você precisa entrar na sua conta.', 401);
-      if (path === '/api/me') return json({ account: this.mine(me) });
+      if (path === '/api/me') { await this.seen(me); return json({ account: this.mine(me) }); }
       if (path === '/api/logout') { await this.st.delete('t:' + me._token); return json({ ok: true }); }
       if (path === '/api/profile') return await this.saveProfile(me, body);
       if (path === '/api/rename') return await this.rename(me, body);
@@ -67,6 +73,10 @@ export class Accounts {
       if (m) return await this.like(me, m[1]);
       if (path === '/api/admin/claim') return await this.claim(me, body);
       if (path === '/api/admin/badges') return await this.setBadges(me, body);
+      if (path === '/api/ping') { await this.seen(me); return json({ ok: true }); }
+      if (path === '/api/friends') return await this.friends(me);
+      m = path.match(/^\/api\/friends\/(add|accept|decline|remove)$/);
+      if (m) return await this.friendAction(me, m[1], body);
       return fail('Rota não encontrada.', 404);
     } catch (e) {
       return fail('Erro no servidor.', 500);
@@ -94,7 +104,7 @@ export class Accounts {
 
   cleanProfile(p, old) {
     p = p && typeof p === 'object' ? p : {};
-    const o = old || { look: {}, bio: '', avatarBg: 0, cover: 'br', weapon: null };
+    const o = old || { look: {}, bio: '', avatarBg: 0, cover: 'br', weapon: null, owned: [] };
     const look = Object.assign({}, o.look);
     if (p.look && typeof p.look === 'object') for (const k of LOOK_KEYS) if (p.look[k] != null) look[k] = txt(p.look[k], 24);
     return {
@@ -103,6 +113,7 @@ export class Accounts {
       avatarBg: p.avatarBg != null ? nint(p.avatarBg, 7) : o.avatarBg,
       cover: p.cover != null && /^(br|duel1|duel2|g\d)$/.test(p.cover) ? p.cover : o.cover,
       weapon: p.weapon !== undefined ? (p.weapon && /^[a-z0-9]{2,8}$/.test(p.weapon) ? p.weapon : null) : o.weapon,
+      owned: Array.isArray(p.owned) ? [...new Set(p.owned.filter(x => typeof x === 'string' && ITEM_RE.test(x)))].slice(0, 400) : (o.owned || []),
     };
   }
   checkName(name) {
@@ -197,6 +208,63 @@ export class Accounts {
     a.badges = (Array.isArray(b.badges) ? b.badges : []).filter((x, i, l) => BADGES.includes(x) && l.indexOf(x) === i);
     await this.st.put('a:' + a.id, a);
     return json({ profile: this.pub(a) });
+  }
+
+  // ---------- amizades ----------
+  // guardado na própria conta: friends (amigos), fin (pedidos recebidos), fout (pedidos enviados)
+  async seen(a) { await this.st.put('s:' + a.id, Date.now()); }
+  lists(a) { a.friends = a.friends || []; a.fin = a.fin || []; a.fout = a.fout || []; return a; }
+  async card(id) {
+    const a = await this.st.get('a:' + id); if (!a) return null;
+    const last = (await this.st.get('s:' + id)) || 0;
+    return { id: a.id, name: a.name, badges: a.badges, avatarBg: (a.profile && a.profile.avatarBg) || 0, look: a.profile && a.profile.look, online: Date.now() - last < ONLINE_MS, last };
+  }
+  async friends(me) {
+    await this.seen(me); this.lists(me);
+    const map = async ids => (await Promise.all(ids.map(id => this.card(id)))).filter(Boolean);
+    const friends = await map(me.friends);
+    friends.sort((x, y) => (y.online - x.online) || y.last - x.last);
+    return json({ friends, incoming: await map(me.fin), outgoing: await map(me.fout) });
+  }
+  async save(a) { delete a._token; await this.st.put('a:' + a.id, a); }
+  async friendAction(me, act, b) {
+    this.lists(me);
+    let other;
+    if (act === 'add') {
+      const q = String(b.query || '').trim();
+      const id = /^\d{10}$/.test(q) ? q : await this.st.get('u:' + q.toLowerCase());
+      other = id && await this.st.get('a:' + id);
+      if (!other) return fail('Nenhum jogador com esse ID ou nome.', 404);
+    } else {
+      other = await this.st.get('a:' + String(b.id || ''));
+      if (!other) return fail('Jogador não encontrado.', 404);
+    }
+    this.lists(other);
+    if (other.id === me.id) return fail('Esse é você! 😄');
+    const del = (l, x) => { const i = l.indexOf(x); if (i >= 0) l.splice(i, 1); };
+    let msg = '';
+    if (act === 'add') {
+      if (me.friends.includes(other.id)) return fail('Vocês já são amigos.');
+      if (me.friends.length >= MAX_FRIENDS) return fail('Você chegou no limite de ' + MAX_FRIENDS + ' amigos.');
+      if (me.fin.includes(other.id)) { // a outra pessoa já tinha pedido: vira amizade direto
+        del(me.fin, other.id); del(other.fout, me.id); me.friends.push(other.id); other.friends.push(me.id); msg = 'Agora vocês são amigos!';
+      } else {
+        if (me.fout.includes(other.id)) return fail('Pedido já enviado. Espere a resposta.');
+        if (other.fin.length >= 100) return fail('Essa pessoa tem pedidos demais. Tente depois.');
+        me.fout.push(other.id); other.fin.push(me.id); msg = 'Pedido enviado pra ' + other.name + '!';
+      }
+    } else if (act === 'accept') {
+      if (!me.fin.includes(other.id)) return fail('Esse pedido não existe mais.');
+      del(me.fin, other.id); del(other.fout, me.id);
+      if (!me.friends.includes(other.id)) me.friends.push(other.id);
+      if (!other.friends.includes(me.id)) other.friends.push(me.id);
+      msg = 'Agora você e ' + other.name + ' são amigos!';
+    } else if (act === 'decline') { // recusar o pedido recebido ou cancelar o enviado
+      del(me.fin, other.id); del(other.fout, me.id); del(me.fout, other.id); del(other.fin, me.id); msg = 'Pedido removido.';
+    } else if (act === 'remove') { del(me.friends, other.id); del(other.friends, me.id); msg = other.name + ' saiu da sua lista de amigos.'; }
+    await this.save(me); await this.save(other);
+    const r = await this.friends(me), d = await r.json();
+    return json(Object.assign({ msg }, d));
   }
 
   // ---------- pra partida online: nome de verdade de quem tem conta ----------

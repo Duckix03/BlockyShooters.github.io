@@ -21,6 +21,30 @@ LS.Menu = {
     this.nextTip();
     setInterval(() => this.nextTip(), 7000);
   },
+  // banners do lobby (trocam sozinhos): Gold Royale, Loja, Duelo, Novidades
+  initBanners() {
+    const C = LS.Cosmetics, slides = [
+      { act: 'royale', tag: 'GOLD ROYALE', title: 'Coroa Real e Auréola', sub: 'Gire e ganhe itens lendários', cls: 'gold', item: 'hat:coroa' },
+      { act: 'shop', tag: 'LOJA', title: 'Fantasias completas', sub: 'Cyber Punk, Rei do Galpão, Ninja...', cls: 'shop', item: 'costume:cyber' },
+      { act: 'modes', tag: 'MODO', title: 'Duelo 2v2 no galpão', sub: 'Você e um parceiro contra 2', cls: 'duel', bg: 'duel2' },
+      { act: 'news', tag: 'NOVIDADES', title: 'Loja, amigos e celular', sub: 'Toque pra ver tudo o que mudou', cls: 'news', item: 'mask:gás' }
+    ];
+    const track = document.getElementById('lbb-track'), dots = document.getElementById('lbb-dots');
+    track.innerHTML = slides.map((sl, i) => '<div class="lbb ' + sl.cls + '" data-action="' + sl.act + '" data-i="' + i + '"><div class="lbb-art">' + (sl.item ? '<img alt="" data-tid="' + sl.item + '">' : '') + '</div>' +
+      '<div class="lbb-txt"><span>' + sl.tag + '</span><b>' + sl.title + '</b><small>' + sl.sub + '</small></div></div>').join('');
+    dots.innerHTML = slides.map((_, i) => '<i data-i="' + i + '"></i>').join('');
+    track.querySelectorAll('[data-action]').forEach(b => b.addEventListener('click', () => LS.UI.onAction(b.dataset.action)));
+    dots.addEventListener('click', e => { const d = e.target.closest('[data-i]'); if (d) this.slide(+d.dataset.i); });
+    track.querySelectorAll('img[data-tid]').forEach(img => LS.Thumbs.into(img, C.byId[img.dataset.tid]));
+    LS.Banners.generate(['duel2'], () => { const u = LS.Banners.cached('duel2'), el = track.querySelector('.lbb.duel'); if (u && el) el.style.backgroundImage = 'linear-gradient(90deg, rgba(10,14,30,.85), rgba(10,14,30,.15)), url(' + u + ')'; });
+    this.slideN = slides.length; this.slide(0);
+    setInterval(() => { if (LS.UI.current === 'menu-main') this.slide((this.slideI + 1) % this.slideN); }, 5000);
+  },
+  slide(i) {
+    this.slideI = i;
+    document.getElementById('lbb-track').style.transform = 'translateX(' + (-i * 100) + '%)';
+    document.querySelectorAll('#lbb-dots i').forEach((d, k) => d.classList.toggle('on', k === i));
+  },
   nextTip() { document.getElementById('lb-tip').textContent = this.tips[this.tipI++ % this.tips.length]; },
   render() {
     const s = LS.stats, lvl = this.levelOf(s.xp), a = this.xpFor(lvl), b = this.xpFor(lvl + 1);

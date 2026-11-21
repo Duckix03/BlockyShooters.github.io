@@ -1,14 +1,14 @@
 // Menus, painéis de configuração e inicialização
 'use strict';
 LS.UI = {
-  screens: ['menu-main', 'lobby', 'panel-modes', 'panel-arsenal', 'panel-stats', 'panel-news', 'panel-settings', 'panel-controls', 'panel-credits', 'loading', 'pause', 'endscreen'],
+  screens: ['menu-main', 'lobby', 'panel-modes', 'panel-shop', 'panel-friends', 'panel-arsenal', 'panel-stats', 'panel-news', 'panel-settings', 'panel-controls', 'panel-credits', 'loading', 'pause', 'endscreen'],
   current: 'menu-main', backTo: 'menu-main',
 
   showScreen(id) {
     this.screens.forEach(s => document.getElementById(s).classList.toggle('active', s === id));
     this.current = id;
   },
-  subPanelOpen() { return ['panel-modes', 'panel-settings', 'panel-controls', 'panel-credits', 'panel-arsenal', 'panel-stats', 'panel-news'].includes(this.current); },
+  subPanelOpen() { return ['panel-modes', 'panel-shop', 'panel-friends', 'panel-settings', 'panel-controls', 'panel-credits', 'panel-arsenal', 'panel-stats', 'panel-news'].includes(this.current); },
   openPanel(id) { this.backTo = this.current; this.showScreen(id); },
   back() { this.showScreen(this.backTo || 'menu-main'); },
   updateMenuStats() {
@@ -55,20 +55,23 @@ LS.UI = {
   onAction(a) {
     LS.Audio.init(); LS.Audio.click();
     switch (a) {
-      case 'play': if (LS.Game.state !== 'menu' && LS.Game.state !== 'lobby') LS.Game.quitToMenu(); LS.Lobby.startSearch(); break;
+      case 'play': LS.Touch.goFull(); if (LS.Game.state !== 'menu' && LS.Game.state !== 'lobby') LS.Game.quitToMenu(); LS.Lobby.startSearch(); break;
       case 'customize': LS.Lobby.open(); break;
       case 'arsenal': LS.Menu.renderArsenal(); this.openPanel('panel-arsenal'); break;
       case 'stats': LS.Menu.renderStats(); this.openPanel('panel-stats'); break;
       case 'stats-reset': LS.Menu.resetStats(); break;
       case 'news': this.openPanel('panel-news'); break;
       case 'modes': LS.Modes.open(); break;
+      case 'shop': LS.Shop.open('shop'); break;
+      case 'royale': LS.Shop.open('royale'); break;
+      case 'friends': LS.Friends.open(); break;
       case 'mute': LS.Menu.toggleMute(); break;
       case 'fullscreen': LS.Menu.toggleFullscreen(); break;
-      case 'lobby-start': LS.Lobby.startSearch(); break;
+      case 'lobby-start': LS.Touch.goFull(); LS.Lobby.startSearch(); break;
       case 'lobby-cancel': LS.Lobby.cancelSearch(); break;
       case 'lobby-random': LS.Lobby.random(); break;
       case 'lobby-reset': LS.Lobby.reset(); break;
-      case 'lobby-back': LS.Lobby.cancelSearch(); LS.Game.quitToMenu(); break;
+      case 'lobby-back': LS.Lobby.cancelSearch(); LS.Wardrobe.leave(); LS.Game.quitToMenu(); break;
       case 'settings': this.syncSettings(); this.openPanel('panel-settings'); break;
       case 'controls': this.openPanel('panel-controls'); break;
       case 'credits': this.openPanel('panel-credits'); break;
@@ -89,12 +92,15 @@ window.addEventListener('load', () => {
     return;
   }
   LS.Game.init();
+  LS.Touch.init(); // celular: controles de toque (só liga em tela de toque)
+  LS.Cosmetics.init(); // itens grátis / da loja (antes do guarda-roupa)
   LS.Lobby.build();
   LS.Anim.initLoco(); // carrega a run_f (anims/locomocao.json) para a corrida
   LS.Anim.initDrop(); // arrastar .glb/.fbx para a janela toca a animação no personagem
   LS.Modes.init();
   LS.Account.init(); // conta (se já entrou neste navegador)
   LS.Profile.init();
+  LS.Shop.init(); LS.Friends.init(); LS.Menu.initBanners();
   LS.Menu.init();
   document.getElementById('arsenal-list').addEventListener('click', e => { const b = e.target.closest('[data-wpn]'); if (b) { LS.Audio.init(); LS.Audio.click(); LS.Menu.pickLobbyWeapon(b.dataset.wpn); } });
   LS.UI.bindSettings();
@@ -102,6 +108,6 @@ window.addEventListener('load', () => {
   document.querySelectorAll('[data-action]').forEach(b => b.addEventListener('click', () => LS.UI.onAction(b.dataset.action)));
   window.addEventListener('keydown', e => {
     if (e.code === 'Escape' && LS.UI.subPanelOpen()) LS.UI.back();
-    else if (e.code === 'Escape' && LS.UI.current === 'lobby') { if (LS.Lobby.searching) LS.Lobby.cancelSearch(); else LS.Game.quitToMenu(); }
+    else if (e.code === 'Escape' && LS.UI.current === 'lobby') { if (LS.Lobby.searching) LS.Lobby.cancelSearch(); else { LS.Wardrobe.leave(); LS.Game.quitToMenu(); } }
   });
 });

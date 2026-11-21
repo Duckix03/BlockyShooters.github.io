@@ -126,6 +126,27 @@ No estilo Free Fire (toque no seu nome no topo do lobby):
 
 ---
 
+## 🛒 Loja, Gold Royale e Guarda-roupa
+
+- 👕 **Guarda-roupa em grade** (estilo Free Fire): abas por parte do corpo e cards com a **foto 3D** de cada item e o nome embaixo. Dá pra **provar** item bloqueado e comprar ali mesmo
+- 🛍️ **Loja**: gaste as moedas das partidas em **chapéus** (Coroa Real, Auréola, Cartola, Chifres, Fones Neon...), **rosto** (Visor Cyber, Caveira, Máscara de Gás, Capuz Ninja...), **roupas** (Armadura, Terno, Kimono, Jaqueta de Couro), **estampas** (Galáxia, Chamas, Raio, Tigre, Xadrez), **calças** e **fantasias completas** (Rei do Galpão, Cyber Punk, Anjo, Ninja, Motoqueiro Caveira, Sobrevivente Tóxico)
+- 👑 **Gold Royale**: 1 giro (🪙 500) ou 10+1 (🪙 5.000); a luz passeia pelos itens e para no prêmio. Chances mostradas na tela; repetido devolve 25% em moedas
+- Os itens que já existiam continuam **grátis**; o que você compra fica salvo na conta
+
+## 👥 Amigos
+
+- Adicione pelo **ID** ou pelo **nome**; aceite ou recuse pedidos
+- Veja quem está **online** (e há quanto tempo cada um sumiu), abra o perfil ou remova
+- Precisa de conta
+
+## 📱 Celular
+
+- Joga no celular **deitado**: joystick na esquerda (empurrou até a borda = corre), arrastar a tela gira a câmera
+- **Atirar** segurando (e arrastando pra mirar, como no Free Fire), mirar, pular, agachar, recarregar, curar, pegar item, mochila, mapa e pausa
+- Menus e HUD se ajustam à tela; começa com gráficos mais leves
+
+---
+
 ## 🧱 Personagens e Lobby
 
 O menu inicial **é o lobby**, com o seu personagem em 3D.

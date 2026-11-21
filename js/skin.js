@@ -105,11 +105,11 @@ LS.Skin = {
     H.forEach(r => rect(r, look.skin, 0.05));
     const hair = look.hairStyle === 'boné' ? col(look.shirt, 0.7) : look.hair;
     const st = look.hairStyle;
-    if (st === 'curto' || st === 'boné') {
+    if (st === 'curto' || st === 'boné' || st === 'black power') {
       rect(H[2], hair, 0.15); rect(F, hair, 0.15, [0, st === 'boné' ? 2 : 1]);
       rect(H[0], hair, 0.15, [0, st === 'boné' ? 2 : 3]); rect(H[1], hair, 0.15, [0, st === 'boné' ? 2 : 3]); rect(H[5], hair, 0.15, [0, st === 'boné' ? 3 : 5]);
       if (st === 'curto') { px(F[0], F[1] + 1, hair); px(F[0] + 7, F[1] + 1, hair); }
-    } else if (st === 'longo') {
+    } else if (st === 'longo' || st === 'rabo') {
       rect(H[2], hair, 0.15); rect(F, hair, 0.15, [0, 2]); rect(H[0], hair, 0.15); rect(H[1], hair, 0.15); rect(H[5], hair, 0.15);
       for (let y = 2; y < 8; y++) { px(F[0], F[1] + y, hair); px(F[0] + 7, F[1] + y, hair); }
     } else if (st === 'moicano') {
@@ -128,9 +128,31 @@ LS.Skin = {
     else if (look.beard === 'cheia') { for (let y = 5; y < 8; y++) for (let x = 0; x < 8; x++) { if (y === 6 && x >= 2 && x <= 5) continue; px(fx + x, fy + y, bc, 0.15); } [H[0], H[1]].forEach(r => rect(r, bc, 0.15, [5, 8])); }
     else if (look.beard === 'bigode') [2, 3, 4, 5].forEach(x => px(fx + x, fy + 5, bc, 0.1));
     if (look.mask === 'bandana') { for (let y = 5; y < 8; y++) for (let x = 0; x < 8; x++) px(fx + x, fy + y, (x + y) % 3 === 0 ? '#f0f0f0' : acc, 0.08); [H[0], H[1]].forEach(r => rect(r, acc, 0.08, [5, 7])); }
+    else if (look.mask === 'caveira') {
+      for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) px(fx + x, fy + y, '#ece6d6', 0.05);
+      [H[0], H[1]].forEach(r => rect(r, '#ddd6c4', 0.06, [2, 8]));
+      [[1, 3], [2, 3], [1, 4], [2, 4], [5, 3], [6, 3], [5, 4], [6, 4]].forEach(([x, y]) => px(fx + x, fy + y, '#141414', 0));
+      px(fx + 3, fy + 5, '#2a2a2a', 0); px(fx + 4, fy + 5, '#2a2a2a', 0);
+      for (let x = 1; x < 7; x++) { px(fx + x, fy + 6, '#2a2a2a', 0); px(fx + x, fy + 7, x % 2 ? '#f4f0e4' : '#2a2a2a', 0); }
+    }
+    else if (look.mask === 'ninja') {
+      const nj = '#16171b';
+      [H[0], H[1], H[2], H[5]].forEach(r => rect(r, nj, 0.08));
+      for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) if (y < 3 || y > 4) px(fx + x, fy + y, nj, 0.08);
+      px(fx + 1, fy + 4, '#ffffff', 0); px(fx + 2, fy + 4, look.eyes, 0); px(fx + 5, fy + 4, look.eyes, 0); px(fx + 6, fy + 4, '#ffffff', 0);
+      rect([fx, fy + 2, 8, 1], acc, 0.05);
+    }
+    else if (look.mask === 'gás') { for (let y = 5; y < 8; y++) for (let x = 0; x < 8; x++) px(fx + x, fy + y, '#33363b', 0.08); [H[0], H[1]].forEach(r => rect(r, '#2a2a2a', 0.05, [5, 6])); }
+    else if (look.mask === 'sorriso') {
+      for (let y = 5; y < 8; y++) for (let x = 0; x < 8; x++) px(fx + x, fy + y, '#111114', 0.05);
+      [[1, 5], [6, 5], [2, 6], [3, 6], [4, 6], [5, 6]].forEach(([x, y]) => px(fx + x, fy + y, '#20f0ff', 0));
+    }
     else if (look.mask === 'máscara') { for (let y = 5; y < 8; y++) for (let x = 0; x < 8; x++) px(fx + x, fy + y, '#3a3d42', 0.08); px(fx + 2, fy + 6, '#1a1a1a', 0); px(fx + 5, fy + 6, '#1a1a1a', 0); }
     if (look.glasses === 'escuros') { [1, 2, 5, 6].forEach(x => px(fx + x, fy + 4, '#101010', 0)); [3, 4].forEach(x => px(fx + x, fy + 4, '#202020', 0)); }
     else if (look.glasses === 'redondos') { [0, 3, 4, 7].forEach(x => px(fx + x, fy + 4, '#c8a040', 0)); [1, 2, 5, 6].forEach(x => px(fx + x, fy + 3, '#c8a040', 0)); }
+    else if (look.glasses === 'cyber') { for (let x = 0; x < 8; x++) px(fx + x, fy + 4, '#20f0ff', 0); [H[0], H[1]].forEach(r => rect(r, '#20f0ff', 0, [4, 5])); }
+    else if (look.glasses === 'coração') { [1, 2, 5, 6].forEach(x => px(fx + x, fy + 3, '#ff6aa8', 0)); [0, 1, 2, 5, 6, 7].forEach(x => px(fx + x, fy + 4, '#ff3d8a', 0)); [3, 4].forEach(x => px(fx + x, fy + 4, '#c02060', 0)); [1, 6].forEach(x => px(fx + x, fy + 5, '#ff3d8a', 0)); }
+    else if (look.glasses === 'aviador') { for (let x = 0; x < 8; x++) px(fx + x, fy + 3, '#d8b050', 0); [1, 2, 5, 6].forEach(x => px(fx + x, fy + 4, '#3a2a10', 0)); }
     else if (look.glasses === 'viseira') { for (let x = 0; x < 8; x++) px(fx + x, fy + 4, acc, 0.05); [H[0], H[1]].forEach(r => rect(r, '#202020', 0.05, [4, 5])); }
     // ---- corpo ----
     const B = this.faceRects('body');
@@ -139,6 +161,11 @@ LS.Skin = {
     if (look.pattern === 'listras') [B[0], B[1], B[4], B[5]].forEach(r => { for (let y = 1; y < r[3] - 1; y += 3) rect(r, col(look.shirt, 1.35), 0.04, [y, y + 1]); });
     else if (look.pattern === 'zíper') { for (let y = 0; y < 11; y++) { px(front[0] + 3, front[1] + y, col(look.shirt, 0.6), 0); px(front[0] + 4, front[1] + y, col(look.shirt, 0.6), 0); } px(front[0] + 4, front[1] + 1, '#c0c0c0', 0); }
     else if (look.pattern === 'camuflado') B.forEach(r => { for (let i = 0; i < r[2] * r[3] / 4; i++) { const x = Math.floor(rnd() * r[2]), y = Math.floor(rnd() * r[3]); const c = rnd() < 0.5 ? 0.7 : 1.25; px(r[0] + x, r[1] + y, col(look.shirt, c)); if (x + 1 < r[2]) px(r[0] + x + 1, r[1] + y, col(look.shirt, c)); } });
+    else if (look.pattern === 'xadrez') B.forEach(r => { for (let y = 0; y < r[3]; y++) for (let x = 0; x < r[2]; x++) if ((Math.floor(x / 2) + Math.floor(y / 2)) % 2) px(r[0] + x, r[1] + y, col(look.shirt, 0.62), 0.05); });
+    else if (look.pattern === 'tigre') [B[0], B[1], B[4], B[5]].forEach(r => { for (let i = 0; i < 4; i++) { const y0 = 1 + i * 3; for (let x = 0; x < r[2]; x++) { const y = y0 + Math.round(Math.sin(x * 1.3 + i) * 0.8); if (rnd() < 0.85) px(r[0] + x, r[1] + Math.max(0, Math.min(r[3] - 1, y)), '#16120e', 0.1); } } });
+    else if (look.pattern === 'chamas') [B[0], B[1], B[4], B[5]].forEach(r => { for (let x = 0; x < r[2]; x++) { const h = 3 + Math.floor(rnd() * 5); for (let y = 0; y < h; y++) px(r[0] + x, r[1] + r[3] - 2 - y, y > h - 2 ? '#ffe14a' : y > h * 0.5 ? '#ff8a1f' : '#e0301a', 0.08); } });
+    else if (look.pattern === 'galáxia') B.forEach(r => { for (let y = 0; y < r[3]; y++) for (let x = 0; x < r[2]; x++) { const v = rnd(); px(r[0] + x, r[1] + y, v < 0.08 ? '#ffffff' : v < 0.3 ? '#5a2a9a' : v < 0.45 ? '#2a3a8a' : '#120f2a', 0.1); } });
+    else if (look.pattern === 'raio') { [[4, 0], [3, 1], [3, 2], [2, 3], [2, 4], [3, 4], [4, 4], [5, 4], [4, 5], [4, 6], [3, 7], [3, 8], [2, 9]].forEach(([x, y]) => { px(front[0] + x, front[1] + y, '#ffe14a', 0); if (x + 1 < 8) px(front[0] + x + 1, front[1] + y, '#ffc020', 0); }); }
     else if (look.pattern === 'faixa') { for (let y = 0; y < 11; y++) { const x = Math.floor(y * 8 / 11); px(front[0] + x, front[1] + y, '#f0f0f0'); if (x + 1 < 8) px(front[0] + x + 1, front[1] + y, '#f0f0f0'); } }
     const top = look.top || 'camiseta';
     if (top === 'jaqueta' || top === 'moletom') {
@@ -149,15 +176,38 @@ LS.Skin = {
     } else if (top === 'colete') {
       [B[4], B[5]].forEach(r => { for (let y = 1; y < 10; y++) for (let x = 0; x < 8; x++) if (x < 3 || x > 4 || r === B[5]) px(r[0] + x, r[1] + y, col(acc, 0.9), 0.08); });
       rect([front[0], front[1] + 5, 3, 2], col(acc, 0.65), 0.05); rect([front[0] + 5, front[1] + 5, 3, 2], col(acc, 0.65), 0.05);
+    } else if (top === 'terno') {
+      const dk = '#23262d'; [B[0], B[1], B[5]].forEach(r => rect(r, dk, 0.05)); rect(B[2], dk, 0.05);
+      for (let y = 0; y < 12; y++) for (let x = 0; x < 8; x++) { const v = x >= 3 - (y < 2 ? 1 : 0) && x <= 4 + (y < 2 ? 1 : 0) && y < 6; px(front[0] + x, front[1] + y, v ? '#f2f2f2' : (x === 2 || x === 5) && y < 5 ? col(dk, 1.4) : dk, 0.05); }
+      for (let y = 1; y < 6; y++) { px(front[0] + 3, front[1] + y, look.shirt, 0.03); px(front[0] + 4, front[1] + y, col(look.shirt, 0.85), 0.03); }
+      px(front[0] + 6, front[1] + 3, '#f2f2f2', 0);
+    } else if (top === 'kimono') {
+      for (let y = 0; y < 9; y++) { const x = Math.min(7, Math.floor(y * 0.9)); px(front[0] + x, front[1] + y, '#f4efe4', 0.03); if (x + 1 < 8) px(front[0] + x + 1, front[1] + y, '#e2dccf', 0.03); }
+      [B[0], B[1], B[4], B[5]].forEach(r => rect(r, acc, 0.06, [7, 9]));
+    } else if (top === 'armadura') {
+      const mt = '#8a9099'; B.forEach(r => rect(r, mt, 0.07));
+      [B[0], B[1], B[4], B[5]].forEach(r => { rect(r, col(mt, 0.7), 0.03, [4, 5]); rect(r, col(mt, 0.7), 0.03, [8, 9]); rect(r, acc, 0.04, [0, 1]); });
+      rect([front[0] + 2, front[1] + 1, 4, 3], col(mt, 1.25), 0.05); px(front[0] + 3, front[1] + 2, acc, 0); px(front[0] + 4, front[1] + 2, acc, 0);
+    } else if (top === 'couro') {
+      const lt = '#1c1c1f'; [B[0], B[1], B[5]].forEach(r => rect(r, lt, 0.08)); rect(B[2], lt, 0.08);
+      for (let y = 0; y < 12; y++) for (let x = 0; x < 8; x++) { const open = x >= 3 && x <= 4 && y < 9; if (!open) px(front[0] + x, front[1] + y, lt, 0.08); }
+      for (let y = 0; y < 11; y++) px(front[0] + (y < 9 ? 5 : 4), front[1] + y, '#c8c8cc', 0);
+      rect([front[0], front[1], 3, 2], col(lt, 1.6), 0.05); rect([front[0] + 5, front[1], 3, 2], col(lt, 1.6), 0.05);
     } else if (top === 'regata') { [B[0], B[1]].forEach(r => rect(r, look.skin, 0.05, [0, 2])); rect([front[0], front[1], 2, 2], look.skin, 0.05); rect([front[0] + 6, front[1], 2, 2], look.skin, 0.05); }
     [B[0], B[1], B[4], B[5]].forEach(r => rect(r, '#3a2412', 0.1, [11, 12])); // cinto
     // ---- braços ----
     const A = this.faceRects('arm');
-    const longS = top === 'jaqueta' || top === 'moletom', sleeve = longS ? acc : look.shirt, sl = top === 'regata' ? 0 : longS ? 10 : 4;
+    const SLV = { jaqueta: acc, moletom: acc, terno: '#23262d', kimono: look.shirt, armadura: '#8a9099', couro: '#1c1c1f' }; // roupas de manga comprida
+    const longS = !!SLV[top], sleeve = longS ? SLV[top] : look.shirt, sl = top === 'regata' ? 0 : longS ? 10 : 4;
     A.forEach((r, i) => { if (i === 2) rect(r, sl ? sleeve : look.skin, 0.06); else if (i === 3) rect(r, look.skin, 0.05); else { rect(r, sleeve, 0.06, [0, sl]); rect(r, look.skin, 0.05, [sl, 12]); } });
     // ---- pernas ----
     const L = this.faceRects('leg');
     L.forEach((r, i) => { if (i === 2) rect(r, look.pants, 0.06); else if (i === 3) rect(r, '#1c1c1c', 0.1); else { rect(r, look.pants, 0.06, [0, 10]); rect(r, '#1c1c1c', 0.12, [10, 12]); } });
+    const lg = look.legs || 'lisa', sides = [L[0], L[1], L[4], L[5]];
+    if (lg === 'rasgada') { [L[4], L[5]].forEach(r => { rect([r[0] + 1, r[1] + 5, 2, 1], look.skin, 0.05); px(r[0] + 1, r[1] + 6, look.skin, 0.05); px(r[0] + 2, r[1] + 2, col(look.pants, 1.4), 0.05); px(r[0] + 1, r[1] + 8, col(look.pants, 1.35), 0.05); }); }
+    else if (lg === 'listra') [L[0], L[1]].forEach(r => { for (let y = 0; y < 10; y++) { px(r[0] + 1, r[1] + y, '#f0f0f0', 0.03); px(r[0] + 2, r[1] + y, '#f0f0f0', 0.03); } });
+    else if (lg === 'camuflada') sides.forEach(r => { for (let i = 0; i < 14; i++) { const x = Math.floor(rnd() * r[2]), y = Math.floor(rnd() * 10); px(r[0] + x, r[1] + y, col(look.pants, rnd() < 0.5 ? 0.6 : 1.4), 0.05); } });
+    else if (lg === 'chamas') sides.forEach(r => { for (let x = 0; x < r[2]; x++) { const h = 2 + Math.floor(rnd() * 4); for (let y = 0; y < h; y++) px(r[0] + x, r[1] + 9 - y, y > h - 2 ? '#ffe14a' : y > h * 0.5 ? '#ff8a1f' : '#e0301a', 0.06); } });
   },
   makeTexture(look, seed) {
     const cv = document.createElement('canvas'); cv.width = cv.height = 64;
